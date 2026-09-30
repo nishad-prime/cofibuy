@@ -114,9 +114,16 @@ as $$
   from resolved r
 $$;
 
--- The paid body, only for a customer with a live grant. Returns no_data_found
--- for everyone else, which the client renders as a 404 rather than a paywall
--- teaser — the content is not going to be scraped by walking slugs.
+-- The paid body, only for a customer with a live grant.
+--
+-- Returns scalar `jsonb`, so an ungranted caller gets JSON `null` with a 200
+-- rather than a 404. That is deliberate: the caller is a signed-in customer
+-- asking whether they have access, and "no" is an answer. The client must test
+-- the value instead of reading a key out of it, or it will render an empty body
+-- and look like a paywall bug.
+--
+-- Nothing about the row leaks — no title, no teaser, nothing that would let a
+-- crawler walking the slugs confirm the content exists.
 create or replace function api.get_unlocked_link(p_slug text)
 returns jsonb
 language sql
@@ -187,14 +194,33 @@ begin
   -- Reuse the customer's open order rather than creating a second one. This is
   -- a courtesy, not the safety net: the partial unique index is what actually
   -- prevents duplicates.
+  --
+  -- `locked` is included so a probe lock is found here. Excluding it would let
+  -- the customer walk straight past the lock by asking again, because the
+  -- follow-on code would fall through and insert a fresh draft.
   select * into v_open
   from public.orders
   where user_id = v_user
     and link_id = v_link.id
-    and status in ('draft', 'awaiting_proof', 'rejected')
+    and status in ('draft', 'awaiting_proof', 'rejected', 'locked')
   for update;
 
-  if v_open is not null then
+  -- `v_open.id`, never `v_open is not null`. A row variable is null only when
+  -- *every* column is null, so testing the whole row against null quietly skips
+  -- the reuse path for any order that has a sparse column (which every draft
+  -- does) and falls through to the insert below, tripping the open-order index.
+  if v_open.id is not null then
+    -- Locked means no amount is accepted and no new order starts, so the probe
+    -- budget cannot be reset by asking again. A distinct code lets the client
+    -- say so instead of showing the same "too low" message forever.
+    if v_open.status = 'locked' then
+      return jsonb_build_object(
+        'ok', false,
+        'code', 'locked',
+        'locked_at', v_open.locked_at
+      );
+    end if;
+
     -- Reaching an existing draft means another attempt came in. Count it whether
     -- or not the amount is acceptable, so the lock cannot be side-stepped by
     -- alternating valid and invalid amounts.

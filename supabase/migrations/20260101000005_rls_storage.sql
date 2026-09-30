@@ -142,9 +142,14 @@ declare
 begin
   -- An abandoned order must not sit in the queue forever. A customer whose
   -- order expired simply starts again; the terms are snapshotted on the new one.
+  --
+  -- `locked` expires too, deliberately. A lock that only an admin can clear is a
+  -- permanent dead end for a customer who mistyped an amount, and this one is a
+  -- rate limit rather than a security boundary — the hidden minimum is protected
+  -- by never being disclosed, not by the lock.
   update public.orders
   set status = 'expired'
-  where status in ('draft', 'awaiting_proof')
+  where status in ('draft', 'awaiting_proof', 'locked')
     and expires_at < now();
 
   get diagnostics v_count = row_count;

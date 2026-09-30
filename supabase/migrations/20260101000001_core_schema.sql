@@ -341,9 +341,13 @@ create table public.orders (
 
 -- One open order per customer per link, enforced by the database rather than by
 -- application logic, so two browser tabs cannot both start an order.
+--
+-- `locked` is in the set on purpose. Leaving it out would let a customer escape
+-- a probe lock simply by calling create_order again, since a new row would not
+-- collide with anything.
 create unique index orders_one_open_per_user_link
   on public.orders (user_id, link_id)
-  where status in ('draft', 'awaiting_proof', 'under_review');
+  where status in ('draft', 'awaiting_proof', 'under_review', 'locked');
 
 create index orders_by_status_idx on public.orders (status, created_at desc);
 create index orders_by_user_idx on public.orders (user_id, created_at desc);
@@ -614,6 +618,11 @@ begin
     or (old.status = 'awaiting_proof' and new.status in ('under_review', 'locked', 'expired'))
     or (old.status = 'under_review' and new.status in ('approved', 'rejected', 'locked', 'expired'))
     or (old.status = 'rejected' and new.status in ('under_review', 'locked', 'expired'))
+    -- `locked` is the one terminal state that reopens, and only for an admin
+    -- reset. Without this branch api.admin_reset_probes() would be refused by
+    -- its own trigger, which is the kind of failure that only shows up in
+    -- production when a customer is already locked out.
+    or (old.status = 'locked' and new.status in ('awaiting_proof', 'expired'))
   ) then
     raise exception 'illegal order transition % -> %', old.status, new.status using errcode = '22023';
   end if;

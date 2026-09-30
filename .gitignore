@@ -24,3 +24,6 @@ supabase/.env
 !.vscode/extensions.json
 *.log
 npm-debug.log*
+
+# typescript incremental build state
+tsconfig.tsbuildinfo

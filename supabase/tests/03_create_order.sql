@@ -24,6 +24,7 @@ select test_data.as_anon();
 select throws_ok(
   $$select api.create_order('guide', null, 500)$$,
   '42501',
+  'authentication required',
   'an anonymous visitor cannot start an order'
 );
 
@@ -36,18 +37,21 @@ select test_data.as_user(test_data.new_user());
 select throws_ok(
   $$select api.create_order('no-such-link', null, 500)$$,
   'P0002',
+  'link not found',
   'an unknown slug is refused'
 );
 
 select throws_ok(
   $$select api.create_order('unpublished', null, 500)$$,
   'P0002',
+  'link not found',
   'an unpublished link is refused'
 );
 
 select throws_ok(
   $$select api.create_order('guide', '00000000-0000-0000-0000-000000000000', 500)$$,
   'P0002',
+  'payment method not found',
   'an unknown payment method is refused'
 );
 
@@ -58,6 +62,7 @@ update public.payment_gateways set is_active = false;
 select throws_ok(
   $$select api.create_order('guide', (select id from public.payment_gateways where name_en = 'bKash'), 500)$$,
   'P0002',
+  'payment method not found',
   'a deactivated payment method is refused'
 );
 

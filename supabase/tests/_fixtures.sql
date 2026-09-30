@@ -82,7 +82,7 @@ as $$
 declare
   v_staff public.staff;
 begin
-  insert into public.staff (user_id, role) values (p_user, p_role) returning * into v_staff;
+  insert into public.staff (user_id, role) values (p_user, p_role::public.staff_role) returning * into v_staff;
   return v_staff;
 end
 $$;
@@ -334,6 +334,27 @@ as $$
   select * from test_data.order_for(test_data.subject_id())
 $$;
 
+-- Submits exactly the fields given, so a test can leave one out. Everything else
+-- about the call — who is asking, which order — still comes from the fixture.
+create or replace function test_data.submit_fields(
+  p_user uuid,
+  p_order_id uuid,
+  p_fields jsonb,
+  p_files jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_result jsonb;
+begin
+  perform test_data.as_user(p_user);
+  select api.submit_evidence(p_order_id, p_fields, p_files) into v_result;
+  perform test_data.as_anon();
+  return v_result;
+end
+$$;
+
 -- Submits a complete, valid set of evidence for an order and returns the
 -- response. `p_extras` and `p_files` are merged over the defaults so a test can
 -- drop, replace, or add a single field without restating the rest.
@@ -344,21 +365,59 @@ create or replace function test_data.submit(
   p_files jsonb default '{}'::jsonb
 )
 returns jsonb
-language plpgsql
+language sql
 as $$
-declare
-  v_result jsonb;
-begin
-  perform test_data.as_user(p_user);
-  select api.submit_evidence(
+  select test_data.submit_fields(
+    p_user,
     p_order_id,
     '{"sender_number": "01712345678", "amount": "750", "trxid": "ABC123XYZ9"}'::jsonb || p_extras,
     p_files
   )
-  into v_result;
-  perform test_data.as_anon();
-  return v_result;
+$$;
+
+-- A file sitting in the proofs bucket, at the path shape the storage policies
+-- require. `p_owner` defaults to the uploader; set it to someone else to arrange
+-- an object that exists but does not belong to the customer submitting it.
+create or replace function test_data.proof(
+  p_user uuid,
+  p_order_id uuid,
+  p_key text default 'screenshot',
+  p_ext text default 'png',
+  p_owner uuid default null
+)
+returns text
+language plpgsql
+as $$
+declare
+  v_name text :=
+    p_user::text || '/' || p_order_id::text || '/' || p_key || '/'
+    || gen_random_uuid()::text || '.' || p_ext;
+begin
+  insert into storage.objects (bucket_id, name, owner_id)
+  values ('proofs', v_name, coalesce(p_owner, p_user));
+  return v_name;
 end
+$$;
+
+-- What was recorded for one field on one attempt.
+create or replace function test_data.evidence(p_order_id uuid, p_key text, p_attempt integer default 1)
+returns public.order_evidence
+language sql
+stable
+as $$
+  select *
+  from public.order_evidence
+  where order_id = p_order_id and field_key = p_key and attempt = p_attempt
+$$;
+
+-- How many evidence rows an attempt recorded. A field that was never sent is not
+-- a row, so this also answers "was that field accepted".
+create or replace function test_data.evidence_count(p_order_id uuid, p_attempt integer default 1)
+returns integer
+language sql
+stable
+as $$
+  select count(*)::int from public.order_evidence where order_id = p_order_id and attempt = p_attempt
 $$;
 
 -- An order in `under_review`, with evidence already attached. The starting point

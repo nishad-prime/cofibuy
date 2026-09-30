@@ -54,6 +54,28 @@ begin
 end
 $$;
 
+-- Both halves of what a call raised. pgTAP's throws_ok matches on the message as
+-- well as the SQLSTATE, and a test that only pins the state would pass here and
+-- fail under the real thing on a message it never checked.
+create or replace function _shim_catch(p_sql text)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_state text;
+  v_message text;
+begin
+  begin
+    execute p_sql;
+  exception
+    when others then
+      v_state := sqlstate;
+      v_message := sqlerrm;
+  end;
+  return jsonb_build_object('state', v_state, 'message', v_message);
+end
+$$;
+
 create or replace function _shim_run_rows(p_sql text)
 returns bigint
 language plpgsql
@@ -246,31 +268,65 @@ begin
 end
 $$;
 
+-- pgTAP's signatures: the message is checked, and the description is the last
+-- argument. Getting this wrong is worse than not having it, because a test that
+-- passes against the shim and fails under real pgTAP teaches you to distrust
+-- the suite.
 create or replace function throws_ok(
   p_sql text,
-  p_errcode text default null,
+  p_errcode text,
+  p_errmsg text,
   p_name text default null
 )
 returns text
 language plpgsql
 as $$
 declare
-  v_state text := _shim_run(p_sql);
+  v_caught jsonb := _shim_catch(p_sql);
+  v_state text := v_caught ->> 'state';
+  v_message text := v_caught ->> 'message';
 begin
-  if p_errcode is null then
+  if v_state is distinct from p_errcode then
     return _shim_record(
-      v_state is null,
+      false,
       'throws_ok',
       p_name,
-      'expected an exception, got SQLSTATE ' || coalesce(v_state, '(none)')
+      format(
+        'expected SQLSTATE %s, got %s',
+        p_errcode,
+        case
+          when v_state is null then '(no exception)'
+          else v_state || ' with message: ' || coalesce(v_message, '')
+        end
+      )
     );
   end if;
 
+  if v_message is distinct from p_errmsg then
+    return _shim_record(
+      false,
+      'throws_ok',
+      p_name,
+      format('expected message %L, got %L', p_errmsg, coalesce(v_message, '(none)'))
+    );
+  end if;
+
+  return _shim_record(true, 'throws_ok', p_name, null);
+end
+$$;
+
+create or replace function throws_ok(p_sql text, p_name text default null)
+returns text
+language plpgsql
+as $$
+declare
+  v_state text := _shim_catch(p_sql) ->> 'state';
+begin
   return _shim_record(
-    v_state = p_errcode,
+    v_state is not null,
     'throws_ok',
     p_name,
-    'expected SQLSTATE ' || p_errcode || ', got ' || coalesce(v_state, '(none)')
+    'expected an exception, got SQLSTATE ' || coalesce(v_state, '(none)')
   );
 end
 $$;
@@ -344,7 +400,18 @@ begin
   end if;
 
   if v_failed > 0 then
-    select E'\n' || string_agg(format('  %s: %s', r.kind, coalesce(r.detail, r.name)), E'\n' order by r.seq)
+    -- The description, not just the mismatch. "expected SQLSTATE 22023, got
+    -- 22P02" tells you something is wrong; which assertion was it tells you where
+    -- to look, and a file with thirty of them needs the line.
+    select E'\n' || string_agg(
+      format(
+        '  %s: %s%s',
+        r.kind,
+        coalesce(r.detail, r.name),
+        case when r.name is null then '' else E'\n    ' || r.name end
+      ),
+      E'\n' order by r.seq
+    )
     into v_report
     from _shim_results r
     where not r.ok;

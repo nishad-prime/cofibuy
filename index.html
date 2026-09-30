@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>কোফিবাই</title>
+    <script>
+      // Locale resolution runs before first paint so a Bangla visitor never
+      // sees an English flash. Kept inline and dependency-free on purpose.
+      ;(function () {
+        try {
+          var forced = new URLSearchParams(location.search).get('lang')
+          var stored = localStorage.getItem('cofibuy.lang')
+          var nav = (navigator.language || '').toLowerCase()
+          var geoLang = document.documentElement.dataset.geoLang || ''
+          var candidates = [forced, stored, geoLang, nav]
+          var locale = 'bn'
+          for (var i = 0; i < candidates.length; i++) {
+            var c = (candidates[i] || '').toLowerCase()
+            if (c === 'en') {
+              locale = 'en'
+              break
+            }
+            if (c.indexOf('bn') === 0) {
+              locale = 'bn'
+              break
+            }
+          }
+          document.documentElement.lang = locale
+          window.__COFIBUY_LOCALE__ = locale
+        } catch (e) {
+          document.documentElement.lang = 'bn'
+          window.__COFIBUY_LOCALE__ = 'bn'
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

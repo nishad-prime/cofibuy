@@ -1,0 +1,41 @@
+{
+  "app": {
+    "name": "Cofibuy",
+    "tagline": "Read, pay, enjoy"
+  },
+  "common": {
+    "loading": "Loading…",
+    "retry": "Try again",
+    "copy": "Copy",
+    "copied": "Copied",
+    "close": "Close",
+    "optional": "optional",
+    "required": "required",
+    "back": "Go back",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "lang": {
+    "switchTo": "বাংলা",
+    "label": "Language"
+  },
+  "home": {
+    "heading": "What would you like to read?",
+    "subheading": "Pick a link, make the payment, and read straight away.",
+    "empty": "No links have been published yet.",
+    "browse": "See all links"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The address you tried does not exist or has been removed.",
+    "cta": "Back to home"
+  },
+  "setup": {
+    "title": "Setup is not finished",
+    "body": "No Supabase project is connected. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the dev server.",
+    "see": "See .env.example"
+  },
+  "footer": {
+    "builtWith": "made with"
+  }
+}

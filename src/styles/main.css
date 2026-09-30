@@ -1,0 +1,127 @@
+@import 'tailwindcss';
+
+@import '@fontsource-variable/noto-sans-bengali';
+
+@theme {
+  --font-sans:
+    'Noto Sans Bengali Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-brand-50: oklch(0.98 0.017 82.7);
+  --color-brand-100: oklch(0.955 0.035 82.7);
+  --color-brand-200: oklch(0.905 0.07 82.7);
+  --color-brand-300: oklch(0.83 0.11 82.7);
+  --color-brand-400: oklch(0.735 0.148 74.6);
+  --color-brand-500: oklch(0.665 0.16 70.3);
+  --color-brand-600: oklch(0.575 0.152 65.2);
+  --color-brand-700: oklch(0.472 0.126 62.5);
+  --color-brand-800: oklch(0.382 0.1 60.8);
+  --color-brand-900: oklch(0.305 0.077 58.6);
+  --color-brand-950: oklch(0.19 0.048 55.6);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-stone-50 text-stone-800 antialiased;
+    font-family: var(--font-sans);
+  }
+
+  /*
+   * Values the customer transcribes into an external app: TrxIDs, account
+   * numbers, reference codes, phone numbers. Latin in BOTH locales, always.
+   */
+  .ltr-value {
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: lining-nums;
+    letter-spacing: 0.01em;
+  }
+
+  /*
+   * Bengali script constraints. Bengali conjuncts break under uppercase
+   * transforms, mid-word truncation and altered letter spacing, so these are
+   * forbidden while the Bangla locale is active.
+   */
+  :lang(bn) {
+    line-height: 1.75;
+  }
+
+  :lang(bn) .no-case-transform,
+  :lang(bn) input,
+  :lang(bn) textarea,
+  :lang(bn) button {
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  :lang(bn) .truncate,
+  :lang(bn) .line-clamp-1,
+  :lang(bn) .line-clamp-2,
+  :lang(bn) .line-clamp-3 {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: inherit;
+    overflow: hidden;
+  }
+
+  :lang(bn) .prose-bn {
+    max-width: 34rem;
+  }
+
+  :lang(en) .prose-bn {
+    max-width: 42rem;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+}
+
+/*
+ * A shared button base. Declared with `@utility` rather than as a plain class
+ * so the other button variants can compose it with `@apply btn`, which Tailwind
+ * only allows for registered utilities.
+ */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+@layer components {
+  .btn-primary {
+    @apply btn bg-brand-700 text-white hover:bg-brand-800;
+  }
+
+  .btn-secondary {
+    @apply btn border border-stone-300 bg-white text-stone-700 hover:bg-stone-100;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-700 text-white hover:bg-red-800;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-200 focus:outline-none;
+  }
+
+  .card {
+    @apply rounded-xl border border-stone-200 bg-white shadow-sm;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,26 @@
+node_modules
+dist
+dist-ssr
+coverage
+*.local
+
+# env — never commit real values, only .env.example
+.env
+.env.*
+!.env.example
+
+# supabase link writes project refs + temp credentials here
+supabase/.temp
+supabase/.branches
+supabase/.env
+
+# embedded-postgres scratch data (local test database)
+.tmp
+
+# editors / os
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+*.log
+npm-debug.log*

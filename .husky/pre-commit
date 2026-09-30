@@ -1,0 +1,13 @@
+files=$(git diff --cached --name-only --diff-filter=ACM -- '*.ts' '*.vue' '*.json' '*.css' '*.md' '*.mjs')
+
+if [ -z "$files" ]; then
+  exit 0
+fi
+
+# shellcheck disable=SC2086
+npx prettier --write $files >/dev/null
+
+# shellcheck disable=SC2086
+npx prettier --check $files >/dev/null
+
+git add $files

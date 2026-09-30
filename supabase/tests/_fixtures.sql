@@ -229,28 +229,60 @@ $$;
 -- SQL has no variables that survive a statement, so "the same person, one more
 -- time" would otherwise mean threading a uuid through every call. This is a
 -- one-row table for exactly that.
-create table if not exists test_data.subject (id uuid primary key);
+create table if not exists test_data.subject (slot text primary key, id uuid not null);
 
--- A fresh customer, remembered as the subject.
-create or replace function test_data.new_subject()
+-- A fresh customer, remembered under a slot. A test that needs two people at
+-- once — two orders sharing a TrxID, a customer and somebody else's account —
+-- names the slots, instead of the fragile habit of "whichever row was first".
+create or replace function test_data.new_subject(p_slot text default 'a')
 returns uuid
 language plpgsql
 as $$
 declare
   v_id uuid := test_data.new_user();
 begin
-  insert into test_data.subject (id) values (v_id)
-  on conflict (id) do update set id = excluded.id;
+  insert into test_data.subject (slot, id) values (p_slot, v_id)
+  on conflict (slot) do update set id = excluded.id;
   return v_id;
 end
 $$;
 
-create or replace function test_data.subject_id()
+create or replace function test_data.subject_id(p_slot text default 'a')
 returns uuid
 language sql
 stable
 as $$
-  select id from test_data.subject
+  select id from test_data.subject where slot = p_slot
+$$;
+
+-- A staff account, remembered the same way, so a test can ask what a reviewer
+-- sees without holding a uuid across statements.
+create or replace function test_data.reviewer(p_role text default 'staff')
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid := test_data.new_user();
+begin
+  perform test_data.staff(v_id, p_role);
+  insert into test_data.subject (slot, id) values ('staff', v_id)
+  on conflict (slot) do update set id = excluded.id;
+  return v_id;
+end
+$$;
+
+-- Impersonates the named slot, or returns to being nobody.
+create or replace function test_data.as_subject(p_slot text default 'a')
+returns void
+language plpgsql
+as $$
+begin
+  if p_slot = 'anon' then
+    perform test_data.as_anon();
+  else
+    perform test_data.as_user(test_data.subject_id(p_slot));
+  end if;
+end
 $$;
 
 -- Creates an order as a brand-new customer and returns the response.
@@ -305,11 +337,16 @@ end
 $$;
 
 -- Creates an order as the current subject. The common case.
-create or replace function test_data.orders(p_slug text, p_gateway text, p_amount numeric)
+create or replace function test_data.orders(
+  p_slug text,
+  p_gateway text,
+  p_amount numeric,
+  p_slot text default 'a'
+)
 returns jsonb
 language sql
 as $$
-  select test_data.customer_orders(test_data.subject_id(), p_slug, p_gateway, p_amount)
+  select test_data.customer_orders(test_data.subject_id(p_slot), p_slug, p_gateway, p_amount)
 $$;
 
 create or replace function test_data.order_for(p_user uuid)
@@ -326,12 +363,12 @@ $$;
 
 -- The id of the order the subject most recently started, for assertions that care
 -- about the row rather than the response.
-create or replace function test_data.subject_order()
+create or replace function test_data.subject_order(p_slot text default 'a')
 returns public.orders
 language sql
 stable
 as $$
-  select * from test_data.order_for(test_data.subject_id())
+  select * from test_data.order_for(test_data.subject_id(p_slot))
 $$;
 
 -- Submits exactly the fields given, so a test can leave one out. Everything else

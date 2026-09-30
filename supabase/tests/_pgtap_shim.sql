@@ -383,7 +383,6 @@ declare
   v_total integer;
   v_failed integer;
   v_declared integer;
-  v_report text;
 begin
   select count(*) into v_total from _shim_results;
   select count(*) into v_failed from _shim_results where not ok;
@@ -400,30 +399,35 @@ begin
   end if;
 
   if v_failed > 0 then
-    -- The description, not just the mismatch. "expected SQLSTATE 22023, got
-    -- 22P02" tells you something is wrong; which assertion was it tells you where
-    -- to look, and a file with thirty of them needs the line.
-    select E'\n' || string_agg(
-      format(
-        '  %s: %s%s',
-        r.kind,
-        coalesce(r.detail, r.name),
-        case when r.name is null then '' else E'\n    ' || r.name end
-      ),
-      E'\n' order by r.seq
-    )
-    into v_report
-    from _shim_results r
-    where not r.ok;
-
     raise exception using
       errcode = 'P0001',
       message = format('shim: %s of %s assertions failed', v_failed, v_total),
-      detail = v_report;
+      detail = _shim_report();
   end if;
 
   return format('shim: %s assertions passed', v_total);
 end
+$$;
+
+-- The list of failures, in the order they happened. `finish()` puts this in the
+-- DETAIL line; the runner calls it directly for a file that never got as far as
+-- `finish()`.
+create or replace function _shim_report()
+returns text
+language sql
+stable
+as $$
+  select E'\n' || string_agg(
+    format(
+      '  %s: %s%s',
+      r.kind,
+      coalesce(r.detail, r.name),
+      case when r.name is null then '' else E'\n    ' || r.name end
+    ),
+    E'\n' order by r.seq
+  )
+  from _shim_results r
+  where not r.ok
 $$;
 
 -- Reset between test files. Called by the runner, not by test files.

@@ -285,9 +285,49 @@ begin
   );
 exception
   when unique_violation then
-    -- Reference codes collide roughly once in 29^8 orders; a retry is cheaper
-    -- than making the customer start again.
-    raise exception 'could not allocate a reference code, please retry' using errcode = '40001';
+    -- Two different things collide here, and they need different answers.
+    --
+    -- The one-open-order index fires when the customer double-taps, or opens the
+    -- link in a second tab. That is not an error at all: the order the caller
+    -- wanted already exists, so hand it back. Only a genuine reference-code
+    -- collision — roughly once in 29^8 orders — is worth asking for a retry, and
+    -- a retry is the wrong advice for the first case because it will fail
+    -- identically every time.
+    select o.* into v_open
+    from public.orders o
+    where o.user_id = v_user
+      and o.link_id = v_link.id
+      and o.status in ('draft', 'awaiting_proof', 'under_review', 'rejected', 'locked')
+    order by o.created_at desc
+    limit 1;
+
+    if v_open.id is null then
+      raise exception 'could not allocate a reference code, please retry' using errcode = '40001';
+    end if;
+
+    if v_open.status = 'locked' then
+      return jsonb_build_object('ok', false, 'code', 'locked', 'locked_at', v_open.locked_at);
+    end if;
+
+    if v_open.status = 'draft' then
+      update public.orders
+      set probe_count = probe_count + 1,
+          locked_at = case when probe_count + 1 >= 6 then now() else locked_at end,
+          status = case when probe_count + 1 >= 6 then 'locked'::public.order_status else status end
+      where id = v_open.id;
+
+      return jsonb_build_object('ok', false, 'code', 'below_minimum');
+    end if;
+
+    return jsonb_build_object(
+      'ok', true,
+      'order_id', v_open.id,
+      'reference_code', v_open.reference_code,
+      'status', v_open.status,
+      'expires_at', v_open.expires_at,
+      'min_amount', case when v_hide then null else v_min end,
+      'min_hidden', v_hide
+    );
 end
 $$;
 

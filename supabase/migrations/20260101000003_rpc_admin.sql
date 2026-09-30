@@ -17,13 +17,24 @@
 -- duplicate is usually a customer resubmitting from a second browser, and
 -- blocking it would strand a paid order. Comparison runs on the normalised
 -- value so a TrxID typed with a Bangla keyboard still collides.
+-- A `language sql` function cannot raise, so an earlier draft of this file
+-- guarded it with a staff check it did not have: any caller could read the TrxID
+-- collisions of an order they could not even see. The functions below that
+-- return rows for the panel are plpgsql so the check is in the body, and the
+-- tests assert it for each of them.
 create or replace function api.admin_order_duplicate_trxids(p_order_id uuid)
 returns table (field_key text, value_text_norm text, other_order_ids uuid[])
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
+begin
+  if not private.is_staff() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  return query
   select
     e.field_key,
     e.value_text_norm,
@@ -38,17 +49,23 @@ as $$
   where e.order_id = p_order_id
     and e.value_text_norm is not null
   group by e.field_key, e.value_text_norm
-  having count(distinct dup.order_id) > 0
+  having count(distinct dup.order_id) > 0;
+end
 $$;
 
 create or replace function api.admin_stats()
 returns jsonb
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
-  select jsonb_build_object(
+begin
+  if not private.is_staff() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  return jsonb_build_object(
     'awaiting_review', (select count(*) from public.orders where status = 'under_review'),
     'awaiting_proof', (select count(*) from public.orders where status = 'awaiting_proof'),
     'rejected', (select count(*) from public.orders where status = 'rejected'),
@@ -57,7 +74,8 @@ as $$
     'revenue', (select coalesce(sum(amount), 0) from public.orders where status = 'approved'),
     'active_links', (select count(*) from public.paywall_links where is_active),
     'active_gateways', (select count(*) from public.payment_gateways where is_active)
-  )
+  );
+end
 $$;
 
 create or replace function api.admin_orders(
@@ -332,12 +350,18 @@ $$;
 
 create or replace function api.admin_links()
 returns setof public.paywall_links
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
-  select * from public.paywall_links order by sort_order, slug
+begin
+  if not private.is_owner() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  return query select * from public.paywall_links order by sort_order, slug;
+end
 $$;
 
 create or replace function api.admin_upsert_link(p_link jsonb)
@@ -421,12 +445,18 @@ $$;
 
 create or replace function api.admin_gateways()
 returns setof public.payment_gateways
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
-  select * from public.payment_gateways order by sort_order, name_en
+begin
+  if not private.is_owner() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  return query select * from public.payment_gateways order by sort_order, name_en;
+end
 $$;
 
 create or replace function api.admin_upsert_gateway(p_gateway jsonb)
@@ -506,12 +536,18 @@ $$;
 
 create or replace function api.admin_settings()
 returns public.site_settings
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
-  select * from public.site_settings where id = 1
+begin
+  if not private.is_owner() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  return (select * from public.site_settings where id = 1);
+end
 $$;
 
 create or replace function api.admin_set_settings(p_settings jsonb)
@@ -552,15 +588,22 @@ $$;
 
 create or replace function api.admin_team()
 returns table (user_id uuid, email text, role public.staff_role, created_at timestamptz)
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
+begin
+  if not private.is_owner() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  return query
   select s.user_id, u.email, s.role, s.created_at
   from public.staff s
   left join auth.users u on u.id = s.user_id
-  order by s.created_at
+  order by s.created_at;
+end
 $$;
 
 create or replace function api.admin_set_staff(p_email text, p_role text)

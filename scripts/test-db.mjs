@@ -247,7 +247,14 @@ async function runTestFile(client, file, { useShim }) {
     )
     assertions = rows[0].assertions
     if (!failure && rows[0].failed > 0) {
-      failure = { message: `${rows[0].failed} assertion(s) failed` }
+      // A file that never called `finish()` still has failures worth reading.
+      const {
+        rows: [report],
+      } = await client.query('select _shim_report() as report')
+      failure = {
+        message: `${rows[0].failed} assertion(s) failed`,
+        detail: report.report ?? null,
+      }
     }
   }
 

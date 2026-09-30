@@ -1,0 +1,416 @@
+-- Test fixtures.
+--
+-- Every test file calls `test_data.reset()` first, so the order in which files
+-- run cannot change the result and each file is readable on its own.
+--
+-- Auth impersonation goes through the same GUCs PostgREST sets, so a test
+-- exercises the real code path: `auth.uid()` returns the caller's id because a
+-- request really does carry that claim.
+
+create schema if not exists test_data;
+
+-- ---------------------------------------------------------------------------
+-- Identity
+-- ---------------------------------------------------------------------------
+
+-- A fresh customer. The `auth.users` row exists because `staff` and `orders`
+-- reference it, and because a customer with no auth row is not a state the app
+-- can actually reach.
+create or replace function test_data.new_user()
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (id) values (v_id);
+  return v_id;
+end
+$$;
+
+-- The OTP worker. It calls as `service_role`, so it has no user claim of its own
+-- in production; the row exists only so an FK would fire if a worker function
+-- ever started writing one.
+create or replace function test_data.new_service_user()
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (id) values (v_id);
+  return v_id;
+end
+$$;
+
+create or replace function test_data.as_user(p_id uuid, p_role text default 'authenticated')
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config('request.jwt.claim.sub', coalesce(p_id::text, ''), true);
+  perform set_config('request.jwt.claim.role', coalesce(p_role, 'anon'), true);
+end
+$$;
+
+-- Named separately from a null argument to `test_data.as_user`, so returning to
+-- anonymous is a deliberate call rather than an oversight.
+create or replace function test_data.as_anon()
+returns void
+language plpgsql
+as $$
+begin
+  perform test_data.as_user(null, 'anon');
+end
+$$;
+
+create or replace function test_data.as_service()
+returns void
+language plpgsql
+as $$
+begin
+  perform test_data.as_user(test_data.new_service_user(), 'service_role');
+end
+$$;
+
+-- Grants a role, which is the same act `api.admin_set_staff` performs. Used to
+-- arrange a test, never to grant the very access under test.
+create or replace function test_data.staff(p_user uuid, p_role text default 'staff')
+returns public.staff
+language plpgsql
+as $$
+declare
+  v_staff public.staff;
+begin
+  insert into public.staff (user_id, role) values (p_user, p_role) returning * into v_staff;
+  return v_staff;
+end
+$$;
+
+-- A customer who is also staff. The panel and the storefront share one session.
+create or replace function test_data.new_staff(p_role text default 'staff')
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid := test_data.new_user();
+begin
+  perform test_data.staff(v_id, p_role);
+  return v_id;
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Catalogue
+-- ---------------------------------------------------------------------------
+
+-- A published link. The unlock body is required by the publishable check, so a
+-- fixture that omitted it would not be a state the app allows.
+create or replace function test_data.link(
+  p_slug text default 'guide',
+  p_min numeric default null,
+  p_hide_min boolean default null,
+  p_active boolean default true
+)
+returns public.paywall_links
+language plpgsql
+as $$
+declare
+  v_link public.paywall_links;
+begin
+  insert into public.paywall_links (
+    slug, title_en, title_bn, teaser_md_en, teaser_md_bn,
+    unlock_body_md_en, unlock_body_md_bn, min_amount_override, hide_min_override, is_active
+  )
+  values (
+    p_slug, 'Field Guide', 'ফিল্ড গাইড', 'Teaser text.', 'টিজার লেখা।',
+    'The full guide.', 'পূর্ণ গাইড।', p_min, p_hide_min, p_active
+  )
+  returning * into v_link;
+  return v_link;
+end
+$$;
+
+-- A gateway asking for the three things a manual bKash payment has to prove:
+-- who sent it, how much, and which transaction it was. `sender_number` carries
+-- the `bd_phone` validator, which is what makes the phone double as the
+-- recovery identity.
+create or replace function test_data.gateway(
+  p_kind public.gateway_kind default 'bkash',
+  p_fields jsonb default null,
+  p_active boolean default true
+)
+returns public.payment_gateways
+language plpgsql
+as $$
+declare
+  v_gateway public.payment_gateways;
+begin
+  insert into public.payment_gateways (
+    kind, name_en, name_bn, account_number, account_name,
+    supports_reference, evidence_fields, is_active
+  )
+  values (
+    p_kind,
+    case p_kind when 'nagad' then 'Nagad' when 'bank' then 'Bank' else 'bKash' end,
+    case p_kind when 'nagad' then 'নগদ' when 'bank' then 'ব্যাংক' else 'বিকাশ' end,
+    '01700000000',
+    'Cofibuy',
+    true,
+    coalesce(
+      p_fields,
+      '[{"key":"sender_number","type":"text","label_en":"Sender number","required":true,"validate":"bd_phone","max_len":20},
+        {"key":"amount","type":"number","label_en":"Amount sent","required":true,"validate":"numeric"},
+        {"key":"trxid","type":"text","label_en":"TrxID","required":true,"validate":"trxid","max_len":24},
+        {"key":"screenshot","type":"image","label_en":"Screenshot","required":false,"max_mb":4}]'::jsonb
+    ),
+    p_active
+  )
+  returning * into v_gateway;
+  return v_gateway;
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Reset
+-- ---------------------------------------------------------------------------
+
+-- Wipes everything, in an order the constraints allow. Both re-seeded rows are
+-- preconditions rather than fixtures: `site_settings` is a singleton every
+-- function reads with a literal `id = 1`, and `create_order` needs an active
+-- gateway to exist at all.
+create or replace function test_data.reset()
+returns void
+language plpgsql
+as $$
+begin
+  perform test_data.as_anon();
+
+  truncate table
+    public.audit_log,
+    public.otp_challenges,
+    public.recovery_requests,
+    public.customer_contacts,
+    public.access_grants,
+    public.order_evidence,
+    public.orders,
+    public.paywall_links,
+    public.payment_gateways,
+    public.staff,
+    public.site_settings
+  restart identity cascade;
+
+  truncate table test_data.subject;
+
+  insert into public.site_settings (id) values (1);
+end
+$$;
+
+-- Recovery is gated behind a setting precisely so shipping the UI before the
+-- worker cannot strand anyone. Tests that exercise it have to say so.
+create or replace function test_data.enable_recovery()
+returns void
+language sql
+as $$
+  update public.site_settings set recovery_enabled = true where id = 1
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Calling as a customer
+--
+-- These take the identity change out of the test body. A test that has to
+-- interleave `as_user` calls with the calls it is actually testing reads as two
+-- interleaved stories, and it is easy to leave one customer impersonated while
+-- believing you are testing another.
+-- ---------------------------------------------------------------------------
+
+-- The customer a multi-statement test is currently about.
+--
+-- SQL has no variables that survive a statement, so "the same person, one more
+-- time" would otherwise mean threading a uuid through every call. This is a
+-- one-row table for exactly that.
+create table if not exists test_data.subject (id uuid primary key);
+
+-- A fresh customer, remembered as the subject.
+create or replace function test_data.new_subject()
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid := test_data.new_user();
+begin
+  insert into test_data.subject (id) values (v_id)
+  on conflict (id) do update set id = excluded.id;
+  return v_id;
+end
+$$;
+
+create or replace function test_data.subject_id()
+returns uuid
+language sql
+stable
+as $$
+  select id from test_data.subject
+$$;
+
+-- Creates an order as a brand-new customer and returns the response.
+create or replace function test_data.new_customer_orders(
+  p_slug text,
+  p_gateway text,
+  p_amount numeric
+)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_result jsonb;
+begin
+  perform test_data.as_user(test_data.new_user());
+  select api.create_order(
+    p_slug,
+    (select id from public.payment_gateways where name_en = p_gateway),
+    p_amount
+  )
+  into v_result;
+  perform test_data.as_anon();
+  return v_result;
+end
+$$;
+
+-- Creates an order as an existing customer. This is how a test says "the same
+-- person, one more time", which is the case the probe counter and the one-open-
+-- order index are actually about.
+create or replace function test_data.customer_orders(
+  p_user uuid,
+  p_slug text,
+  p_gateway text,
+  p_amount numeric
+)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_result jsonb;
+begin
+  perform test_data.as_user(p_user);
+  select api.create_order(
+    p_slug,
+    (select id from public.payment_gateways where name_en = p_gateway),
+    p_amount
+  )
+  into v_result;
+  perform test_data.as_anon();
+  return v_result;
+end
+$$;
+
+-- Creates an order as the current subject. The common case.
+create or replace function test_data.orders(p_slug text, p_gateway text, p_amount numeric)
+returns jsonb
+language sql
+as $$
+  select test_data.customer_orders(test_data.subject_id(), p_slug, p_gateway, p_amount)
+$$;
+
+create or replace function test_data.order_for(p_user uuid)
+returns public.orders
+language sql
+stable
+as $$
+  select *
+  from public.orders
+  where user_id = p_user
+  order by created_at desc, id
+  limit 1
+$$;
+
+-- The id of the order the subject most recently started, for assertions that care
+-- about the row rather than the response.
+create or replace function test_data.subject_order()
+returns public.orders
+language sql
+stable
+as $$
+  select * from test_data.order_for(test_data.subject_id())
+$$;
+
+-- Submits a complete, valid set of evidence for an order and returns the
+-- response. `p_extras` and `p_files` are merged over the defaults so a test can
+-- drop, replace, or add a single field without restating the rest.
+create or replace function test_data.submit(
+  p_user uuid,
+  p_order_id uuid,
+  p_extras jsonb default '{}'::jsonb,
+  p_files jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_result jsonb;
+begin
+  perform test_data.as_user(p_user);
+  select api.submit_evidence(
+    p_order_id,
+    '{"sender_number": "01712345678", "amount": "750", "trxid": "ABC123XYZ9"}'::jsonb || p_extras,
+    p_files
+  )
+  into v_result;
+  perform test_data.as_anon();
+  return v_result;
+end
+$$;
+
+-- An order in `under_review`, with evidence already attached. The starting point
+-- for anything about review.
+create or replace function test_data.submitted_order(
+  p_user uuid default null,
+  p_slug text default 'guide',
+  p_gateway text default 'bKash',
+  p_trxid text default 'ABC123XYZ9',
+  p_amount numeric default 750
+)
+returns public.orders
+language plpgsql
+as $$
+declare
+  v_user uuid := coalesce(p_user, test_data.new_user());
+  v_result jsonb;
+  v_order public.orders;
+begin
+  v_result := test_data.customer_orders(v_user, p_slug, p_gateway, p_amount);
+  select * into v_order from public.orders where id = (v_result ->> 'order_id')::uuid;
+  perform test_data.submit(v_user, v_order.id, jsonb_build_object('trxid', p_trxid));
+  select * into v_order from public.orders where id = v_order.id;
+  return v_order;
+end
+$$;
+
+-- Reviews an order as a member of staff, leaving the caller impersonated as
+-- nobody so a test cannot accidentally attribute the next call to the reviewer.
+create or replace function test_data.reviewed_by_staff(
+  p_order_id uuid,
+  p_action text,
+  p_reason text default null,
+  p_role text default 'staff'
+)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_reviewer uuid := test_data.new_staff(p_role);
+  v_result jsonb;
+begin
+  perform test_data.as_user(v_reviewer);
+  if p_action = 'approve' then
+    select api.approve_order(p_order_id) into v_result;
+  else
+    select api.reject_order(p_order_id, p_reason) into v_result;
+  end if;
+  perform test_data.as_anon();
+  return v_result;
+end
+$$;
+
+grant usage on schema test_data to anon, authenticated, service_role;
+grant execute on all functions in schema test_data to anon, authenticated, service_role;

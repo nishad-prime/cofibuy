@@ -47,17 +47,13 @@ function listFiles(dir, suffix) {
     .map((name) => join(dir, name))
 }
 
-let pg
+// Files prefixed with `_` are support, not tests: fixtures and the assertion
+// shim. They are applied once, outside the per-file transaction, and never
+// reported as passing suites of their own.
+const isSupport = (file) => file.split('/').pop().startsWith('_')
+const isEnvironment = (file) => file.endsWith('00_environment.sql')
 
-async function withClient(fn) {
-  const client = pg.getPgClient()
-  await client.connect()
-  try {
-    return await fn(client)
-  } finally {
-    await client.end()
-  }
-}
+let pg
 
 /** Splits a SQL file into statements, ignoring dollar-quoted bodies and comments. */
 function splitStatements(sql) {
@@ -155,6 +151,7 @@ async function applyFile(client, file) {
       const relative = file.replace(`${root}/`, '')
       throw new Error(
         `${relative}\n\nStatement ${applied + 1} failed:\n${statement}\n\n${error.message}`,
+        { cause: error },
       )
     }
   }
@@ -177,6 +174,7 @@ async function migrate(client) {
   }
 }
 
+/** @returns {Promise<boolean>} whether the compatibility shim is in use */
 async function installShimIfNeeded(client) {
   const { rows } = await client.query(
     `select count(*)::int as n from pg_available_extensions where name = 'pgtap'`,
@@ -186,18 +184,21 @@ async function installShimIfNeeded(client) {
   if (available) {
     await client.query('create extension if not exists pgtap')
     console.log(dim('  using the real pgtap extension'))
-  } else {
-    await applyFile(client, join(testsDir, '_pgtap_shim.sql'))
-    console.log(dim('  pgtap unavailable, using the compatibility shim'))
+    return false
   }
 
-  return !available
+  await applyFile(client, join(testsDir, '_pgtap_shim.sql'))
+  console.log(dim('  pgtap unavailable, using the compatibility shim'))
+  return true
 }
 
+// Session-level defaults, not transaction-local. A file's own `test_data.as_user`
+// calls are transaction-local and revert at the end, so the next file starts from
+// these instead of inheriting the previous file's identity.
 async function impersonate(client, { userId, role, email }) {
-  await client.query('select set_config($1, $2, true)', ['request.jwt.claim.sub', userId ?? ''])
-  await client.query('select set_config($1, $2, true)', ['request.jwt.claim.role', role ?? 'anon'])
-  await client.query('select set_config($1, $2, true)', ['request.jwt.claim.email', email ?? ''])
+  await client.query('select set_config($1, $2, false)', ['request.jwt.claim.sub', userId ?? ''])
+  await client.query('select set_config($1, $2, false)', ['request.jwt.claim.role', role ?? 'anon'])
+  await client.query('select set_config($1, $2, false)', ['request.jwt.claim.email', email ?? ''])
 }
 
 async function runTestFile(client, file, { useShim }) {
@@ -206,26 +207,48 @@ async function runTestFile(client, file, { useShim }) {
   const name = relative.split('/').pop()
 
   await client.query('begin')
-
   if (useShim) await client.query('select _shim_reset()')
+
+  // A savepoint, so a failing statement only aborts this file rather than the
+  // whole run. Without one, the first `finish()` that raises would poison the
+  // transaction and no later file could even be read for reporting.
+  await client.query('savepoint test_file')
 
   let failure = null
   let assertions = 0
 
   try {
-    for (const statement of splitStatements(sql)) {
-      await client.query(statement)
+    const statements = splitStatements(sql)
+    for (const [index, statement] of statements.entries()) {
+      try {
+        await client.query(statement)
+      } catch (error) {
+        // Report the failing statement, not just its message: a bare SQLSTATE
+        // from a test file is otherwise impossible to act on.
+        error.message = `Statement ${index + 1} of ${statements.length}:\n${statement}\n\n${error.message}`
+        throw error
+      }
     }
   } catch (error) {
     failure = error
   }
 
-  if (useShim && !failure) {
+  // Clears the aborted state, but only when something failed: rolling back to the
+  // savepoint would also discard the assertions the file had recorded so far. A
+  // failed file's message already carries the report, so losing the tally is fine.
+  if (failure) await client.query('rollback to savepoint test_file')
+
+  if (useShim) {
     const { rows } = await client.query(
-      `select count(*)::int as total, count(*) filter (where not ok)::int as failed from _shim_results`,
+      `select
+         count(*) filter (where kind <> all (array['diag', 'note']))::int as assertions,
+         count(*) filter (where kind <> all (array['diag', 'note']) and not ok)::int as failed
+       from _shim_results`,
     )
-    assertions = rows[0].total
-    if (rows[0].failed > 0) failure = { message: `${rows[0].failed} assertion(s) failed` }
+    assertions = rows[0].assertions
+    if (!failure && rows[0].failed > 0) {
+      failure = { message: `${rows[0].failed} assertion(s) failed` }
+    }
   }
 
   await client.query('rollback')
@@ -258,6 +281,12 @@ async function main() {
   await pg.start()
 
   const client = pg.getPgClient()
+
+  // Notices are how the shim's `diag` reports commentary. Collected per file and
+  // printed alongside it, which also works when the file failed: the table of
+  // results would be unreadable by then.
+  let notices = []
+  client.on('notice', (notice) => notices.push(notice.message))
   await client.connect()
 
   // Mirrors a Supabase project, where pgcrypto lives in the `extensions` schema
@@ -278,11 +307,15 @@ async function main() {
       return
     }
 
-    const useShim = !(await installShimIfNeeded(client))
+    const useShim = await installShimIfNeeded(client)
 
-    const files = listFiles(testsDir, '.sql').filter(
-      (file) => !file.endsWith('00_environment.sql') && !file.endsWith('_pgtap_shim.sql'),
-    )
+    const all = listFiles(testsDir, '.sql').filter((file) => !isEnvironment(file))
+
+    for (const file of all.filter(isSupport)) {
+      await applyFile(client, file)
+    }
+
+    const files = all.filter((file) => !isSupport(file))
 
     if (files.length === 0) throw new Error('no test files found')
 
@@ -291,14 +324,23 @@ async function main() {
     for (const file of files) {
       // Each file gets a clean identity context.
       await impersonate(client, { role: 'anon' })
+      notices = []
       const result = await runTestFile(client, file, { useShim })
       const { name, failure, assertions } = result
+
+      for (const note of notices) {
+        console.log(dim(`        · ${note}`))
+      }
 
       if (failure) {
         exitCode = 1
         console.log(`  ${red('FAIL')}  ${name}`)
+        // pg_errors carry a DETAIL line; the shim puts its report there. Without
+        // it a failure is just a count, which is not enough to act on.
+        const detail = failure.detail ? `\n${failure.detail}` : ''
         console.log(
-          failure.message
+          [failure.message, detail]
+            .join('')
             .split('\n')
             .map((line) => `        ${line}`)
             .join('\n'),
@@ -315,10 +357,14 @@ async function main() {
     if (!KEEP) {
       try {
         if (!client.ended) await client.end()
-      } catch {}
+      } catch {
+        // The cluster is going away regardless; a failed disconnect is noise.
+      }
       try {
         await pg.stop()
-      } catch {}
+      } catch {
+        // Same here: report the test result, not the teardown.
+      }
     } else {
       console.log(dim(`\n  cluster left running on port ${PORT} (--keep)\n`))
     }

@@ -69,21 +69,35 @@ exception
 end
 $$;
 
+-- The declared plan is held separately from the results, so `finish()` can
+-- enforce the count the way pgTAP does. Without that, a file with one assertion
+-- removed would still pass here and fail in CI.
+create table if not exists _shim_plan (
+  id boolean primary key default true,
+  declared integer,
+  check (id)
+);
+
 create or replace function plan(p_tests integer)
 returns text
 language plpgsql
 as $$
 begin
-  perform _shim_record(true, 'plan', 'plan ' || p_tests, null);
+  insert into _shim_plan (declared) values (p_tests)
+  on conflict (id) do update set declared = excluded.declared;
   return 'plan ' || p_tests;
 end
 $$;
 
 create or replace function no_plan()
 returns text
-language sql
+language plpgsql
 as $$
-  select 'no_plan'
+begin
+  insert into _shim_plan (declared) values (null)
+  on conflict (id) do update set declared = null;
+  return 'no_plan';
+end
 $$;
 
 create or replace function ok(p_condition boolean, p_name text default null)
@@ -106,6 +120,107 @@ as $$
 $$;
 
 create or replace function isnt(p_got anyelement, p_want anyelement, p_name text default null)
+returns text
+language sql
+as $$
+  select _shim_record(
+    p_got is distinct from p_want,
+    'isnt',
+    p_name,
+    'both were ' || coalesce(p_got::text, 'NULL')
+  )
+$$;
+
+-- Concrete overloads for the types the suite compares, mirroring pgTAP.
+--
+-- Without these, `is(count(*), 1)` fails to resolve: `anyelement` forces both
+-- arguments to one type, so a bigint can never be compared to an int literal.
+-- The generic form stays as the fallback for everything else.
+create or replace function is(p_got bigint, p_want bigint, p_name text default null)
+returns text
+language sql
+as $$
+  select _shim_record(
+    p_got is not distinct from p_want,
+    'is',
+    p_name,
+    'got ' || coalesce(p_got::text, 'NULL') || ', want ' || coalesce(p_want::text, 'NULL')
+  )
+$$;
+
+create or replace function is(p_got integer, p_want integer, p_name text default null)
+returns text
+language sql
+as $$
+  select _shim_record(
+    p_got is not distinct from p_want,
+    'is',
+    p_name,
+    'got ' || coalesce(p_got::text, 'NULL') || ', want ' || coalesce(p_want::text, 'NULL')
+  )
+$$;
+
+create or replace function is(p_got numeric, p_want numeric, p_name text default null)
+returns text
+language sql
+as $$
+  select _shim_record(
+    p_got is not distinct from p_want,
+    'is',
+    p_name,
+    'got ' || coalesce(p_got::text, 'NULL') || ', want ' || coalesce(p_want::text, 'NULL')
+  )
+$$;
+
+create or replace function is(p_got text, p_want text, p_name text default null)
+returns text
+language sql
+as $$
+  select _shim_record(
+    p_got is not distinct from p_want,
+    'is',
+    p_name,
+    'got ' || coalesce(p_got, 'NULL') || ', want ' || coalesce(p_want, 'NULL')
+  )
+$$;
+
+create or replace function is(p_got boolean, p_want boolean, p_name text default null)
+returns text
+language sql
+as $$
+  select _shim_record(
+    p_got is not distinct from p_want,
+    'is',
+    p_name,
+    'got ' || coalesce(p_got::text, 'NULL') || ', want ' || coalesce(p_want::text, 'NULL')
+  )
+$$;
+
+create or replace function is(p_got uuid, p_want uuid, p_name text default null)
+returns text
+language sql
+as $$
+  select _shim_record(
+    p_got is not distinct from p_want,
+    'is',
+    p_name,
+    'got ' || coalesce(p_got::text, 'NULL') || ', want ' || coalesce(p_want::text, 'NULL')
+  )
+$$;
+
+create or replace function isnt(p_got bigint, p_want bigint, p_name text default null)
+returns text
+language sql
+as $$
+  select _shim_record(
+    p_got is distinct from p_want,
+    'isnt',
+    p_name,
+    'both were ' || coalesce(p_got::text, 'NULL')
+  )
+$$;
+
+create or replace function isnt(p_got integer, p_want integer, p_name text default null)
 returns text
 language sql
 as $$
@@ -176,18 +291,32 @@ begin
 end
 $$;
 
+-- `diag` and `note` also raise a notice.
+--
+-- The shim records results in a table, and a table cannot be read once the
+-- transaction has been aborted by a failing assertion — which is precisely when
+-- the commentary is wanted. Notices are emitted as they happen, so the runner
+-- keeps them whether the file passed or not.
 create or replace function diag(p_message text)
 returns text
-language sql
+language plpgsql
 as $$
-  select _shim_record(true, 'diag', p_message, null)
+begin
+  perform _shim_record(true, 'diag', p_message, null);
+  raise notice '%', p_message;
+  return 'diag';
+end
 $$;
 
 create or replace function note(p_message text)
 returns text
-language sql
+language plpgsql
 as $$
-  select _shim_record(true, 'note', p_message, null)
+begin
+  perform _shim_record(true, 'note', p_message, null);
+  raise notice '%', p_message;
+  return 'note';
+end
 $$;
 
 create or replace function finish()
@@ -197,22 +326,36 @@ as $$
 declare
   v_total integer;
   v_failed integer;
+  v_declared integer;
   v_report text;
 begin
   select count(*) into v_total from _shim_results;
   select count(*) into v_failed from _shim_results where not ok;
+  select declared into v_declared from _shim_plan;
+
+  if v_declared is not null and v_declared <> v_total then
+    raise exception using
+      errcode = 'P0001',
+      message = format(
+        'shim: plan declared %s assertions but %s ran; update the plan() call',
+        v_declared,
+        v_total
+      );
+  end if;
 
   if v_failed > 0 then
-    select string_agg(format('  %s: %s', r.kind, coalesce(r.detail, r.name)), E'\n' order by r.seq)
+    select E'\n' || string_agg(format('  %s: %s', r.kind, coalesce(r.detail, r.name)), E'\n' order by r.seq)
     into v_report
     from _shim_results r
     where not r.ok;
 
-    raise exception 'shim: % of % assertions failed:%E%s', v_failed, v_total, E'\n', v_report
-      using errcode = 'P0001';
+    raise exception using
+      errcode = 'P0001',
+      message = format('shim: %s of %s assertions failed', v_failed, v_total),
+      detail = v_report;
   end if;
 
-  return format('shim: % assertions passed', v_total);
+  return format('shim: %s assertions passed', v_total);
 end
 $$;
 
@@ -221,5 +364,6 @@ create or replace function _shim_reset()
 returns void
 language sql
 as $$
-  delete from _shim_results
+  delete from _shim_results;
+  delete from _shim_plan
 $$;

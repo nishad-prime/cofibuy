@@ -109,10 +109,18 @@ begin
   order by created_at desc
   limit 1;
 
-  -- Every failure below returns the same message, so a caller cannot use the
-  -- endpoint to learn whether a code existed, was already used, or had expired.
+  -- A wrong code returns rather than raises, and that is load-bearing.
+  --
+  -- Raising unwinds the function and rolls back everything it did on the way
+  -- out, including the attempt it just counted. A counter that only survives
+  -- when it is not updated is not a counter: the five-guess limit below would
+  -- never be reached, and a code that leaked would be good for unlimited
+  -- guesses against it.
+  --
+  -- The two failures are also the same object, so a caller cannot use the
+  -- response to learn whether a code existed, was already used, or had expired.
   if v_challenge is null then
-    raise exception 'that code is not valid' using errcode = '22023';
+    return jsonb_build_object('ok', false, 'code', 'invalid_code');
   end if;
 
   if not private.otp_matches(p_code, v_challenge.otp_hash) then
@@ -127,7 +135,7 @@ begin
       where id = v_challenge.recovery_request_id and status = 'sent';
     end if;
 
-    raise exception 'that code is not valid' using errcode = '22023';
+    return jsonb_build_object('ok', false, 'code', 'invalid_code');
   end if;
 
   update public.otp_challenges set consumed_at = now() where id = v_challenge.id;
@@ -137,11 +145,14 @@ begin
 
   -- Everything ever paid for with this phone, granted to whoever just proved
   -- control of it. Idempotent, so re-verifying a second code is harmless.
+  --
+  -- Postgres has no min() for uuid, so the order credited is the earliest one
+  -- for the link, picked out of an ordered array.
   insert into public.access_grants (user_id, link_id, via_order_id)
   select
     v_user,
     o.link_id,
-    min(o.id)
+    (array_agg(o.id order by o.created_at))[1]
   from public.orders o
   where o.phone_e164 = v_phone and o.status = 'approved'
   group by o.link_id
@@ -253,11 +264,13 @@ begin
     raise exception 'request has expired' using errcode = '22023';
   end if;
 
-  -- Supersede any earlier unconsumed code for this request, so a resend
-  -- invalidates the previous one rather than leaving two live at once.
+  -- Supersede any earlier unconsumed code for this *phone*, so a resend
+  -- invalidates the previous one rather than leaving two live at once. Matching
+  -- on the request id would not do it: a resend is a new request, and the old
+  -- challenge belongs to the old one, so both codes would stay usable.
   update public.otp_challenges
   set consumed_at = now()
-  where recovery_request_id = p_request_id and consumed_at is null;
+  where phone_e164 = v_request.phone_e164 and consumed_at is null;
 
   insert into public.otp_challenges (
     recovery_request_id, phone_e164, otp_hash, max_attempts, expires_at

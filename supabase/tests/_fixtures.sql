@@ -73,6 +73,25 @@ begin
 end
 $$;
 
+-- Whether `p_role` may execute `p_fn` at all.
+--
+-- The tests impersonate by setting JWT claims, which is what the functions read
+-- through auth.uid() and auth.role(). That is only half of what PostgREST does:
+-- it also runs the call as the database role named in the token, and it is the
+-- database role that `revoke` and `grant` act on. These tests run as the
+-- superuser who owns everything, so a claim-only impersonation would happily
+-- execute a function that no real customer could reach.
+--
+-- Asking the catalog directly is the honest way to check that, and 07 asserts
+-- the whole grant surface this way.
+create or replace function test_data.can_execute(p_role text, p_fn text)
+returns boolean
+language sql
+stable
+as $$
+  select has_function_privilege(p_role, p_fn, 'execute')
+$$;
+
 -- Grants a role, which is the same act `api.admin_set_staff` performs. Used to
 -- arrange a test, never to grant the very access under test.
 create or replace function test_data.staff(p_user uuid, p_role text default 'staff')

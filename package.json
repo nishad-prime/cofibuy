@@ -19,9 +19,10 @@
     "test:watch": "vitest",
     "test:db": "node scripts/test-db.mjs",
     "db:reset": "node scripts/db-reset.mjs",
-    "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
+    "db:types": "node scripts/generate-types.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
-    "bootstrap": "node scripts/bootstrap.mjs"
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "db:types:check": "node scripts/generate-types.mjs --check"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans-bengali": "5.3.0",

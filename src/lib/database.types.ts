@@ -9,16 +9,865 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
-type GenericSchema = {
-  Tables: Record<string, never>
-  Views: Record<string, never>
-  Functions: Record<string, never>
-  Enums: Record<string, never>
-  CompositeTypes: Record<string, never>
+export type Database = {
+  api: {
+    Tables: Record<never, never>
+    Views: Record<never, never>
+    Functions: {
+      admin_delete_gateway: {
+        Args: {
+          p_gateway_id: string
+        }
+        Returns: Json
+      }
+      admin_delete_link: {
+        Args: {
+          p_link_id: string
+        }
+        Returns: Json
+      }
+      admin_gateways: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      admin_links: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      admin_order_detail: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      admin_order_duplicate_trxids: {
+        Args: {
+          p_order_id: string
+          field_key?: string
+          value_text_norm?: string
+          other_order_ids?: string[]
+        }
+        Returns: Json[]
+      }
+      admin_orders: {
+        Args: {
+          p_status?: string
+          p_reference?: string
+          p_limit?: number
+          id?: string
+          slug?: string
+          title_en?: string
+          title_bn?: string
+          kind?: Json
+          status?: Json
+          reference_code?: string
+          amount?: number
+          phone_e164?: string
+          attempt_count?: number
+          probe_count?: number
+          created_at?: string
+          submitted_at?: string
+          has_duplicate_trxid?: boolean
+        }
+        Returns: Json[]
+      }
+      admin_remove_staff: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      admin_reset_probes: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      admin_set_settings: {
+        Args: {
+          p_settings: Json
+        }
+        Returns: Json
+      }
+      admin_set_staff: {
+        Args: {
+          p_email: string
+          p_role: string
+        }
+        Returns: Json
+      }
+      admin_settings: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_stats: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_team: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      admin_upsert_gateway: {
+        Args: {
+          p_gateway: Json
+        }
+        Returns: Json
+      }
+      admin_upsert_link: {
+        Args: {
+          p_link: Json
+        }
+        Returns: Json
+      }
+      approve_order: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      claim_pending_recovery: {
+        Args: {
+          p_limit?: number
+          id?: string
+          phone_e164?: string
+          purpose?: string
+          created_at?: string
+          expires_at?: string
+          previous_attempts?: number
+        }
+        Returns: Json[]
+      }
+      create_order: {
+        Args: {
+          p_slug: string
+          p_gateway_id: string
+          p_amount: number
+        }
+        Returns: Json
+      }
+      get_public_link: {
+        Args: {
+          p_slug: string
+        }
+        Returns: Json
+      }
+      get_unlocked_link: {
+        Args: {
+          p_slug: string
+        }
+        Returns: Json
+      }
+      list_public_links: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      mark_undeliverable: {
+        Args: {
+          p_request_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      my_grants: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      my_order_status: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      my_orders: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      record_otp_sent: {
+        Args: {
+          p_request_id: string
+          p_otp_hash: string
+          p_ttl_seconds?: number
+        }
+        Returns: Json
+      }
+      recover_access: {
+        Args: {
+          p_phone: string
+          p_code: string
+        }
+        Returns: Json
+      }
+      reject_order: {
+        Args: {
+          p_order_id: string
+          p_reason: string
+          p_reason_bn?: string
+          p_code?: string
+        }
+        Returns: Json
+      }
+      request_recovery: {
+        Args: {
+          p_phone: string
+        }
+        Returns: Json
+      }
+      submit_evidence: {
+        Args: {
+          p_order_id: string
+          p_fields: Json
+          p_files?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: Record<never, never>
+  }
+  private: {
+    Tables: Record<never, never>
+    Views: Record<never, never>
+    Functions: {
+      audit_order: { Args: Record<PropertyKey, never>; Returns: Json }
+      deny_mutation: { Args: Record<PropertyKey, never>; Returns: Json }
+      effective_hide_min: {
+        Args: {
+          p_link: Json
+          p_settings: Json
+        }
+        Returns: boolean
+      }
+      effective_min: {
+        Args: {
+          p_link: Json
+          p_settings: Json
+        }
+        Returns: number
+      }
+      expire_stale_orders: { Args: Record<PropertyKey, never>; Returns: number }
+      gen_reference_code: { Args: Record<PropertyKey, never>; Returns: string }
+      grant_on_approval: { Args: Record<PropertyKey, never>; Returns: Json }
+      guard_evidence_fields: { Args: Record<PropertyKey, never>; Returns: Json }
+      guard_order_status: { Args: Record<PropertyKey, never>; Returns: Json }
+      is_owner: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
+      normalize_bd_phone: {
+        Args: {
+          p_raw: string
+        }
+        Returns: string
+      }
+      normalize_reference: {
+        Args: {
+          p_raw: string
+        }
+        Returns: string
+      }
+      otp_hash: {
+        Args: {
+          p_plain: string
+        }
+        Returns: string
+      }
+      otp_matches: {
+        Args: {
+          p_plain: string
+          p_hash: string
+        }
+        Returns: boolean
+      }
+      prune_anonymous_users: { Args: Record<PropertyKey, never>; Returns: number }
+      reap_stale_claims: { Args: Record<PropertyKey, never>; Returns: number }
+      sweep: { Args: Record<PropertyKey, never>; Returns: Json }
+      tidy_blank_to_null: { Args: Record<PropertyKey, never>; Returns: Json }
+      to_latin_digits: {
+        Args: {
+          p_text: string
+        }
+        Returns: string
+      }
+      touch_updated_at: { Args: Record<PropertyKey, never>; Returns: Json }
+      validate_evidence_fields: {
+        Args: {
+          p_fields: Json
+        }
+        Returns: Json
+      }
+      validate_evidence_value: {
+        Args: {
+          p_field: Json
+          p_value: string
+          p_file_path: string
+        }
+        Returns: Json
+      }
+    }
+    Enums: Record<never, never>
+  }
+  public: {
+    Tables: {
+      access_grants: {
+        Row: {
+          user_id: string
+          link_id: string
+          via_order_id: string | null
+          granted_at: string
+          revoked_at: string | null
+        }
+        Insert: {
+          user_id: string
+          link_id: string
+          via_order_id?: string | null
+          granted_at?: string
+          revoked_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          link_id?: string
+          via_order_id?: string | null
+          granted_at?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'access_grants_link_id_fkey'
+            columns: ['link_id']
+            isOneToOne: true
+            referencedRelation: 'paywall_links'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'access_grants_via_order_id_fkey'
+            columns: ['via_order_id']
+            isOneToOne: true
+            referencedRelation: 'orders'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      audit_log: {
+        Row: {
+          id: number
+          actor_id: string | null
+          action: string
+          target_table: string | null
+          target_id: string | null
+          meta: Json
+          created_at: string
+        }
+        Insert: {
+          id: number
+          action: string
+          actor_id?: string | null
+          target_table?: string | null
+          target_id?: string | null
+          meta?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          actor_id?: string | null
+          action?: string
+          target_table?: string | null
+          target_id?: string | null
+          meta?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      customer_contacts: {
+        Row: {
+          user_id: string
+          phone_e164: string
+          telegram_chat_id: number | null
+          linked_at: string
+        }
+        Insert: {
+          user_id: string
+          phone_e164: string
+          telegram_chat_id?: number | null
+          linked_at?: string
+        }
+        Update: {
+          user_id?: string
+          phone_e164?: string
+          telegram_chat_id?: number | null
+          linked_at?: string
+        }
+        Relationships: []
+      }
+      order_evidence: {
+        Row: {
+          id: number
+          order_id: string
+          field_key: string
+          value_text_raw: string | null
+          value_text_norm: string | null
+          file_path: string | null
+          attempt: number
+          created_at: string
+        }
+        Insert: {
+          id: number
+          order_id: string
+          field_key: string
+          attempt: number
+          value_text_raw?: string | null
+          value_text_norm?: string | null
+          file_path?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          order_id?: string
+          field_key?: string
+          value_text_raw?: string | null
+          value_text_norm?: string | null
+          file_path?: string | null
+          attempt?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'order_evidence_order_id_fkey'
+            columns: ['order_id']
+            isOneToOne: true
+            referencedRelation: 'orders'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          id: string
+          user_id: string
+          link_id: string
+          gateway_id: string
+          status:
+            | 'draft'
+            | 'awaiting_proof'
+            | 'under_review'
+            | 'approved'
+            | 'rejected'
+            | 'expired'
+            | 'locked'
+          reference_code: string
+          amount: number
+          min_amount_snapshot: number
+          hide_min_snapshot: boolean
+          phone_e164: string | null
+          phone_raw: string | null
+          attempt_count: number
+          probe_count: number
+          locked_at: string | null
+          created_at: string
+          expires_at: string
+          submitted_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reject_code: string | null
+          reject_reason_en: string | null
+          reject_reason_bn: string | null
+        }
+        Insert: {
+          user_id: string
+          link_id: string
+          gateway_id: string
+          reference_code: string
+          amount: number
+          min_amount_snapshot: number
+          expires_at: string
+          id?: string
+          status?:
+            | 'draft'
+            | 'awaiting_proof'
+            | 'under_review'
+            | 'approved'
+            | 'rejected'
+            | 'expired'
+            | 'locked'
+          hide_min_snapshot?: boolean
+          phone_e164?: string | null
+          phone_raw?: string | null
+          attempt_count?: number
+          probe_count?: number
+          locked_at?: string | null
+          created_at?: string
+          submitted_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reject_code?: string | null
+          reject_reason_en?: string | null
+          reject_reason_bn?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          link_id?: string
+          gateway_id?: string
+          status?:
+            | 'draft'
+            | 'awaiting_proof'
+            | 'under_review'
+            | 'approved'
+            | 'rejected'
+            | 'expired'
+            | 'locked'
+          reference_code?: string
+          amount?: number
+          min_amount_snapshot?: number
+          hide_min_snapshot?: boolean
+          phone_e164?: string | null
+          phone_raw?: string | null
+          attempt_count?: number
+          probe_count?: number
+          locked_at?: string | null
+          created_at?: string
+          expires_at?: string
+          submitted_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reject_code?: string | null
+          reject_reason_en?: string | null
+          reject_reason_bn?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'orders_gateway_id_fkey'
+            columns: ['gateway_id']
+            isOneToOne: true
+            referencedRelation: 'payment_gateways'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'orders_link_id_fkey'
+            columns: ['link_id']
+            isOneToOne: true
+            referencedRelation: 'paywall_links'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'orders_reviewed_by_fkey'
+            columns: ['reviewed_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      otp_challenges: {
+        Row: {
+          id: string
+          recovery_request_id: string
+          phone_e164: string
+          otp_hash: string
+          attempt_count: number
+          max_attempts: number
+          consumed_at: string | null
+          expires_at: string
+          created_at: string
+        }
+        Insert: {
+          recovery_request_id: string
+          phone_e164: string
+          otp_hash: string
+          expires_at: string
+          id?: string
+          attempt_count?: number
+          max_attempts?: number
+          consumed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          recovery_request_id?: string
+          phone_e164?: string
+          otp_hash?: string
+          attempt_count?: number
+          max_attempts?: number
+          consumed_at?: string | null
+          expires_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'otp_challenges_recovery_request_id_fkey'
+            columns: ['recovery_request_id']
+            isOneToOne: true
+            referencedRelation: 'recovery_requests'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      payment_gateways: {
+        Row: {
+          id: string
+          kind: 'bkash' | 'nagad' | 'bank'
+          account_number: string
+          account_name: string
+          name_en: string
+          name_bn: string | null
+          instructions_md_en: string | null
+          instructions_md_bn: string | null
+          reference_prompt_en: string | null
+          reference_prompt_bn: string | null
+          supports_reference: boolean
+          evidence_fields: Json
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          kind: 'bkash' | 'nagad' | 'bank'
+          account_number: string
+          account_name: string
+          name_en: string
+          id?: string
+          name_bn?: string | null
+          instructions_md_en?: string | null
+          instructions_md_bn?: string | null
+          reference_prompt_en?: string | null
+          reference_prompt_bn?: string | null
+          supports_reference?: boolean
+          evidence_fields?: Json
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          kind?: 'bkash' | 'nagad' | 'bank'
+          account_number?: string
+          account_name?: string
+          name_en?: string
+          name_bn?: string | null
+          instructions_md_en?: string | null
+          instructions_md_bn?: string | null
+          reference_prompt_en?: string | null
+          reference_prompt_bn?: string | null
+          supports_reference?: boolean
+          evidence_fields?: Json
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      paywall_links: {
+        Row: {
+          id: string
+          slug: string
+          title_en: string | null
+          title_bn: string | null
+          teaser_md_en: string | null
+          teaser_md_bn: string | null
+          unlock_body_md_en: string | null
+          unlock_body_md_bn: string | null
+          unlock_cta_label_en: string | null
+          unlock_cta_label_bn: string | null
+          unlock_cta_url: string | null
+          min_amount_override: number | null
+          hide_min_override: boolean | null
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          slug: string
+          id?: string
+          title_en?: string | null
+          title_bn?: string | null
+          teaser_md_en?: string | null
+          teaser_md_bn?: string | null
+          unlock_body_md_en?: string | null
+          unlock_body_md_bn?: string | null
+          unlock_cta_label_en?: string | null
+          unlock_cta_label_bn?: string | null
+          unlock_cta_url?: string | null
+          min_amount_override?: number | null
+          hide_min_override?: boolean | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          title_en?: string | null
+          title_bn?: string | null
+          teaser_md_en?: string | null
+          teaser_md_bn?: string | null
+          unlock_body_md_en?: string | null
+          unlock_body_md_bn?: string | null
+          unlock_cta_label_en?: string | null
+          unlock_cta_label_bn?: string | null
+          unlock_cta_url?: string | null
+          min_amount_override?: number | null
+          hide_min_override?: boolean | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recovery_requests: {
+        Row: {
+          id: string
+          phone_e164: string
+          purpose: string
+          status: 'pending' | 'sent' | 'verified' | 'expired' | 'failed' | 'undeliverable'
+          requester_user_id: string | null
+          request_ip_hash: string | null
+          attempt_count: number
+          sent_at: string | null
+          verified_at: string | null
+          expires_at: string
+          created_at: string
+        }
+        Insert: {
+          phone_e164: string
+          expires_at: string
+          id?: string
+          purpose?: string
+          status?: 'pending' | 'sent' | 'verified' | 'expired' | 'failed' | 'undeliverable'
+          requester_user_id?: string | null
+          request_ip_hash?: string | null
+          attempt_count?: number
+          sent_at?: string | null
+          verified_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          phone_e164?: string
+          purpose?: string
+          status?: 'pending' | 'sent' | 'verified' | 'expired' | 'failed' | 'undeliverable'
+          requester_user_id?: string | null
+          request_ip_hash?: string | null
+          attempt_count?: number
+          sent_at?: string | null
+          verified_at?: string | null
+          expires_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          id: number
+          min_amount: number
+          hide_min_amount: boolean
+          default_lang: string
+          recovery_enabled: boolean
+          contact: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          min_amount?: number
+          hide_min_amount?: boolean
+          default_lang?: string
+          recovery_enabled?: boolean
+          contact?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          min_amount?: number
+          hide_min_amount?: boolean
+          default_lang?: string
+          recovery_enabled?: boolean
+          contact?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff: {
+        Row: {
+          user_id: string
+          role: 'staff' | 'owner'
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          role: 'staff' | 'owner'
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          role?: 'staff' | 'owner'
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'staff_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+    }
+    Views: {
+      payment_gateways_public: {
+        Row: {
+          id: string | null
+          kind: Json | null
+          account_number: string | null
+          account_name: string | null
+          name_en: string | null
+          name_bn: string | null
+          instructions_md_en: string | null
+          instructions_md_bn: string | null
+          reference_prompt_en: string | null
+          reference_prompt_bn: string | null
+          supports_reference: boolean | null
+          evidence_fields: Json | null
+          sort_order: number | null
+        }
+        Relationships: []
+      }
+      paywall_links_public: {
+        Row: {
+          id: string | null
+          slug: string | null
+          title_en: string | null
+          title_bn: string | null
+          teaser_md_en: string | null
+          teaser_md_bn: string | null
+          unlock_cta_label_en: string | null
+          unlock_cta_label_bn: string | null
+          unlock_cta_url: string | null
+          sort_order: number | null
+        }
+        Relationships: []
+      }
+    }
+    Functions: Record<never, never>
+    Enums: {
+      evidence_type: 'text' | 'textarea' | 'number' | 'image'
+      field_validator: 'bd_phone' | 'trxid' | 'numeric'
+      gateway_kind: 'bkash' | 'nagad' | 'bank'
+      order_status:
+        'draft' | 'awaiting_proof' | 'under_review' | 'approved' | 'rejected' | 'expired' | 'locked'
+      recovery_status: 'pending' | 'sent' | 'verified' | 'expired' | 'failed' | 'undeliverable'
+      staff_role: 'staff' | 'owner'
+    }
+  }
 }
 
-export type Database = {
-  public: GenericSchema
-  api: GenericSchema
-  private: GenericSchema
-}
+type DefaultSchema = Database[Extract<keyof Database, 'public'>]
+
+export type Tables<
+  PublicTableNameOrOptions extends
+    keyof (Database['public']['Tables'] & Database['public']['Views']) | { schema: keyof Database },
+  TableName extends (PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+        Database[PublicTableNameOrOptions['schema']]['Views'])
+    : never) = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+      Database[PublicTableNameOrOptions['schema']]['Views'])[TableName] & {
+      Row: Record<string, unknown>
+      Insert: Record<string, unknown>
+      Update: Record<string, unknown>
+    }
+  : PublicTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[PublicTableNameOrOptions] & {
+        Row: Record<string, unknown>
+        Insert: Record<string, unknown>
+        Update: Record<string, unknown>
+      }
+    : never
+
+export type TablesInsert<PublicTableName extends keyof DefaultSchema['Tables']> =
+  (DefaultSchema['Tables'][PublicTableName] & { Insert: unknown })['Insert']
+
+export type TablesUpdate<PublicTableName extends keyof DefaultSchema['Tables']> =
+  (DefaultSchema['Tables'][PublicTableName] & { Update: unknown })['Update']
+
+export type Enums<PublicEnumName extends keyof DefaultSchema['Enums']> =
+  DefaultSchema['Enums'][PublicEnumName]

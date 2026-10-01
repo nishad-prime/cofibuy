@@ -59,3 +59,9 @@ jobs:
       # where the Supabase CLI cannot start its own stack.
       - name: Database tests
         run: npm run test:db
+
+      # Rebuilds the generated types from those same migrations and fails if the
+      # committed copy differs, so a migration that changes an RPC signature
+      # cannot land without the app types following it.
+      - name: Generated types are current
+        run: npm run db:types:check

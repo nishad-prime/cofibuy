@@ -13,39 +13,24 @@
  * pgtap is used when installed. When it is not, `supabase/tests/_pgtap_shim.sql`
  * supplies the same assertion surface, so a test file is written once.
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import EmbeddedPostgres from 'embedded-postgres'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import {
+  applyFile,
+  listMigrations as listMigrationsFromDisk,
+  splitStatements,
+  startDatabase,
+  testsDir,
+} from './lib/local-db.mjs'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const migrationsDir = join(root, 'supabase', 'migrations')
-const testsDir = join(root, 'supabase', 'tests')
-
-const DATA_DIR = join(root, '.tmp', 'pgdata')
-const PORT = Number(process.env.PGTEST_PORT ?? 55_433)
+const root = resolve(import.meta.dirname, '..')
 const KEEP = process.argv.includes('--keep')
 const MIGRATE_ONLY = process.argv.includes('--migrate')
 
-// The bundled PostgreSQL build links against these, and a minimal container may
-// not have them. A locally extracted copy under .tmp/sysroot is used if present.
-const sysrootLib = join(root, '.tmp', 'sysroot', 'usr', 'lib', 'x86_64-linux-gnu')
-if (existsSync(sysrootLib)) {
-  process.env.LD_LIBRARY_PATH = [sysrootLib, process.env.LD_LIBRARY_PATH].filter(Boolean).join(':')
-}
-
-const bold = (s) => `[1m${s}[0m`
-const dim = (s) => `[2m${s}[0m`
-const red = (s) => `[31m${s}[0m`
-const green = (s) => `[32m${s}[0m`
-
-function listFiles(dir, suffix) {
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .filter((name) => name.endsWith(suffix))
-    .sort()
-    .map((name) => join(dir, name))
-}
+const bold = (s) => `\u001b[1m${s}\u001b[0m`
+const dim = (s) => `\u001b[2m${s}\u001b[0m`
+const red = (s) => `\u001b[31m${s}\u001b[0m`
+const green = (s) => `\u001b[32m${s}\u001b[0m`
 
 // Files prefixed with `_` are support, not tests: fixtures and the assertion
 // shim. They are applied once, outside the per-file transaction, and never
@@ -55,125 +40,8 @@ const isEnvironment = (file) => file.endsWith('00_environment.sql')
 
 let pg
 
-/** Splits a SQL file into statements, ignoring dollar-quoted bodies and comments. */
-function splitStatements(sql) {
-  const statements = []
-  let current = ''
-  let inSingle = false
-  let inLineComment = false
-  let inBlockComment = false
-  let dollarTag = null
-
-  for (let i = 0; i < sql.length; i++) {
-    const char = sql[i]
-    const next = sql[i + 1]
-
-    if (inLineComment) {
-      current += char
-      if (char === '\n') inLineComment = false
-      continue
-    }
-
-    if (inBlockComment) {
-      current += char
-      if (char === '*' && next === '/') {
-        current += next
-        i++
-        inBlockComment = false
-      }
-      continue
-    }
-
-    if (dollarTag) {
-      current += char
-      if (char === '$' && sql.startsWith(dollarTag, i)) {
-        current += sql.slice(i + 1, i + dollarTag.length)
-        i += dollarTag.length - 1
-        dollarTag = null
-      }
-      continue
-    }
-
-    if (!inSingle && char === '-' && next === '-') {
-      inLineComment = true
-      current += char
-      continue
-    }
-
-    if (!inSingle && char === '/' && next === '*') {
-      inBlockComment = true
-      current += char + next
-      i++
-      continue
-    }
-
-    if (char === "'") {
-      // A doubled quote is an escaped quote, not the end of the string. Without
-      // this, `'... ''proofs'''` closes and reopens three times and swallows the
-      // rest of the file, which surfaces as a syntax error on a bare `)`.
-      if (inSingle && next === "'") {
-        current += char + next
-        i++
-        continue
-      }
-      inSingle = !inSingle
-      current += char
-      continue
-    }
-
-    if (!inSingle && char === '$') {
-      const match = /^\$[A-Za-z_]*\$/.exec(sql.slice(i))
-      if (match) {
-        dollarTag = match[0]
-        current += dollarTag
-        i += dollarTag.length - 1
-        continue
-      }
-    }
-
-    if (char === ';' && !inSingle) {
-      const trimmed = current.trim()
-      if (trimmed.length > 0) statements.push(trimmed)
-      current = ''
-      continue
-    }
-
-    current += char
-  }
-
-  const tail = current.trim()
-  if (tail.length > 0) statements.push(tail)
-  return statements
-}
-
-async function applyFile(client, file) {
-  const sql = readFileSync(file, 'utf8')
-  const statements = splitStatements(sql)
-  let applied = 0
-
-  for (const statement of statements) {
-    try {
-      await client.query(statement)
-      applied++
-    } catch (error) {
-      const relative = file.replace(`${root}/`, '')
-      throw new Error(
-        `${relative}\n\nStatement ${applied + 1} failed:\n${statement}\n\n${error.message}`,
-        { cause: error },
-      )
-    }
-  }
-
-  return applied
-}
-
-async function bootstrap(client) {
-  console.log(dim('  applying test environment shim'))
-  await applyFile(client, join(testsDir, '00_environment.sql'))
-}
-
 async function migrate(client) {
-  const files = listFiles(migrationsDir, '.sql')
+  const files = listMigrationsFromDisk()
   if (files.length === 0) throw new Error('no migrations found')
 
   for (const file of files) {
@@ -274,45 +142,19 @@ async function runTestFile(client, file, { useShim }) {
 async function main() {
   console.log(bold('\ncofibuy database suite'))
 
-  pg = new EmbeddedPostgres({
-    databaseDir: DATA_DIR,
-    user: 'postgres',
-    password: 'postgres',
-    port: PORT,
-    persistent: false,
-    initdbFlags: ['--encoding=UTF8', '--locale=C'],
-    postgresFlags: ['-c', 'log_min_messages=warning'],
-    // The server is chatty about start and shutdown; only surface it on request.
-    onLog: (message) => {
-      if (process.env.PGTEST_VERBOSE) process.stderr.write(message)
-    },
-    onError: (message) => {
-      if (process.env.PGTEST_VERBOSE) process.stderr.write(String(message))
-    },
-  })
-
-  console.log(dim('  starting an ephemeral PostgreSQL'))
-  await pg.initialise()
-  await pg.start()
-
-  const client = pg.getPgClient()
-
   // Notices are how the shim's `diag` reports commentary. Collected per file and
   // printed alongside it, which also works when the file failed: the table of
   // results would be unreadable by then.
   let notices = []
-  client.on('notice', (notice) => notices.push(notice.message))
-  await client.connect()
+  console.log(dim('  starting an ephemeral PostgreSQL'))
 
-  // Mirrors a Supabase project, where pgcrypto lives in the `extensions` schema
-  // and our SQL qualifies it as extensions.crypt(...).
-  await client.query('create schema if not exists extensions')
-  await client.query('create extension if not exists pgcrypto with schema extensions')
+  const database = await startDatabase({ onLog: (message) => notices.push(String(message)) })
+  pg = database.pg
+  const client = database.client
 
   let exitCode = 0
 
   try {
-    await bootstrap(client)
     await migrate(client)
 
     if (MIGRATE_ONLY) {
@@ -324,7 +166,10 @@ async function main() {
 
     const useShim = await installShimIfNeeded(client)
 
-    const all = listFiles(testsDir, '.sql').filter((file) => !isEnvironment(file))
+    const all = readdirSync(testsDir)
+      .filter((name) => name.endsWith('.sql') && !isEnvironment(name))
+      .sort()
+      .map((name) => join(testsDir, name))
 
     for (const file of all.filter(isSupport)) {
       await applyFile(client, file)
@@ -381,7 +226,7 @@ async function main() {
         // Same here: report the test result, not the teardown.
       }
     } else {
-      console.log(dim(`\n  cluster left running on port ${PORT} (--keep)\n`))
+      console.log(dim(`\n  cluster left running for inspection (--keep)\n`))
     }
   }
 

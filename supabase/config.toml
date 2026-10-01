@@ -1,0 +1,80 @@
+# Supabase CLI configuration.
+#
+# The reference for every option is
+# https://supabase.com/docs/guides/local-development/cli/config
+#
+# Trimmed to what this project needs. The defaults the CLI generates are fine
+# everywhere they are not mentioned below.
+
+project_id = "cofibuy"
+
+[api]
+port = 54321
+
+# `api` is the schema every customer and admin call goes through, and it is not
+# in the default list. Without this the Data API 404s on `api.create_order` and
+# friends even though the grants and row level security are all correct.
+#
+# On a hosted project this list is Project Settings -> API -> Exposed schemas.
+schemas = ["public", "graphql_public", "api"]
+extra_search_path = ["public", "extensions"]
+
+[db]
+port = 54322
+shadow_port = 54320
+health_timeout = "2m"
+
+# Must match the remote project, or the shadow database used by `db diff` is a
+# different major version and the diff is meaningless. Check with
+# `show server_version;` on the remote database.
+major_version = 17
+
+[db.migrations]
+enabled = true
+
+# `supabase db reset` replays the migrations and then runs this. `supabase db
+# push` to a hosted project does not, which is why seed.sql says so at the top.
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+# No Realtime for customers: order status is polled, so a socket per open tab buys
+# nothing. Left enabled for the dashboard.
+[realtime]
+enabled = true
+
+[storage]
+enabled = true
+# The `proofs` bucket sets its own, lower limit. This is the project-wide cap.
+file_size_limit = "5MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+
+# The customer flow signs people in without asking for an email first. The
+# database keys everything on `auth.uid()`, so an anonymous session is enough to
+# own an order.
+enable_signup = true
+enable_anonymous_sign_ins = true
+
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+# Bangladesh carrier CGNAT puts many subscribers behind one public IP, which is
+# what the anonymous limit is actually counting. Turnstile keeps the signup form
+# usable without opening the limit to abuse; uncomment once you have the keys.
+#
+# [auth.captcha]
+# enabled = true
+# provider = "turnstile"
+# secret = "env(TURNSTILE_SECRET_KEY)"

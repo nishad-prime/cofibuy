@@ -14,14 +14,6 @@ set application_name = 'test-06-recovery';
 
 select plan(53);
 
--- A bcrypt hash, standing in for what the worker hashes before storing it.
-create or replace function test_data.otp_hash(p_code text)
-returns text
-language sql
-as $$
-  select extensions.crypt(p_code, extensions.gen_salt('bf'))
-$$;
-
 -- ---------------------------------------------------------------------------
 -- Asking for a code
 -- ---------------------------------------------------------------------------

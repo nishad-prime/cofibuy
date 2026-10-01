@@ -113,7 +113,27 @@ begin
 end
 $$;
 
--- Whether `p_role` may execute `p_fn` at all.-- Whether `p_role` may execute `p_fn` at all.
+-- A bcrypt hash, standing in for what the worker hashes before storing a code.
+-- The raw code never reaches the database in production, so the only way a test
+-- can produce a valid hash is to run the same function the worker would.
+create or replace function test_data.otp_hash(p_code text)
+returns text
+language sql
+as $$
+  select extensions.crypt(p_code, extensions.gen_salt('bf'))
+$$;
+
+-- Whether `p_role` may execute `p_fn` at all.-- A bcrypt hash, standing in for what the worker hashes before storing a code.
+-- The raw code never reaches the database in production, so the only way a test
+-- can produce a valid hash is to run the same function the worker would.
+create or replace function test_data.otp_hash(p_code text)
+returns text
+language sql
+as $$
+  select extensions.crypt(p_code, extensions.gen_salt('bf'))
+$$;
+
+-- Whether `p_role` may execute `p_fn` at all.
 --
 -- The tests impersonate by setting JWT claims, which is what the functions read
 -- through auth.uid() and auth.role(). That is only half of what PostgREST does:

@@ -73,7 +73,47 @@ begin
 end
 $$;
 
--- Whether `p_role` may execute `p_fn` at all.
+-- What `p_sql` does when the database role is `p_role`, as PostgREST would run
+-- it: the JWT claims already say who is asking, and this is the half that
+-- decides what that identity is allowed to see.
+--
+-- Errors are returned rather than raised, because "refused" and "sees nothing"
+-- are both answers a caller can give and both are worth asserting. The role is
+-- always handed back, so a failure partway through leaves the session where it
+-- found it and the next file is unaffected.
+create or replace function test_data.as_role(p_role text, p_sql text)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_out jsonb;
+  v_state text;
+  v_message text;
+begin
+  begin
+    execute format('set local role %I', p_role);
+    execute
+      format('select coalesce(jsonb_agg(to_jsonq), ''[]''::jsonb) from (%s) as to_jsonq', p_sql)
+      into v_out;
+    v_state := null;
+  exception
+    when others then
+      v_state := sqlstate;
+      v_message := sqlerrm;
+  end;
+
+  execute 'set local role postgres';
+
+  return jsonb_build_object(
+    'ok', v_state is null,
+    'rows', coalesce(v_out, '[]'::jsonb),
+    'state', v_state,
+    'message', v_message
+  );
+end
+$$;
+
+-- Whether `p_role` may execute `p_fn` at all.-- Whether `p_role` may execute `p_fn` at all.
 --
 -- The tests impersonate by setting JWT claims, which is what the functions read
 -- through auth.uid() and auth.role(). That is only half of what PostgREST does:

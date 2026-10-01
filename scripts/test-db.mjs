@@ -108,6 +108,14 @@ function splitStatements(sql) {
     }
 
     if (char === "'") {
+      // A doubled quote is an escaped quote, not the end of the string. Without
+      // this, `'... ''proofs'''` closes and reopens three times and swallows the
+      // rest of the file, which surfaces as a syntax error on a bare `)`.
+      if (inSingle && next === "'") {
+        current += char + next
+        i++
+        continue
+      }
       inSingle = !inSingle
       current += char
       continue

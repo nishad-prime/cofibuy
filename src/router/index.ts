@@ -1,13 +1,99 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { useAdminGuard } from '@/composables/useAdminGuard'
 
-/**
- * Routes are added as their views land, so a route never points at a stub.
- */
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'home',
     component: () => import('@/views/HomeView.vue'),
+  },
+  {
+    path: '/:slug',
+    name: 'link',
+    component: () => import('@/views/customer/LinkView.vue'),
+  },
+  {
+    path: '/:slug/order/:orderId',
+    name: 'order',
+    component: () => import('@/views/customer/OrderView.vue'),
+  },
+  {
+    path: '/recover',
+    name: 'recover',
+    component: () => import('@/views/customer/RecoveryRequestView.vue'),
+  },
+  {
+    path: '/recover/verify',
+    name: 'recover-verify',
+    component: () => import('@/views/customer/RecoveryVerifyView.vue'),
+  },
+  {
+    path: '/admin/login',
+    name: 'admin-login',
+    component: () => import('@/views/admin/LoginView.vue'),
+  },
+  {
+    path: '/admin',
+    component: () => import('@/views/admin/AdminLayout.vue'),
+    meta: { requiresStaff: true },
+    children: [
+      {
+        path: '',
+        redirect: '/admin/queue',
+      },
+      {
+        path: 'queue',
+        name: 'admin-queue',
+        component: () => import('@/views/admin/QueueView.vue'),
+      },
+      {
+        path: 'orders/:id',
+        name: 'admin-order-detail',
+        component: () => import('@/views/admin/OrderDetailView.vue'),
+      },
+      {
+        path: 'links',
+        name: 'admin-links',
+        component: () => import('@/views/admin/LinksView.vue'),
+      },
+      {
+        path: 'links/new',
+        name: 'admin-links-new',
+        component: () => import('@/views/admin/LinkFormView.vue'),
+      },
+      {
+        path: 'links/:id/edit',
+        name: 'admin-links-edit',
+        component: () => import('@/views/admin/LinkFormView.vue'),
+      },
+      {
+        path: 'gateways',
+        name: 'admin-gateways',
+        component: () => import('@/views/admin/GatewaysView.vue'),
+      },
+      {
+        path: 'gateways/new',
+        name: 'admin-gateways-new',
+        component: () => import('@/views/admin/GatewayFormView.vue'),
+      },
+      {
+        path: 'gateways/:id/edit',
+        name: 'admin-gateways-edit',
+        component: () => import('@/views/admin/GatewayFormView.vue'),
+      },
+      {
+        path: 'team',
+        name: 'admin-team',
+        component: () => import('@/views/admin/TeamView.vue'),
+        meta: { requiresOwner: true },
+      },
+      {
+        path: 'settings',
+        name: 'admin-settings',
+        component: () => import('@/views/admin/SettingsView.vue'),
+        meta: { requiresOwner: true },
+      },
+    ],
   },
   {
     path: '/:pathMatch(.*)*',
@@ -22,6 +108,22 @@ export const router = createRouter({
   scrollBehavior(_to, _from, savedPosition) {
     return savedPosition ?? { top: 0 }
   },
+})
+
+router.beforeEach(async (to, from, next) => {
+  const { requireStaff, requireOwner } = useAdminGuard()
+
+  if (to.meta.requiresOwner) {
+    await requireOwner(to, from, next)
+    return
+  }
+
+  if (to.meta.requiresStaff) {
+    await requireStaff(to, from, next)
+    return
+  }
+
+  next()
 })
 
 export default router

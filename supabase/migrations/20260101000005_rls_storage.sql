@@ -147,9 +147,19 @@ begin
   -- permanent dead end for a customer who mistyped an amount, and this one is a
   -- rate limit rather than a security boundary — the hidden minimum is protected
   -- by never being disclosed, not by the lock.
+  --
+  -- `rejected` expires on the same terms. It is the one status that reached a
+  -- genuine dead end: api.submit_evidence accepts a resubmission on a rejected
+  -- order, but refuses once `expires_at` has passed, and api.create_order only
+  -- reuses an order in ('draft', 'awaiting_proof', 'rejected', 'locked'). So a
+  -- customer whose rejection outlived the window could neither resubmit nor open
+  -- a new one, and the unique index does not cover `rejected`, so nothing else
+  -- released the row either. The transition is already permitted by the status
+  -- machine in the core schema, and the order's reference code stays on the row,
+  -- so expiring it releases the customer without disturbing the audit trail.
   update public.orders
   set status = 'expired'
-  where status in ('draft', 'awaiting_proof', 'locked')
+  where status in ('draft', 'awaiting_proof', 'locked', 'rejected')
     and expires_at < now();
 
   get diagnostics v_count = row_count;

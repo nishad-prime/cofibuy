@@ -5,7 +5,7 @@
  * in-process cluster built from the same migrations is neither, so the database
  * suite and the generated types cannot disagree about what the schema is.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import EmbeddedPostgres from 'embedded-postgres'
@@ -158,6 +158,14 @@ export async function startDatabase({ onLog } = {}) {
       .filter(Boolean)
       .join(':')
   }
+
+  // A crashed or killed run leaves the cluster directory behind, and `initdb`
+  // refuses to start on a directory that already exists and is not empty. That
+  // turned one interrupted test run into a hard failure for every run after it,
+  // with an error about the data directory rather than about the crash. The
+  // cluster is disposable and `persistent: false` means nothing here is worth
+  // keeping, so a leftover is always safe to clear.
+  rmSync(DATA_DIR, { recursive: true, force: true })
 
   const pg = new EmbeddedPostgres({
     databaseDir: DATA_DIR,

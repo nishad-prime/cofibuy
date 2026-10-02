@@ -11,7 +11,7 @@ const { t } = useI18n()
       <div class="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-4 py-3">
         <RouterLink to="/" class="flex items-center gap-2 font-semibold text-stone-900">
           <img src="/favicon.svg" alt="" class="h-7 w-7" width="28" height="28" />
-          <span>{{ t('app.name') }}</span>
+          <span>{{ t('customer.app.name') }}</span>
         </RouterLink>
         <LanguageToggle />
       </div>
@@ -22,7 +22,7 @@ const { t } = useI18n()
     </main>
 
     <footer class="border-t border-stone-200 py-6 text-center text-xs text-stone-500">
-      {{ t('app.name') }}
+      {{ t('customer.app.name') }}
     </footer>
   </div>
 </template>

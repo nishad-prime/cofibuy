@@ -74,7 +74,12 @@ function tsType(column) {
     case 'jsonb':
       return 'Json'
     case 'ARRAY':
-      return `${tsArrayType(column)}[]`
+      // Routed through udtToTs, not a separate element-type helper: `udt_name`
+      // for an array column is the underscore-prefixed element name (`_uuid`),
+      // which udtToTs already unwraps recursively. information_schema exposes no
+      // `element_type` column, so a helper reading one silently fell through to
+      // 'number' for every array.
+      return udtToTs(column.udt_name)
     case 'USER-DEFINED':
       return column.enumValues ? enumUnion(column.enumValues) : 'Json'
     default:
@@ -83,12 +88,6 @@ function tsType(column) {
 }
 
 /** The element type of an array column, which the catalog reports separately. */
-function tsArrayType(column) {
-  const element = column.element_type
-  if (element === 'character varying' || element === 'text' || element === 'uuid') return 'string'
-  if (element === 'jsonb' || element === 'json') return 'Json'
-  return 'number'
-}
 
 function enumUnion(values) {
   return values.map((value) => JSON.stringify(value)).join(' | ')

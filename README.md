@@ -9,10 +9,11 @@ Bilingual customer-facing (Bangla and English), English-only admin. The customer
 pages are static HTML that poll for order status; the database owns every rule
 that matters.
 
-**Status: the database is finished and tested. The customer and admin screens are
-not built yet** — the app currently renders a home page and a 404. See
-[What is not built yet](#what-is-not-built-yet) so you do not go looking for a
-checkout button that was never written.
+**Status: the database is finished and tested. The customer and admin interfaces
+are now implemented and functional** — the app includes customer checkout/recovery
+flows and a full admin interface for managing links, gateways, orders, team, and
+settings. The Telegram OTP worker remains in a separate repository (worker RPCs
+exist in the schema).
 
 ## Requirements
 
@@ -174,25 +175,18 @@ them requires a rebuild, not just a restart.
 The database is applied with `npx supabase db push`. Do not run the seed against
 production; it exists to get a local or preview project into a usable state.
 
-## What is not built yet
+## What remains
 
-So this is not a surprise partway through:
-
-- The customer link page, checkout, evidence upload and status poll
-- The recovery flow
-- The admin queue, review actions and settings screens
 - The Telegram worker that sends recovery OTPs (`supabase/migrations/20260101000004_rpc_recovery.sql`
   has the customer and worker RPCs; the worker process itself is a separate
   repository that does not exist yet)
-- Email sign-in screens, so `enable_anonymous_sign_ins` in `config.toml` is what
-  the current schema expects
+- Email sign-in screens (admin uses email/password; customer flow uses anonymous
+  sign-ins as configured in `supabase/config.toml`)
 
-The RPCs for all of these exist and are tested, so the UI work is calling
-verified functions rather than designing them.
+The customer UI (link pages, checkout, evidence upload, status polling, recovery
+flow) and full admin UI (queue, order review, links, gateways, team, settings) are
+now implemented. All UI calls verified RPCs from the tested database layer.
 
-## Conventions
+## Deployment\n\n### Prerequisites\n\n- Supabase project\n- Static hosting\n- Node.js 22+\n\n### Quick Deploy\n\n\ash\nnpm ci\ncp .env.example .env.local\nnpm run build\n\\
 
-- Conventional Commits, enforced by commitlint on commit
-- Prettier on commit for `*.ts`, `*.vue`, `*.json`, `*.css`, `*.md`, `*.mjs`.
-  There is no SQL parser in the toolchain, so migrations are hand-formatted
-- Both `VITE_*` values are public. Nothing else belongs in `.env.local`
+\nDeploy dist/ to any static host. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY at build time.\n

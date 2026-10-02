@@ -86,6 +86,7 @@ declare
   v_user uuid := auth.uid();
   v_phone text;
   v_challenge public.otp_challenges;
+  v_challenge_id uuid;
   v_enabled boolean;
   v_granted jsonb;
 begin
@@ -103,12 +104,6 @@ begin
     raise exception 'that is not a valid Bangladeshi mobile number' using errcode = '22023';
   end if;
 
-  select * into v_challenge
-  from public.otp_challenges
-  where phone_e164 = v_phone and consumed_at is null and expires_at > now()
-  order by created_at desc
-  limit 1;
-
   -- A wrong code returns rather than raises, and that is load-bearing.
   --
   -- Raising unwinds the function and rolls back everything it did on the way
@@ -119,6 +114,47 @@ begin
   --
   -- The two failures are also the same object, so a caller cannot use the
   -- response to learn whether a code existed, was already used, or had expired.
+  --
+  -- This first read deliberately takes no lock. It only decides which request
+  -- owns the live challenge, so the locks below can be taken in one fixed order.
+  select * into v_challenge
+  from public.otp_challenges
+  where phone_e164 = v_phone and consumed_at is null and expires_at > now()
+  order by created_at desc
+  limit 1;
+
+  if v_challenge is null then
+    return jsonb_build_object('ok', false, 'code', 'invalid_code');
+  end if;
+
+  v_challenge_id := v_challenge.id;
+
+  -- Locks are taken request-then-challenge, the same order api.record_otp_sent
+  -- uses. Both functions write to both tables, so taking the same two locks in
+  -- opposite orders is a deadlock waiting for a worker to send a code at the
+  -- moment a customer guesses one.
+  perform 1
+  from public.recovery_requests
+  where id = v_challenge.recovery_request_id
+  for update;
+
+  -- Locking the challenge is what makes the five-guess limit a limit. Without
+  -- it, parallel requests all read the same attempt_count, all count themselves
+  -- as the first guess, and none of them trips the threshold below — so a
+  -- leaked code could be tried as many times as an attacker could send in
+  -- parallel. Holding the row for the rest of the transaction also makes
+  -- `attempt_count + 1` below an accurate count rather than a stale one.
+  --
+  -- The row is re-checked after the lock because the peek above was unlocked: a
+  -- concurrent resend may have consumed or replaced the challenge in between.
+  -- Superseded is reported as an ordinary invalid code, like every other miss.
+  select * into v_challenge
+  from public.otp_challenges
+  where id = v_challenge_id
+    and consumed_at is null
+    and expires_at > now()
+  for update;
+
   if v_challenge is null then
     return jsonb_build_object('ok', false, 'code', 'invalid_code');
   end if;

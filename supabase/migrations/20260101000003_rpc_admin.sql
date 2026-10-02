@@ -378,15 +378,26 @@ begin
     raise exception 'forbidden' using errcode = '42501';
   end if;
 
+  -- `id` is written explicitly, because `on conflict (id)` can only fire if the
+  -- proposed row carries the id it intends to update. Omitting it would make the
+  -- conflict arm unreachable: every call would insert a second row under a fresh
+  -- `gen_random_uuid()`, so an edit either duplicated the link or, when the slug
+  -- was unchanged, died on `paywall_links_slug_key` instead.
+  --
+  -- `coalesce` keeps the create path working: an insert naming `id` explicitly
+  -- bypasses the column default, so passing `v_id` through raw would store a
+  -- NULL and violate the primary key rather than generating a new id.
+  --
   -- Publication is gated by a CHECK on the table, so an active link with no
   -- body in either language is refused here rather than at read time.
   insert into public.paywall_links (
-    slug, title_en, title_bn, teaser_md_en, teaser_md_bn,
+    id, slug, title_en, title_bn, teaser_md_en, teaser_md_bn,
     unlock_body_md_en, unlock_body_md_bn,
     unlock_cta_label_en, unlock_cta_label_bn, unlock_cta_url,
     min_amount_override, hide_min_override, is_active, sort_order
   )
   values (
+    coalesce(v_id, gen_random_uuid()),
     p_link ->> 'slug',
     p_link ->> 'title_en',
     p_link ->> 'title_bn',
@@ -473,13 +484,22 @@ begin
     raise exception 'forbidden' using errcode = '42501';
   end if;
 
+  -- As with links, `id` has to be written for `on conflict (id)` to be reachable;
+  -- see api.admin_upsert_link above for the full reasoning. Without it an edit
+  -- silently inserted a duplicate gateway and left the old account number live.
+  --
+  -- `payment_gateways` has no natural key beyond the primary key, so nothing
+  -- stops an owner from filing the same account number twice by hand. That is
+  -- accepted here: the upsert addresses the accidental duplicate that a broken
+  -- update produced, not operator error.
   insert into public.payment_gateways (
-    kind, account_number, account_name, name_en, name_bn,
+    id, kind, account_number, account_name, name_en, name_bn,
     instructions_md_en, instructions_md_bn,
     reference_prompt_en, reference_prompt_bn,
     supports_reference, evidence_fields, is_active, sort_order
   )
   values (
+    coalesce(v_id, gen_random_uuid()),
     (p_gateway ->> 'kind')::public.gateway_kind,
     p_gateway ->> 'account_number',
     p_gateway ->> 'account_name',

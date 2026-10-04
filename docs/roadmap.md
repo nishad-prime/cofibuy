@@ -82,30 +82,46 @@ Verified by `supabase/tests/10_settings.sql` (27 assertions) and
 
 ## Phase 4 — Branding and currency
 
-**Status: not started.**
+**Status: done.**
 
-- Currency is a compile-time constant (`const BDT = 'BDT'` in `src/lib/money.ts`).
-  Make it a setting, defaulting to BDT.
-- The `৳` symbol is _also_ hardcoded in four customer copy strings. A currency
-  change would leave it baked into the wording, so the symbol must be
-  single-sourced in `money.ts` and removed from the copy.
-  `bn/customer.json` `paywall.amountError` is missing `{amount}` entirely, and
-  required placeholders are derived from the **English** bundle only, so that
-  mismatch is currently untested.
-- No branding model exists. `app.tagline` is registered as editable but rendered
-  nowhere.
-- `index.html` references `/favicon.svg`, which does not exist — there is no
-  `public/` directory, so every page load 404s.
-- Admin wordmarks stay literal. Admin chrome is deliberately not
-  operator-overridable: merging overrides into `adminI18n` would let the copy
-  editor rewrite the panel that edits it.
+Delivered:
+
+- Currency is now `public.site_settings.currency`, defaulting to `BDT`. A curated
+  eleven-code allowlist is the check constraint; `api.get_public_settings()`
+  publishes it, and `api.admin_set_settings()` validates a code before the update
+  (raising `22023` for anything outside the list) so an operator typo cannot print
+  a bogus symbol to customers. `src/lib/currency.ts` mirrors the list and a unit
+  test reads the migration to keep the two in lockstep.
+- The currency symbol is single-sourced in `formatMoney` and removed from every
+  customer copy string. The four hardcoded `৳` in the bundle are gone, and `bn`
+  `paywall.amountError` now carries `{amount}` (it had none).
+- `formatMoney` gained an optional currency argument that falls back to BDT for an
+  unknown code rather than handing `Intl` something it may reject.
+- The admin queue, order detail and links views format with the stored currency via
+  `src/composables/useAdminCurrency.ts`, so operator-facing and customer-facing
+  totals never disagree.
+- Branding: `public/favicon.svg` now exists (the old `index.html` reference had no
+  file and every load 404'd), and the editable `app.tagline` renders in the customer
+  footer. Admin wordmarks stay literal: merging overrides into `adminI18n` would let
+  the copy editor rewrite the panel that edits it.
+- The four keys that were editable but rendered nowhere — `footer.builtWith` and
+  `setup.title|body|see` — were deregistered. `app.tagline` had been in that group
+  and is now rendered, so it stays.
+
+Verified by `supabase/tests/10_settings.sql` (33 assertions), plus unit tests in
+`money.test.ts`, `currency.test.ts`, `useSiteSettings.test.ts` and
+`copyKeys.test.ts`.
 
 ## Phase 5 — Validation and removing hardcoded copy
 
-**Status: not started.**
+**Status: not started.** The currency-symbol half landed early: Phase 4 added a
+`copyKeys.test.ts` guard that fails if any customer copy embeds a currency glyph,
+so a symbol cannot creep back into the wording.
 
-- Validate brand colours server-side (hex or `oklch()` only) if they become
-  settings, rejecting anything else the way `admin_set_copy` rejects unknown keys.
+- Decide whether brand colour becomes a setting. Phase 4 deliberately deferred it:
+  the palette is eleven `oklch()` shades in `main.css`, so a colour setting needs a
+  generated ramp, not one column. If it happens, validate server-side (hex or
+  `oklch()` only) the way `admin_set_copy` rejects unknown keys.
 - Reject empty or oversized CTA copy at `admin_set_copy`.
 - Add a regression test that fails when a customer view contains a raw
   user-visible string instead of `t()`. This is what stops the rest of the phase
@@ -120,5 +136,6 @@ Verified by `supabase/tests/10_settings.sql` (27 assertions) and
 - `npm run check` fails on a large pre-existing lint baseline, which makes
   `check:all` unusable as a single command. Worth a dedicated pass, or an
   explicit decision to grandfather it.
-- Five registered copy keys are never rendered: `app.tagline`,
-  `footer.builtWith`, `setup.title`, `setup.body`, `setup.see`.
+- The typed `SupabaseClient<Database, 'api'>` return on `getSupabase()` is still
+  `any`, which is why `supabase.rpc` is cast at each call site and why the lint
+  baseline exists.

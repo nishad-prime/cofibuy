@@ -5,7 +5,7 @@
 -- come through a function -- and the test has to prove that the function is the
 -- only way, or a future `grant select` would quietly republish the whole table.
 
-select plan(27);
+select plan(33);
 select test_data.reset();
 
 -- A published link with its price visible, one with the minimum hidden, and a
@@ -57,6 +57,12 @@ select is(
   'the default language is published'
 );
 
+select is(
+  (select api.get_public_settings() ->> 'currency'),
+  'BDT',
+  'the currency defaults to BDT'
+);
+
 select ok(
   (select api.get_public_settings() ? 'contact'),
   'the contact key is present even when null'
@@ -84,8 +90,8 @@ select is(
 
 select is(
   (select count(*) from jsonb_object_keys(api.get_public_settings())),
-  6,
-  'the projection is exactly the six published keys'
+  7,
+  'the projection is exactly the seven published keys'
 );
 
 -- ---------------------------------------------------------------------------
@@ -139,6 +145,39 @@ select is(
   (select maintenance_mode from public.site_settings where id = 1),
   true,
   'and it lands'
+);
+
+select lives_ok(
+  $$select api.admin_set_settings('{"currency": "USD"}'::jsonb)$$,
+  'the owner can change the currency'
+);
+
+select is(
+  (select currency from public.site_settings where id = 1),
+  'USD',
+  'and it lands'
+);
+
+select throws_ok(
+  $$select api.admin_set_settings('{"currency": "ZZZ"}'::jsonb)$$,
+  '22023',
+  'unsupported currency: ZZZ',
+  'an unknown currency code is refused'
+);
+
+select throws_ok(
+  $$select api.admin_set_settings('{"currency": "US"}'::jsonb)$$,
+  '22023',
+  'unsupported currency: US',
+  'a malformed currency code is refused'
+);
+
+select test_data.as_anon();
+
+select is(
+  (select api.get_public_settings() ->> 'currency'),
+  'USD',
+  'the public projection reflects the new currency'
 );
 
 -- ---------------------------------------------------------------------------

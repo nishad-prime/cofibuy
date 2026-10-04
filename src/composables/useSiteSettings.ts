@@ -20,6 +20,7 @@
 import { readonly, ref } from 'vue'
 import { getSupabase } from '@/lib/supabase'
 import { applySiteDefaultLocale } from '@/i18n'
+import { DEFAULT_CURRENCY, isSupportedCurrency, type Currency } from '@/lib/currency'
 import type { Locale } from '@/lib/content'
 
 /**
@@ -35,6 +36,8 @@ export interface SiteSettings {
   recovery_enabled: boolean
   maintenance_mode: boolean
   default_lang: Locale
+  /** ISO code money is formatted in; always one of the supported list. */
+  currency: Currency
   contact: string | null
 }
 
@@ -53,6 +56,7 @@ function defaults(): SiteSettings {
     recovery_enabled: false,
     maintenance_mode: false,
     default_lang: 'bn',
+    currency: DEFAULT_CURRENCY,
     contact: null,
   }
 }
@@ -78,6 +82,7 @@ function coerce(raw: unknown): SiteSettings {
     recovery_enabled: row.recovery_enabled === true,
     maintenance_mode: row.maintenance_mode === true,
     default_lang: lang,
+    currency: isSupportedCurrency(row.currency) ? row.currency : DEFAULT_CURRENCY,
     contact:
       typeof row.contact === 'string' && row.contact.trim() !== '' ? row.contact.trim() : null,
   }

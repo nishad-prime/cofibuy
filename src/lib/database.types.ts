@@ -794,6 +794,7 @@ export type Database = {
           contact: string | null
           updated_at: string
           maintenance_mode: boolean
+          currency: string
         }
         Insert: {
           id?: number
@@ -804,6 +805,7 @@ export type Database = {
           contact?: string | null
           updated_at?: string
           maintenance_mode?: boolean
+          currency?: string
         }
         Update: {
           id?: number
@@ -814,6 +816,7 @@ export type Database = {
           contact?: string | null
           updated_at?: string
           maintenance_mode?: boolean
+          currency?: string
         }
         Relationships: []
       }

@@ -27,10 +27,8 @@ export const COPY_NAMESPACES = [
   'evidence',
   'recovery',
   'common',
-  'footer',
   'lang',
   'notFound',
-  'setup',
 ] as const
 
 export type CopyNamespace = (typeof COPY_NAMESPACES)[number]
@@ -129,14 +127,8 @@ export const COPY_KEYS = {
     'common.yes',
     'common.no',
   ],
-  footer: ['footer.builtWith'],
   lang: ['lang.switchTo', 'lang.label'],
   notFound: ['notFound.title', 'notFound.body', 'notFound.cta'],
-  // `setup.body` was listed here and rendered nowhere. The registry's contract is
-  // "does the running app ever ask for this key", so a key that satisfies nothing
-  // belongs in the bundle (where it may be used again) and not in the editor, where
-  // it would show an operator a setting that changes nothing.
-  setup: ['setup.title', 'setup.body', 'setup.see'],
 } as const satisfies Record<CopyNamespace, readonly string[]>
 
 export type CopyKey = (typeof COPY_KEYS)[CopyNamespace][number]
@@ -228,14 +220,19 @@ const PLACEHOLDER = /\{[a-zA-Z0-9_]+\}/g
 
 /**
  * Interpolations a key expects. Compared before saving so a rewritten string
- * cannot silently drop `{amount}` and leave the customer reading "Minimum ৳".
+ * cannot silently drop `{amount}` and leave the customer reading "Minimum ".
+ *
+ * Takes the bundled text for *every* locale the key ships in, and unions the
+ * tokens. The old single-bundle signature asked only the English file, so a token
+ * present in English but missing from Bangla (or the reverse) was invisible - the
+ * `bn` `paywall.amountError` had dropped `{amount}` entirely and no test noticed.
  */
-export function placeholdersIn(key: string, bundled: string): string[] {
+export function placeholdersIn(key: string, ...bundled: string[]): string[] {
   if (!key.startsWith('paywall.') && !key.startsWith('order.') && !key.startsWith('evidence.')) {
-    void bundled
     return []
   }
-  return [...bundled.matchAll(PLACEHOLDER)].map((m) => m[0]).filter((v, i, a) => a.indexOf(v) === i)
+  const found = bundled.flatMap((value) => [...value.matchAll(PLACEHOLDER)].map((m) => m[0]))
+  return [...new Set(found)]
 }
 
 export function missingPlaceholders(written: string, expected: string[]): string[] {

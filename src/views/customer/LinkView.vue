@@ -281,7 +281,7 @@ const amountError = computed(() => {
  * in the hint and the number in the error have to agree with the number they
  * transcribe, or the order is refused.
  */
-const money = (amt: number): string => formatMoney(amt, 'en')
+const money = (amt: number): string => formatMoney(amt, 'en', settings.value.currency)
 
 /**
  * `create_order` refuses in the payload rather than as an error, so the reason

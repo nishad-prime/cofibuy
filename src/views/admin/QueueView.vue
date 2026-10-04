@@ -43,7 +43,7 @@
                 <OrderStatusBadge :status="order.status" :label="statusLabel(order.status)" />
               </td>
               <td class="td">
-                <span class="ltr-value">{{ formatMoney(order.amount, 'en') }}</span>
+                <span class="ltr-value">{{ formatMoney(order.amount, 'en', currency) }}</span>
               </td>
               <td class="td">{{ gatewayLabel(order.kind) }}</td>
               <td class="td whitespace-nowrap text-stone-500">
@@ -62,6 +62,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
+import { useAdminCurrency } from '@/composables/useAdminCurrency'
 import { useAdminI18n } from '@/i18n/admin'
 import AppIcon from '@/components/AppIcon.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
@@ -69,6 +70,7 @@ import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 const router = useRouter()
 const supabase = getSupabase()
 const { t } = useAdminI18n()
+const { currency, load: loadCurrency } = useAdminCurrency()
 
 const orders = ref<any[]>([])
 const loading = ref(true)
@@ -94,6 +96,7 @@ const viewOrder = (orderId: string): void => {
 }
 
 onMounted(async () => {
+  void loadCurrency()
   try {
     const { data, error: rpcError } = await (supabase.rpc as any)('admin_orders')
 

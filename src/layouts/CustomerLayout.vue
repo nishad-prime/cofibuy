@@ -49,7 +49,7 @@ onMounted(() => {
     </main>
 
     <footer class="border-t border-stone-200 py-6 text-center text-xs text-stone-400">
-      {{ t('customer.app.name') }}
+      {{ t('customer.app.name') }} · {{ t('customer.app.tagline') }}
     </footer>
   </div>
 </template>

@@ -53,7 +53,7 @@
               </td>
               <td class="td">
                 <span v-if="Number(link.min_amount_override) > 0" class="ltr-value">
-                  {{ formatMoney(Number(link.min_amount_override), 'en') }}
+                  {{ formatMoney(Number(link.min_amount_override), 'en', currency) }}
                 </span>
                 <span v-else class="text-xs text-stone-500">Site default</span>
               </td>
@@ -96,9 +96,11 @@
 import { ref, onMounted } from 'vue'
 import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
+import { useAdminCurrency } from '@/composables/useAdminCurrency'
 import AppIcon from '@/components/AppIcon.vue'
 
 const supabase = getSupabase()
+const { currency, load: loadCurrency } = useAdminCurrency()
 
 const links = ref<any[]>([])
 const loading = ref(true)
@@ -138,5 +140,8 @@ const deleteLink = async (id: string): Promise<void> => {
   }
 }
 
-onMounted(loadLinks)
+onMounted(() => {
+  void loadCurrency()
+  void loadLinks()
+})
 </script>

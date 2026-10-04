@@ -240,7 +240,10 @@ function placeholderWarning(key: string): string {
   const written = draft.bn[key] || draft.en[key]
   if (!written) return ''
 
-  const missing = missingPlaceholders(written, placeholdersIn(key, bundled(key, 'en')))
+  const missing = missingPlaceholders(
+    written,
+    placeholdersIn(key, bundled(key, 'en'), bundled(key, 'bn')),
+  )
   return missing.length > 0 ? `${t('admin.copy.missingPlaceholder')} ${missing.join(', ')}` : ''
 }
 

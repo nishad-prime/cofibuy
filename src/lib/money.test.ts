@@ -93,6 +93,19 @@ describe('taka amounts print unscaled', () => {
   })
 })
 
+describe('currency is a setting', () => {
+  it('formats in the requested currency', () => {
+    expect(formatMoney(100, 'en', 'USD')).toMatch(/\$/)
+    expect(formatMoney(100, 'en', 'BDT')).toMatch(/৳/)
+    expect(formatMoney(100, 'en')).toBe(formatMoney(100, 'en', 'BDT'))
+  })
+
+  it('falls back to BDT rather than reaching Intl with an unknown code', () => {
+    expect(formatMoney(100, 'en', 'ZZZ')).toBe(formatMoney(100, 'en', 'BDT'))
+    expect(formatMoney(100, 'en', '')).toBe(formatMoney(100, 'en', 'BDT'))
+  })
+})
+
 describe('dates', () => {
   it('uses the Bangla calendar for a Bangla viewer', () => {
     const formatted = formatDate('2026-03-09T00:00:00Z', 'bn')

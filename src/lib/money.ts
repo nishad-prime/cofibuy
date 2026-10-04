@@ -1,4 +1,5 @@
 import type { Locale } from './content'
+import { DEFAULT_CURRENCY, isSupportedCurrency } from './currency'
 import { toBengaliDigits } from './digits'
 
 /**
@@ -24,17 +25,28 @@ function numberFormat(locale: Locale, options: Intl.NumberFormatOptions): Intl.N
   return format
 }
 
-const BDT = 'BDT'
-
 /**
- * Money in Bangladeshi taka. BDT paywalls are whole taka, so no fraction
- * digits. `narrowSymbol` gives a bare ৳ rather than "BDT".
+ * Money in the store's configured currency, defaulting to BDT.
+ *
+ * Whole units only: paywall amounts carry no sub-unit, so no fraction digits in
+ * either the setting or the column. `narrowSymbol` gives a bare ৳ (or $, €) rather
+ * than the ISO code.
+ *
+ * The currency is a setting now, so this is the one place the symbol comes from -
+ * no copy string may embed one. An unrecognised code falls back to BDT rather than
+ * reaching `Intl`, which is not trusted to accept anything a future setting might
+ * hold.
  */
-export function formatMoney(amount: number, locale: Locale): string {
+export function formatMoney(
+  amount: number,
+  locale: Locale,
+  currency: string = DEFAULT_CURRENCY,
+): string {
   if (!Number.isFinite(amount)) amount = 0
+  const code = isSupportedCurrency(currency) ? currency : DEFAULT_CURRENCY
   return numberFormat(locale, {
     style: 'currency',
-    currency: BDT,
+    currency: code,
     currencyDisplay: 'narrowSymbol',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,

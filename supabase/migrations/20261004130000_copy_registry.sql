@@ -115,15 +115,11 @@ insert into private.copy_registry (key, markdown_allowed) values
   ('common.back', false),
   ('common.yes', false),
   ('common.no', false),
-  ('footer.builtWith', false),
   ('lang.switchTo', false),
   ('lang.label', false),
   ('notFound.title', false),
   ('notFound.body', true),
-  ('notFound.cta', false),
-  ('setup.title', false),
-  ('setup.body', false),
-  ('setup.see', false);
+  ('notFound.cta', false);
 -- copy-registry:end
 
 -- `api.admin_set_copy` is rewritten below to read this table. It is replaced rather

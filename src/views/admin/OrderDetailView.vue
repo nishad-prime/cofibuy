@@ -41,7 +41,7 @@
             <div class="flex justify-between gap-4">
               <dt class="text-stone-500">{{ t('admin.queue.amount') }}</dt>
               <dd class="ltr-value font-medium text-stone-900">
-                {{ formatMoney(order.amount, 'en') }}
+                {{ formatMoney(order.amount, 'en', currency) }}
               </dd>
             </div>
             <div class="flex justify-between gap-4">
@@ -157,6 +157,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
+import { useAdminCurrency } from '@/composables/useAdminCurrency'
 import { useStaffRole } from '@/composables/useStaffRole'
 import { useAdminI18n } from '@/i18n/admin'
 import AppIcon from '@/components/AppIcon.vue'
@@ -166,6 +167,7 @@ const route = useRoute()
 const supabase = getSupabase()
 const { isStaff } = useStaffRole()
 const { t } = useAdminI18n()
+const { currency, load: loadCurrency } = useAdminCurrency()
 
 const orderId = computed(() => route.params.id as string)
 
@@ -282,6 +284,7 @@ const resetProbes = async (): Promise<void> => {
 }
 
 onMounted(async () => {
+  void loadCurrency()
   await loadOrder()
 })
 </script>

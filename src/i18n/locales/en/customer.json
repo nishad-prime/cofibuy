@@ -30,14 +30,6 @@
     "body": "The address you tried does not exist or has been removed.",
     "cta": "Back to home"
   },
-  "setup": {
-    "title": "Setup is not finished",
-    "body": "No Supabase project is connected. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the dev server.",
-    "see": "See .env.example"
-  },
-  "footer": {
-    "builtWith": "made with"
-  },
   "paywall": {
     "back": "All reports",
     "chooseMethod": "Choose how to pay",
@@ -45,9 +37,9 @@
     "noMethods": "No payment methods are available right now.",
     "sendTo": "Send payment to",
     "amount": "Amount you send",
-    "amountMin": "Minimum ৳{amount}",
+    "amountMin": "Minimum {amount}",
     "amountAny": "Enter the amount you sent",
-    "amountError": "The amount must be at least ৳{amount}",
+    "amountError": "The amount must be at least {amount}",
     "summary": "Summary",
     "summaryLink": "Report",
     "summaryAmount": "Amount",

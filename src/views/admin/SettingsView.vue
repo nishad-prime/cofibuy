@@ -33,6 +33,14 @@
             <span class="hint block">{{ t('admin.settings.hideMinHint') }}</span>
           </span>
         </label>
+
+        <div class="mt-4">
+          <label class="label" for="currency">{{ t('admin.settings.currency') }}</label>
+          <select id="currency" v-model="form.currency" class="field">
+            <option v-for="code in currencies" :key="code" :value="code">{{ code }}</option>
+          </select>
+          <p class="hint">{{ t('admin.settings.currencyHint') }}</p>
+        </div>
       </section>
 
       <section class="card card-pad">
@@ -94,10 +102,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getSupabase } from '@/lib/supabase'
+import { CURRENCIES, isSupportedCurrency } from '@/lib/currency'
+import { applyAdminCurrency } from '@/composables/useAdminCurrency'
 import { useAdminI18n } from '@/i18n/admin'
 
 const supabase = getSupabase()
 const { t } = useAdminI18n()
+const currencies = CURRENCIES
 
 interface SettingsForm {
   min_amount: number
@@ -106,6 +117,7 @@ interface SettingsForm {
   recovery_enabled: boolean
   maintenance_mode: boolean
   contact: string
+  currency: string
 }
 
 /**
@@ -125,6 +137,7 @@ const form = ref<SettingsForm>({
   recovery_enabled: false,
   maintenance_mode: false,
   contact: '',
+  currency: 'BDT',
 })
 
 const loading = ref(true)
@@ -147,6 +160,9 @@ onMounted(async () => {
         recovery_enabled: Boolean(data.recovery_enabled),
         maintenance_mode: Boolean(data.maintenance_mode),
         contact: typeof data.contact === 'string' ? data.contact : '',
+        // A stored code outside the allowlist can only come from a direct write that
+        // predates the constraint; the select cannot render it, so fall back to BDT.
+        currency: isSupportedCurrency(data.currency) ? data.currency : 'BDT',
       }
     }
   } catch (err) {
@@ -173,12 +189,16 @@ const save = async (): Promise<void> => {
         recovery_enabled: form.value.recovery_enabled,
         maintenance_mode: form.value.maintenance_mode,
         contact: form.value.contact,
+        currency: form.value.currency,
       },
     })
     if (rpcError) {
       error.value = rpcError.message
       return
     }
+    // Keep the shared admin currency in step, or the queue would keep the old symbol
+    // until a full reload.
+    applyAdminCurrency(form.value.currency)
     success.value = true
     setTimeout(() => (success.value = false), 3000)
   } catch (err) {

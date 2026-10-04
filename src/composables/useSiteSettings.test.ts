@@ -36,6 +36,7 @@ const FULL = {
   recovery_enabled: true,
   maintenance_mode: true,
   default_lang: 'en',
+  currency: 'USD',
   contact: '  01700000000  ',
 }
 
@@ -67,6 +68,7 @@ describe('before the fetch lands', () => {
     expect(value.value.recovery_enabled).toBe(false)
     expect(value.value.min_amount).toBeNull()
     expect(value.value.default_lang).toBe('bn')
+    expect(value.value.currency).toBe('BDT')
   })
 })
 
@@ -82,6 +84,7 @@ describe('projecting the row', () => {
       recovery_enabled: true,
       maintenance_mode: true,
       default_lang: 'en',
+      currency: 'USD',
       contact: '01700000000',
     })
   })
@@ -106,6 +109,17 @@ describe('projecting the row', () => {
     await settings.loadSiteSettings()
 
     expect(settings.useSiteSettings().settings.value.min_amount).toBeNull()
+  })
+
+  it('falls back to BDT for a currency the app cannot format', async () => {
+    answerWith({ ...FULL, currency: 'ZZZ' })
+
+    const { settings } = await load()
+    await settings.loadSiteSettings()
+
+    // The select cannot produce this, but a direct write could. BDT is the safe
+    // direction: the wrong symbol is recoverable, a throw at format time is not.
+    expect(settings.useSiteSettings().settings.value.currency).toBe('BDT')
   })
 
   it('keeps a hidden minimum null', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { COPY_KEYS, copyKeyList, allowsMarkdown } from '@/config/copyKeys'
+import { COPY_KEYS, copyKeyList, allowsMarkdown, placeholdersIn } from '@/config/copyKeys'
 import enCustomer from '@/i18n/locales/en/customer.json'
 import bnCustomer from '@/i18n/locales/bn/customer.json'
 
@@ -79,5 +79,28 @@ describe('copy key registry', () => {
         expect(key.startsWith(`${ns}.`)).toBe(true)
       }
     }
+  })
+
+  it('asks for the same placeholders in both locales', () => {
+    // The save-time guard used to read only the English bundle, so a Bangla string
+    // that had dropped `{amount}` slipped through. Parity is what makes the union of
+    // tokens meaningful.
+    for (const key of copyKeyList()) {
+      const en = placeholdersIn(key, resolve(enCustomer, key) ?? '')
+      const bn = placeholdersIn(key, resolve(bnCustomer, key) ?? '')
+      expect([...bn].sort(), `${key} (bn)`).toEqual([...en].sort())
+    }
+  })
+
+  it('keeps every currency symbol out of the copy', () => {
+    // The symbol comes from `formatMoney` alone. One baked into a string would
+    // shadow the setting and, when a value is also interpolated, print twice.
+    const glyph = /[৳$€£¥₹]/
+    const offenders: string[] = []
+    for (const key of copyKeyList()) {
+      if (glyph.test(resolve(enCustomer, key) ?? '')) offenders.push(`en:${key}`)
+      if (glyph.test(resolve(bnCustomer, key) ?? '')) offenders.push(`bn:${key}`)
+    }
+    expect(offenders).toEqual([])
   })
 })

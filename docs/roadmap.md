@@ -46,33 +46,39 @@ Verified by `supabase/tests/09_copy.sql` (29 assertions) and
 
 ## Phase 3 — Settings the browser can read, maintenance mode
 
-**Status: not started.**
+**Status: done.** `supabase/migrations/20261004160000_public_settings_maintenance.sql`
+adds `api.get_public_settings()` and a `maintenance_mode` flag that is enforced in
+SQL and surfaced in the storefront.
 
-The blocker to design around: `public.site_settings` has RLS enabled with **zero
-policies and zero grants**, and `api.admin_settings()` is owner-only. Nothing
-global can reach the browser today. Any global flag needs a new public RPC,
-modelled on `api.get_public_copy()`.
+Delivered:
 
-Planned:
+- `api.get_public_settings()` returns only customer-safe fields:
+  `maintenance_mode`, `recovery_enabled`, `default_lang`, `contact`, and the global
+  minimum withheld whenever `hide_min_amount` is set. That last point is the same
+  no-read-path rule `api.get_public_link()` applies per link: the settings projection
+  must not become a side door to a hidden minimum.
+- `maintenance_mode` is enforced in `api.create_order()` (SQLSTATE `P0001`,
+  `shop temporarily closed`) and reported by `api.get_public_link()`. The order form
+  is replaced by a notice in `src/views/customer/LinkView.vue`, so a customer never
+  fills in a form that is going to be refused.
+- `src/composables/useSiteSettings.ts` fetches the projection once from
+  `CustomerLayout`, resolves to safe defaults on failure, and never gates first
+  paint. It decides what is _shown_; `create_order()` decides what is _allowed_.
+- `recovery_enabled` is read from the projection instead of substring-matching an
+  error string, so rephrasing the server message can no longer re-open a closed form.
+- `default_lang` is applied only when the visitor has no explicit preference
+  (`applySiteDefaultLocale`), replacing the hardcoded final fallback.
+- `src/views/admin/SettingsView.vue` gains the maintenance toggle and the `contact`
+  field, so the previously write-only column now has both a reader and a writer.
+- `api.admin_set_settings()` now raises on unknown keys, matching `admin_set_copy`.
 
-- `api.get_public_settings()` returning only customer-safe fields. Never owner or
-  staff data.
-- `maintenance_mode` on `site_settings`, enforced **in SQL** in both
-  `api.get_public_link()` and `api.create_order()` — the server is the only
-  trustworthy gate — **and communicated in the UI** so the order form is replaced
-  by a notice before a customer can fill it in. Server enforcement alone would
-  let someone type a phone number into a form that is going to be rejected.
-- Wire the two settings that currently do nothing:
-  - `default_lang` is editable in the admin panel and read by nothing. The locale
-    comes from `?lang=`, localStorage, geo, then `navigator.language`. It should
-    become the fallback when no stored preference exists.
-  - `recovery_enabled` is enforced server-side only, and the customer UI infers it
-    by substring-matching an error string. Read it properly so the feature can be
-    hidden before submit.
-- `api.admin_set_settings()` performs no whitelist validation — unknown keys are
-  silently dropped, unlike `admin_set_copy` which raises. Add the same raise.
-- `site_settings.contact` is a write-only dead column: setter, generated types
-  and an orphan label in `admin.json`, but no UI and no reader.
+The renames behind the gate needed explicit revokes: renaming a function carries its
+grants with it and `create or replace` restores `PUBLIC EXECUTE`, so the inner
+`get_public_link`/`create_order` bodies are revoked from `anon` and `authenticated`
+by name. `supabase/tests/07_rls.sql` is what caught the missing revoke.
+
+Verified by `supabase/tests/10_settings.sql` (27 assertions) and
+`src/composables/useSiteSettings.test.ts` (13 tests).
 
 ## Phase 4 — Branding and currency
 
@@ -107,10 +113,12 @@ Planned:
 
 ## Known loose ends
 
-- `supabase/migrations/20260101000006_cron.sql` contains two `-- cron skipped`
-  placeholders, so `private.sweep()` is never scheduled outside Supabase.
+- `supabase/migrations/20260101000006_cron.sql` still carries two `-- cron skipped`
+  placeholders (it is applied history and cannot be edited), but
+  `20261004150000_install_cron_schedules.sql` installs the real schedules on any
+  database that applied the stub. Both are now applied to the hosted project.
 - `npm run check` fails on a large pre-existing lint baseline, which makes
   `check:all` unusable as a single command. Worth a dedicated pass, or an
   explicit decision to grandfather it.
-- Six registered copy keys are never rendered: `app.tagline`,
+- Five registered copy keys are never rendered: `app.tagline`,
   `footer.builtWith`, `setup.title`, `setup.body`, `setup.see`.

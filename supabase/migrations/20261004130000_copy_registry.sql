@@ -205,7 +205,10 @@ begin
 end
 $$;
 
--- `create or replace` resets grants to the creating role's defaults, so the execute
--- grant from 20261004110000 has to be restated. Easy to forget and hard to read: the
--- function is owner-gated anyway, so a lost grant looks like the wrong bug.
+-- Restated as defence in depth. `create or replace function` keeps the existing ACL,
+-- so the revoke from 20261004110000 is still in force - anon is refused at the ACL
+-- with 42501, before reaching the owner gate inside. Only `drop function` resets
+-- grants, to the creating role's defaults, which in an exposed schema means `PUBLIC`
+-- gets execute. Keep this line: it is what saves the function if it is ever dropped
+-- and recreated, and it costs nothing.
 grant execute on function api.admin_set_copy(jsonb) to authenticated;

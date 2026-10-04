@@ -123,8 +123,20 @@ begin
 end
 $$;
 
--- Replacing a function resets its grants to the creating role's defaults, so the
--- execute grant from 20261004130000 has to be restated. The function is still
--- owner-gated inside, but `authenticated` losing the grant would surface as a
--- permission error on a call that is supposed to be refused anyway.
+-- Restated as defence in depth, not because replacing the function requires it.
+--
+-- `create or replace function` keeps the existing ACL: the revoke from
+-- 20261004110000 is still in force after every replacement since, verified against
+-- the hosted project by calling this as `anon` and being refused at the ACL with
+-- 42501 rather than reaching the owner gate below. Only `drop function` resets
+-- grants, to the creating role's defaults - which for a function in an exposed
+-- schema means `PUBLIC` gets execute.
+--
+-- So the grant below is belt-and-braces for the case where someone later drops and
+-- recreates this function, and it costs nothing. What must never happen is a casual
+-- `drop function api.admin_set_copy` to "make the schema change cleanly": that is
+-- the one action that would hand execute to anon and authenticated, and the reason
+-- this comment exists. An earlier version of this comment asserted the opposite -
+-- that replacing a function resets its grants - which would have invited exactly
+-- that mistake.
 grant execute on function api.admin_set_copy(jsonb) to authenticated;

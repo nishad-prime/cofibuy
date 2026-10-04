@@ -102,3 +102,73 @@ create table if not exists storage.objects (
 grant usage on schema storage to anon, authenticated, service_role;
 grant select, insert, update, delete on storage.buckets, storage.objects to authenticated, service_role;
 grant select on storage.buckets, storage.objects to anon;
+
+-- Supabase Vault, for the same reason as auth and storage: the migrations call it and a
+-- local Postgres has no such extension.
+--
+-- The function signatures deliberately mirror supabase/postgres's vault API, because the
+-- migrations are written against that API and would otherwise acquire a second, local-only
+-- calling convention. The drift risk is real and worth stating plainly: if a signature here
+-- stops matching the managed one, a migration can pass locally and fail on a real project.
+-- Anything that writes a secret must be signed against a live project before it is trusted.
+create schema if not exists vault;
+
+create table if not exists vault.secrets (
+  id uuid primary key default gen_random_uuid(),
+  name text,
+  description text default '',
+  secret jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Supabase exposes the decrypted value through a view rather than the base table. Mirroring
+-- that means a migration cannot accidentally read `secret` from the wrong object and pass
+-- locally where the permission would differ in production.
+create or replace view vault.decrypted_secrets as
+  select id, name, description, secret, created_at, updated_at
+  from vault.secrets;
+
+create or replace function vault.create_secret(
+  new_secret jsonb,
+  new_name text default null,
+  new_description text default ''
+)
+returns uuid
+language sql
+volatile
+as $$
+  insert into vault.secrets (name, description, secret)
+  values (new_name, new_description, new_secret)
+  returning id
+$$;
+
+create or replace function vault.update_secret(
+  secret_id uuid,
+  new_secret jsonb default null,
+  new_name text default null,
+  new_description text default null
+)
+returns void
+language sql
+volatile
+as $$
+  update vault.secrets
+  set secret = coalesce(new_secret, secret),
+      name = coalesce(new_name, name),
+      description = coalesce(new_description, description),
+      updated_at = now()
+  where id = secret_id
+$$;
+
+create or replace function vault.delete_secret(secret_id uuid)
+returns void
+language sql
+volatile
+as $$
+  delete from vault.secrets where id = secret_id
+$$;
+
+grant usage on schema vault to anon, authenticated, service_role;
+grant execute on function vault.create_secret, vault.update_secret, vault.delete_secret
+  to anon, authenticated, service_role;

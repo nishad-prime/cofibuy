@@ -294,6 +294,18 @@ returns void
 language plpgsql
 as $$
 begin
+  -- Credential state has to be cleared alongside the gateways, or one test file's
+  -- merchant credentials and cached id_token leak into the next one's assertions.
+  --
+  -- These are truncated before the impersonation below, because `truncate` is an owner
+  -- operation and nothing downstream of `as_anon` could perform it. `private.secret_bundles`
+  -- is keyed by subject id rather than by foreign key, so it would not be swept up by the
+  -- `cascade` below, and `vault.secrets` is not ours to cascade into at all.
+  truncate table
+    vault.secrets,
+    private.secret_bundles,
+    private.bkash_tokens;
+
   perform test_data.as_anon();
 
   truncate table

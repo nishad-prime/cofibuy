@@ -14,6 +14,7 @@ export type Database = {
     Tables: Record<never, never>
     Views: Record<never, never>
     Functions: {
+      admin_auto_providers: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_copy: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_delete_gateway: {
         Args: {
@@ -126,6 +127,7 @@ export type Database = {
       }
       bkash_claim_refresh: {
         Args: {
+          p_bundle_id: string
           p_environment: string
         }
         Returns: boolean
@@ -164,6 +166,7 @@ export type Database = {
       }
       bkash_store_token: {
         Args: {
+          p_bundle_id: string
           p_environment: string
           p_id_token: string
           p_refresh_token: string
@@ -173,6 +176,7 @@ export type Database = {
       }
       bkash_token_state: {
         Args: {
+          p_bundle_id: string
           p_environment: string
         }
         Returns: Json
@@ -204,6 +208,12 @@ export type Database = {
           p_amount: number
         }
         Returns: Json
+      }
+      gateway_credential_bundle: {
+        Args: {
+          p_gateway_id: string
+        }
+        Returns: string
       }
       get_public_copy: { Args: Record<PropertyKey, never>; Returns: Json[] }
       get_public_link: {
@@ -283,6 +293,12 @@ export type Database = {
         }
         Returns: Json
       }
+      secret_bundle_open: {
+        Args: {
+          p_bundle_id: string
+        }
+        Returns: Json
+      }
       submit_evidence: {
         Args: {
           p_order_id: string
@@ -319,6 +335,7 @@ export type Database = {
       grant_on_approval: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_evidence_fields: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_order_status: { Args: Record<PropertyKey, never>; Returns: Json }
+      guard_provider_known: { Args: Record<PropertyKey, never>; Returns: Json }
       is_owner: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
       normalize_bd_phone: {
@@ -346,8 +363,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      provider_field_keys: {
+        Args: {
+          p_provider: string
+        }
+        Returns: string[][]
+      }
       prune_anonymous_users: { Args: Record<PropertyKey, never>; Returns: number }
       reap_stale_claims: { Args: Record<PropertyKey, never>; Returns: number }
+      store_credential_bundle: {
+        Args: {
+          p_subject_id: string
+          p_provider: string
+          p_bundle: Json
+        }
+        Returns: string
+      }
       sweep: { Args: Record<PropertyKey, never>; Returns: Json }
       tidy_blank_to_null: { Args: Record<PropertyKey, never>; Returns: Json }
       to_latin_digits: {
@@ -719,6 +750,7 @@ export type Database = {
           updated_at: string
           provider: string | null
           account_fields: Json
+          environment: string
         }
         Insert: {
           kind: string
@@ -739,6 +771,7 @@ export type Database = {
           updated_at?: string
           provider?: string | null
           account_fields?: Json
+          environment?: string
         }
         Update: {
           id?: string
@@ -759,6 +792,7 @@ export type Database = {
           updated_at?: string
           provider?: string | null
           account_fields?: Json
+          environment?: string
         }
         Relationships: []
       }

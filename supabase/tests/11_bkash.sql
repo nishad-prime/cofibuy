@@ -29,6 +29,23 @@ select test_data.link('paid', 500, false);
 select test_data.gateway('bkash');
 select test_data.pgw_gateway();
 
+-- The token cache is keyed by credential bundle, and the fixture gateway has none until
+-- it is given credentials. This is the same setup the Edge Function performs at
+-- settlement time, done here as the owner so the cache assertions below have a bundle to
+-- address. Retargeting an existing row by id rather than inserting keeps the fixture's
+-- single automated method unambiguous for the "the fixture's method is the one under
+-- test" lookups used later in this file.
+select test_data.as_user(test_data.owner());
+select api.admin_upsert_gateway(
+  jsonb_build_object(
+    'id', (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
+    'kind', 'bkash', 'provider', 'bkash_pgw', 'name_en', 'bKash (instant)',
+    'credential_bundle', jsonb_build_object(
+      'app_key', 'fixture-app-key', 'app_secret', 'fixture-app-secret',
+      'username', 'fixture-username', 'password', 'fixture-password'))
+);
+select test_data.as_service();
+
 -- ---------------------------------------------------------------------------
 -- The gateway registry
 -- ---------------------------------------------------------------------------
@@ -38,7 +55,7 @@ select throws_ok(
        (kind, provider, name_en, account_number, account_name, evidence_fields)
      values ('bkash', 'stripe', 'Stripe', '1', 'X', '[]'::jsonb)$$,
   '23514',
-  'new row for relation "payment_gateways" violates check constraint "payment_gateways_provider_known"',
+  'unknown payment provider: stripe',
   'an unknown provider is refused at the constraint'
 );
 
@@ -203,19 +220,19 @@ select is(
 );
 
 select is(
-  test_data.can_execute('authenticated', 'api.bkash_token_state(text)'),
+  test_data.can_execute('authenticated', 'api.bkash_token_state(uuid, text)'),
   false,
   'a customer cannot read the token cache'
 );
 
 select is(
-  test_data.can_execute('authenticated', 'api.bkash_claim_refresh(text)'),
+  test_data.can_execute('authenticated', 'api.bkash_claim_refresh(uuid, text)'),
   false,
   'a customer cannot claim a token refresh'
 );
 
 select is(
-  test_data.can_execute('authenticated', 'api.bkash_store_token(text, text, text, integer)'),
+  test_data.can_execute('authenticated', 'api.bkash_store_token(uuid, text, text, text, integer)'),
   false,
   'a customer cannot write the token cache'
 );
@@ -542,20 +559,20 @@ select is(
 select test_data.as_service();
 
 select throws_ok(
-  $$select api.bkash_token_state('production')$$,
+  $$select api.bkash_token_state((select id from private.secret_bundles limit 1), 'production')$$,
   '22023',
   'unknown bkash environment: production',
   'an unknown environment is refused'
 );
 
 select is(
-  (api.bkash_token_state('sandbox')) ->> 'bootstrap',
+  (api.bkash_token_state((select id from private.secret_bundles limit 1), 'sandbox')) ->> 'bootstrap',
   'true',
   'with no token cached, the caller is told to bootstrap with Grant Token'
 );
 
 select is(
-  (api.bkash_token_state('sandbox')) ->> 'usable',
+  (api.bkash_token_state((select id from private.secret_bundles limit 1), 'sandbox')) ->> 'usable',
   'false',
   'and that there is nothing usable yet'
 );
@@ -564,61 +581,61 @@ select is(
 -- must produce one API call, not two. Grant and Refresh share a two-per-hour budget and
 -- going over blocks refresh for an hour, which means the shop stops taking payments.
 select is(
-  (api.bkash_claim_refresh('sandbox')),
+  (api.bkash_claim_refresh((select id from private.secret_bundles limit 1), 'sandbox')),
   true,
   'the first caller wins the refresh lease'
 );
 
 select is(
-  (api.bkash_claim_refresh('sandbox')),
+  (api.bkash_claim_refresh((select id from private.secret_bundles limit 1), 'sandbox')),
   false,
   'a second caller does not'
 );
 
 select is(
-  (api.bkash_token_state('sandbox')) ->> 'refreshing',
+  (api.bkash_token_state((select id from private.secret_bundles limit 1), 'sandbox')) ->> 'refreshing',
   'true',
   'and the lease is visible while it is held'
 );
 
 select lives_ok(
-  $$select api.bkash_store_token('sandbox', 'id-token-value', 'refresh-token-value', 3600)$$,
+  $$select api.bkash_store_token((select id from private.secret_bundles limit 1), 'sandbox', 'id-token-value', 'refresh-token-value', 3600)$$,
   'the winner stores what it fetched'
 );
 
 select is(
-  (api.bkash_token_state('sandbox')) ->> 'id_token',
+  (api.bkash_token_state((select id from private.secret_bundles limit 1), 'sandbox')) ->> 'id_token',
   'id-token-value',
   'the cached token is served to the next caller'
 );
 
 select is(
-  (api.bkash_token_state('sandbox')) ->> 'needs_refresh',
+  (api.bkash_token_state((select id from private.secret_bundles limit 1), 'sandbox')) ->> 'needs_refresh',
   'false',
   'a fresh token is not refreshed again'
 );
 
 select is(
-  (api.bkash_token_state('sandbox')) ->> 'refreshing',
+  (api.bkash_token_state((select id from private.secret_bundles limit 1), 'sandbox')) ->> 'refreshing',
   'false',
   'storing releases the lease'
 );
 
 -- Refreshing is per environment, so a sandbox burst cannot spend the live budget.
 select is(
-  (api.bkash_claim_refresh('live')),
+  (api.bkash_claim_refresh((select id from private.secret_bundles limit 1), 'live')),
   true,
   'the live environment has its own lease'
 );
 
 select is(
-  (api.bkash_claim_refresh('sandbox')),
+  (api.bkash_claim_refresh((select id from private.secret_bundles limit 1), 'sandbox')),
   true,
   'and the sandbox lease is free again'
 );
 
 select throws_ok(
-  $$select api.bkash_store_token('sandbox', '', 'refresh-token-value', 3600)$$,
+  $$select api.bkash_store_token((select id from private.secret_bundles limit 1), 'sandbox', '', 'refresh-token-value', 3600)$$,
   '22023',
   'bkash returned an empty token',
   'an empty token is not cached'

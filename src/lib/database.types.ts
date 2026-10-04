@@ -14,6 +14,7 @@ export type Database = {
     Tables: Record<never, never>
     Views: Record<never, never>
     Functions: {
+      admin_copy: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_delete_gateway: {
         Args: {
           p_gateway_id: string
@@ -77,6 +78,12 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_copy: {
+        Args: {
+          p_items: Json
+        }
+        Returns: number
+      }
       admin_set_settings: {
         Args: {
           p_settings: Json
@@ -131,6 +138,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_public_copy: { Args: Record<PropertyKey, never>; Returns: Json[] }
       get_public_link: {
         Args: {
           p_slug: string
@@ -348,6 +356,30 @@ export type Database = {
           target_id?: string | null
           meta?: Json
           created_at?: string
+        }
+        Relationships: []
+      }
+      copy_strings: {
+        Row: {
+          key: string
+          value_bn: string | null
+          value_en: string | null
+          is_markdown: boolean
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          value_bn?: string | null
+          value_en?: string | null
+          is_markdown?: boolean
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          value_bn?: string | null
+          value_en?: string | null
+          is_markdown?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
@@ -651,6 +683,7 @@ export type Database = {
           sort_order: number
           created_at: string
           updated_at: string
+          is_listed: boolean
         }
         Insert: {
           slug: string
@@ -670,6 +703,7 @@ export type Database = {
           sort_order?: number
           created_at?: string
           updated_at?: string
+          is_listed?: boolean
         }
         Update: {
           id?: string
@@ -689,6 +723,7 @@ export type Database = {
           sort_order?: number
           created_at?: string
           updated_at?: string
+          is_listed?: boolean
         }
         Relationships: []
       }

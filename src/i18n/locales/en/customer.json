@@ -21,9 +21,9 @@
   },
   "home": {
     "heading": "What would you like to read?",
-    "subheading": "Pick a link, make the payment, and read straight away.",
-    "empty": "No links have been published yet.",
-    "browse": "See all links"
+    "subheading": "Pick a report, pay once, and read it straight away.",
+    "empty": "No reports have been published yet.",
+    "browse": "See all reports"
   },
   "notFound": {
     "title": "Page not found",
@@ -37,5 +37,70 @@
   },
   "footer": {
     "builtWith": "made with"
+  },
+  "paywall": {
+    "back": "All reports",
+    "chooseMethod": "Choose how to pay",
+    "chooseMethodHint": "Send the payment to the account below, then record it on the next step.",
+    "noMethods": "No payment methods are available right now.",
+    "sendTo": "Send payment to",
+    "amount": "Amount you send",
+    "amountMin": "Minimum ৳{amount}",
+    "amountAny": "Enter the amount you sent",
+    "amountError": "The amount must be at least ৳{amount}",
+    "summary": "Summary",
+    "summaryLink": "Report",
+    "summaryAmount": "Amount",
+    "submit": "I have paid — create order",
+    "submitting": "Creating order…",
+    "refused": "The order could not be created. Please try again.",
+    "refusedLocked": "Too many attempts on your previous orders. This one is locked; contact support.",
+    "deliverable": "What you get after payment"
+  },
+  "order": {
+    "title": "Order status",
+    "reference": "Reference code",
+    "status": {
+      "draft": "Not started",
+      "awaiting_proof": "Awaiting your payment",
+      "under_review": "Under review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "locked": "Locked"
+    },
+    "rejectReason": "Reason for rejection",
+    "submitEvidence": "Submit payment proof",
+    "evidenceHint": "Fill in each field below so we can verify the payment quickly.",
+    "submitEvidenceCta": "Submit proof",
+    "submitting": "Submitting…",
+    "unlocked": "Your report",
+    "underReview": "Your proof is under review. This page updates on its own.",
+    "rejected": "This order was rejected. You can start a new one with fresh proof.",
+    "expired": "This order has expired. Please create a new one.",
+    "locked": "This order is locked. Please try again later or create a new one.",
+    "newOrder": "Create a new order",
+    "reminder": "Payment reminder",
+    "reminderBody": "Finish this order by sending the payment to the account below."
+  },
+  "evidence": {
+    "required": "required",
+    "optional": "optional",
+    "chooseImage": "Choose image",
+    "maxSize": "Max {size}MB. JPG, PNG or WebP.",
+    "errRequired": "This field is required",
+    "errPhone": "Enter a valid Bangladeshi mobile number",
+    "errTrxid": "Enter a valid transaction ID",
+    "errNumeric": "Numbers only",
+    "errMaxLen": "Must be {max} characters or fewer",
+    "errFileSize": "That file is too large"
+  },
+  "recovery": {
+    "title": "Recover access",
+    "body": "Enter the email you ordered with and we will send you a one-time code.",
+    "submit": "Send code",
+    "submitting": "Sending…",
+    "sent": "Check your email for the code.",
+    "back": "Use a different email"
   }
 }

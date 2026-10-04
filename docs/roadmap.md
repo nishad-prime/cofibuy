@@ -156,6 +156,64 @@ Remaining:
   blank. The visible-copy rule now refuses those values at the API, but any other
   write path to `copy_strings` would still store them.
 
+## Phase 6 — Shrinking the admin surface
+
+**Status: delivered.**
+
+The complaint that started this was that the system had too many settings. Counting
+them honestly, the site settings were not the problem — seven fields, all load-bearing.
+The problem was the copy editor: 82 overridable keys rendered as 164 inputs on one
+page, each labelled with its raw name, and about 56 of those keys are chrome nobody
+rewords.
+
+Delivered:
+
+- **The copy editor opens on 24 keys instead of 82**, grouped by the screen the text
+  appears on rather than by namespace, so the operator asks "what does the payment page
+  say?" instead of "what does the paywall namespace hold?". 48 inputs instead of 164.
+  One toggle reveals all 82 with a search box. Nothing is removed — every key stays
+  overridable, and the tier is presentation only, so it needed no migration.
+- **One component with a filter, not two components with a mode switch.** Two
+  renderings over 82 keys is a consistency problem, and its failure mode is silent: a
+  key that stops being listed still saves, still counts as dirty, and simply becomes
+  unreachable, with nothing reporting an error. One path cannot drift from itself.
+- **The section builder moved out of the SFC** into `src/config/copySections.ts`,
+  because logic inside a `.vue` file cannot be tested. `buildCopySections` is asserted
+  to list every key in the full view and never to show one twice — verified by
+  mutating the full view to skip a namespace and watching the test fail.
+- **The copy store's lockdown is now pinned rather than assumed.** `api.admin_set_copy`
+  validates every value, which is decoration if a role can write `public.copy_strings`
+  directly and skip it. `07_rls.sql` asserts zero RLS policies on the table, no write
+  privilege for `anon`/`authenticated`, and the function ACL in both directions. The
+  policy-count assertion is itself guarded by a second assertion asking the same
+  `pg_policies` query about a table that _does_ have policies — a typo in the
+  schemaname would otherwise make the count zero forever while the table sat open.
+- **The length cap is enforced at the layer every writer passes through.** It is now
+  also a CHECK constraint, because `api.get_public_copy` is granted to `anon` and ships
+  every override to every visitor uncapped, so one unbounded value is a bandwidth
+  cost paid by the whole storefront. The cap therefore appears twice in SQL, so
+  `copyKeys.test.ts` reads both and fails if they disagree.
+- **Three migrations that claimed `create or replace` resets grants were corrected.**
+  It does not; only `drop function` does, to the creating role's defaults, which in an
+  exposed schema means `PUBLIC` gets execute. The claim was a live hazard: a reader
+  who believed it could conclude a `drop function` was needed to make a schema change
+  cleanly, and that is the one action that would have handed execute to anon.
+- Search matches the shipped wording in both languages, not just the key, because the
+  operator reads the storefront and will paste the phrase they want changed.
+
+Deliberately not done:
+
+- **No setting or key was deleted.** `hide_min_amount` looks redundant next to
+  `min_amount` and is not: it is a _secret_ minimum, enforced at `p_amount < v_min`
+  and withheld from the customer, whereas `min_amount = 0` means no minimum at all.
+- **Markdown was kept.** It costs a column, a flag, a checkbox, a preview and two
+  dependencies, and it serves the six prose fields the curated view surfaces.
+- **The seven site settings were left as they are.** They are few, and each is
+  load-bearing. Regrouping them into fewer blocks was considered and deferred as the
+  weakest value-to-risk item here: it touches the settings round-trip, whose comment
+  records that a bad merge once made the form write back nothing at all, in exchange
+  for a cosmetic gain.
+
 ## Known loose ends
 
 - `supabase/migrations/20260101000006_cron.sql` still carries two `-- cron skipped`

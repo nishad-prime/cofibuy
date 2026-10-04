@@ -9,11 +9,10 @@ Bilingual customer-facing (Bangla and English), English-only admin. The customer
 pages are static HTML that poll for order status; the database owns every rule
 that matters.
 
-**Status: the database is finished and tested. The customer and admin interfaces
-are now implemented and functional** — the app includes customer checkout/recovery
-flows and a full admin interface for managing links, gateways, orders, team, and
-settings. The Telegram OTP worker remains in a separate repository (worker RPCs
-exist in the schema).
+**Status: the database is finished and tested, and so is the interface.** The app
+includes customer checkout/recovery flows and a full admin interface for managing
+links, gateways, orders, team, settings, and the customer copy store. The Telegram
+OTP worker remains in a separate repository (worker RPCs exist in the schema).
 
 ## Requirements
 
@@ -51,8 +50,8 @@ reach a database.
 
 Both are safe in the browser. The anon key is constrained entirely by row level
 security, which is what the database tests in `supabase/tests/07_rls.sql` exist
-to prove. The other values in `.env.example` are server-side only and nothing in
-this repository reads them yet.
+to prove. The other values in `.env.example` are server-side only and nothing
+in this repository reads them yet.
 
 If you put a privileged value in `.env.local` anyway, the build fails rather than
 shipping it: `vite/plugins/guard-service-role.ts` refuses to start if a
@@ -61,10 +60,9 @@ containing a service-role JWT.
 
 ### Expose the `api` schema
 
-**This is the step that is easy to skip and hard to debug.** Every RPC lives in
-the `api` schema, and PostgREST will not serve a schema it has not been told
-about. Migrations grant `usage on schema api`, which is necessary and not
-sufficient.
+**This is the step that is easy to skip and hard to debug.** Every RPC lives in the
+`api` schema, and PostgREST will not serve a schema it has not been told about.
+Migrations grant `usage on schema api`, which is necessary and not sufficient.
 
 - Hosted: Project Settings → API → **Exposed schemas** → add `api`, so it reads
   `public, graphql_public, api`
@@ -104,24 +102,26 @@ editor works, but `npx supabase db push` is better: it records what it applied.
 
 ## Commands
 
-| Command                        | What it does                                               |
-| ------------------------------ | ---------------------------------------------------------- |
-| `npm run dev`                  | Vite dev server on :5173                                   |
-| `npm run build`                | typecheck, then production build                           |
-| `npm run bootstrap`            | pre-flight check on the checkout                           |
-| `npm run check`                | format, lint, typecheck, unit tests                        |
-| `npm run check:all`            | `check` plus the database suite and the generated types    |
-| `npm test`                     | Vitest unit tests                                          |
-| `npm run test:db`              | database suite against an in-process PostgreSQL            |
-| `npm run test:db -- --migrate` | apply the migrations and stop                              |
-| `npm run test:db -- --keep`    | leave the cluster running to poke at it                    |
-| `npm run format`               | Prettier, write                                            |
-| `npm run db:types`             | regenerate `src/lib/database.types.ts` from the migrations |
-| `npm run db:types:check`       | fail if the generated types are stale                      |
-| `npx supabase start`           | local stack                                                |
-| `npx supabase db reset`        | local stack: wipe, replay migrations, run seed             |
-| `npx supabase db push`         | apply migrations to the linked project                     |
-| `npx supabase studio`          | dashboard for the local stack                              |
+| Command                        | What it does                                                   |
+| ------------------------------ | -------------------------------------------------------------- |
+| `npm run dev`                  | Vite dev server on :5173                                       |
+| `npm run build`                | typecheck, then production build                               |
+| `npm run bootstrap`            | pre-flight check on the checkout                               |
+| `npm run check`                | format, lint, typecheck, unit tests                            |
+| `npm run check:all`            | `check` plus the database suite, types, and the copy mirror    |
+| `npm test`                     | Vitest unit tests                                              |
+| `npm run test:db`              | database suite against an in-process PostgreSQL                |
+| `npm run test:db -- --migrate` | apply the migrations and stop                                  |
+| `npm run test:db -- --keep`    | leave the cluster running to poke at it                        |
+| `npm run format`               | Prettier, write                                                |
+| `npm run copy:keys:sync`       | regenerate the SQL copy registry from `src/config/copyKeys.ts` |
+| `npm run copy:keys:check`      | fail if the SQL copy registry is stale                         |
+| `npm run db:types`             | regenerate `src/lib/database.types.ts` from the migrations     |
+| `npm run db:types:check`       | fail if the generated types are stale                          |
+| `npx supabase start`           | local stack                                                    |
+| `npx supabase db reset`        | local stack: wipe, replay migrations, run seed                 |
+| `npx supabase db push`         | apply migrations to the linked project                         |
+| `npx supabase studio`          | dashboard for the local stack                                  |
 
 `npm run test:db` needs neither Docker nor a project. It downloads nothing at run
 time: `embedded-postgres` starts a real PostgreSQL in a child process, the
@@ -132,6 +132,7 @@ that is rolled back afterwards.
 
 ```
 src/                    Vue 3 + Tailwind 4 app
+  config/copyKeys.ts    the editable-copy registry: one source of truth
   lib/                  domain helpers, generated types, the Supabase client
   i18n/                 customer strings (bn + en), admin strings (en only)
   views/                one file per screen
@@ -143,6 +144,7 @@ supabase/
 scripts/
   bootstrap.mjs         pre-flight check
   generate-types.mjs    database.types.ts from the migrations
+  sync-copy-keys.mjs    the SQL copy registry from src/config/copyKeys.ts
   test-db.mjs           the database suite runner
   lib/local-db.mjs      the ephemeral cluster both of the above start
 ```
@@ -151,6 +153,27 @@ The split worth knowing: **the database is the application.** Business rules liv
 in SQL and are reached through `api.*` functions; the Vue side renders and
 submits. That is why the database suite is the larger half of the tests, and why
 `api` functions return `jsonb` — the payloads are not typed by the generator.
+
+### The copy store
+
+An operator can rewrite every customer-facing string from `/admin/copy`, in both
+languages, without touching the bundle or rebuilding. Three pieces:
+
+- `src/config/copyKeys.ts` is the single source of truth for which keys are
+  editable and which may contain markdown. `npm run copy:keys:sync` mirrors it
+  into `private.copy_registry` inside a migration, and `copy:keys:check` fails the
+  build if the two disagree.
+- `api.get_public_copy()` returns the stored overrides; the browser merges them
+  over the bundled locale files inside vue-i18n's message store, so
+  `t('customer.home.heading')` keeps working everywhere unchanged.
+- `api.admin_set_copy()` is owner-only — copy is customer-visible, so a reviewer
+  who can approve orders has no business rewriting what the shopfront says about
+  taking payment.
+
+Overriding never blocks first paint: there is a bounded wait
+(`FIRST_PAINT_BUDGET_MS`) after which the app commits to the bundled wording and
+applies overrides whenever they arrive. On a slow connection a customer may read
+the shipped wording for a moment before it changes.
 
 ### Rules that live in SQL, not in the UI
 
@@ -165,6 +188,7 @@ submits. That is why the database suite is the larger half of the tests, and why
   and that evidence is append-only
 - Recovery: bcrypt-only OTP codes, five wrong guesses consumes the challenge, a
   resend supersedes the previous code for that phone number
+- Which copy keys exist, and which of them may contain markdown
 
 ## Deploying
 
@@ -182,11 +206,28 @@ production; it exists to get a local or preview project into a usable state.
   repository that does not exist yet)
 - Email sign-in screens (admin uses email/password; customer flow uses anonymous
   sign-ins as configured in `supabase/config.toml`)
+- The roadmap in `docs/roadmap.md` — phases 3 through 5 are not started
 
 The customer UI (link pages, checkout, evidence upload, status polling, recovery
-flow) and full admin UI (queue, order review, links, gateways, team, settings) are
-now implemented. All UI calls verified RPCs from the tested database layer.
+flow) and full admin UI (queue, order review, links, gateways, team, settings,
+copy) are now implemented. All UI calls verified RPCs from the tested database
+layer.
 
-## Deployment\n\n### Prerequisites\n\n- Supabase project\n- Static hosting\n- Node.js 22+\n\n### Quick Deploy\n\n\ash\nnpm ci\ncp .env.example .env.local\nnpm run build\n\\
+## Deployment
 
-\nDeploy dist/ to any static host. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY at build time.\n
+### Prerequisites
+
+- Supabase project
+- Static hosting
+- Node.js 22+
+
+### Quick Deploy
+
+```bash
+npm ci
+cp .env.example .env.local
+npm run build
+```
+
+Deploy `dist/` to any static host. Set `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY` at build time.

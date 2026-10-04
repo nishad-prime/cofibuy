@@ -4,7 +4,7 @@
 -- wrong. Guessing the threshold must be useless: the reply cannot differ, and a
 -- run of guesses must cost something.
 
-select plan(33);
+select plan(36);
 
 select test_data.reset();
 
@@ -306,6 +306,45 @@ select is(
   test_data.orders('hidden-price', 'bKash', 1000) ->> 'min_hidden',
   'true',
   'but it does say the minimum is hidden'
+);
+
+-- ---------------------------------------------------------------------------
+-- Units
+--
+-- The figure a customer types into bKash is whole taka, and it is stored and
+-- compared as that same number. Nothing scales it here: a minimum of 100 means
+-- the customer sends taka 100, not taka 1.
+--
+-- Three client views used to divide the amount by 100 before printing it, which
+-- turned a taka 3100 order into "31.00". These assertions pin the unit so a
+-- future convenience rescale cannot come back unnoticed.
+-- ---------------------------------------------------------------------------
+
+select test_data.reset();
+update public.site_settings set min_amount = 100 where id = 1;
+select test_data.link('taka', null, false);
+select test_data.gateway('bkash');
+
+select is(
+  test_data.new_customer_orders('taka', 'bKash', 99) ->> 'code',
+  'below_minimum',
+  'a minimum of 100 taka refuses an order for 99'
+);
+
+select test_data.new_customer_orders('taka', 'bKash', 100);
+
+select is(
+  (select count(*)::int from public.orders where amount = 100 and status <> 'draft'),
+  1,
+  'an order for exactly the minimum is accepted and stored unscaled'
+);
+
+select is(
+  (select min_amount_snapshot::numeric
+   from public.orders
+   where amount = 100 and status <> 'draft'),
+  100,
+  'the minimum it was checked against is snapshotted in taka, not paisa'
 );
 
 select test_data.as_anon();

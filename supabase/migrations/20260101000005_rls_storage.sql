@@ -115,7 +115,7 @@ create policy proofs_read_own_or_staff
   to authenticated
   using (
     bucket_id = 'proofs'
-    and (owner_id = auth.uid() or private.is_staff())
+    and ((owner_id)::text = (auth.uid())::text or private.is_staff())
   );
 
 -- No update or delete policy. Evidence is append-only and a screenshot belongs

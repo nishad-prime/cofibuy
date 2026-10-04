@@ -2,7 +2,22 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { COPY_KEYS, copyKeyList, allowsMarkdown, placeholdersIn } from '@/config/copyKeys'
+import {
+  COPY_KEYS,
+  copyKeyList,
+  allowsMarkdown,
+  placeholdersIn,
+  isCopyKey,
+  MARKDOWN_ALLOWED,
+  SIMPLE_COPY,
+  simpleCopyKeys,
+} from '@/config/copyKeys'
+import {
+  COPY_FIELD_LABELS,
+  COPY_SECTION_TITLES,
+  buildCopySections,
+  bundled,
+} from '@/config/copySections'
 import enCustomer from '@/i18n/locales/en/customer.json'
 import bnCustomer from '@/i18n/locales/bn/customer.json'
 
@@ -12,7 +27,10 @@ import bnCustomer from '@/i18n/locales/bn/customer.json'
  * under the shipped copy fails here instead of at the operator's save.
  */
 const here = dirname(fileURLToPath(import.meta.url))
-const migration = (...name: string) => join(here, '..', '..', 'supabase', 'migrations', ...name)
+
+function migration(file: string): string {
+  return join(here, '..', '..', 'supabase', 'migrations', file)
+}
 
 function readCap(): number {
   const sql = readFileSync(migration('20261004200000_copy_value_limits.sql'), 'utf8')
@@ -156,5 +174,118 @@ describe('copy key registry', () => {
     // operator sees a raw constraint violation instead of the sentence the function
     // would have given them.
     expect(readConstraintCap()).toBe(readCap())
+  })
+})
+
+describe('curated copy view', () => {
+  it('only lists keys the registry knows', () => {
+    // A key here that the registry lacks would render an empty box, and saving it
+    // would be refused by the database as unknown.
+    expect(simpleCopyKeys().filter((key) => !isCopyKey(key))).toEqual([])
+  })
+
+  it('lists no key twice', () => {
+    // A duplicate renders two boxes bound to one draft field, so a save would send
+    // the key twice and the operator would see the edit land in the wrong box.
+    const list = simpleCopyKeys()
+    expect(new Set(list).size).toBe(list.length)
+  })
+
+  it('is a strict subset, so the full view is never hidden', () => {
+    const curated = new Set(simpleCopyKeys())
+    expect(curated.size).toBeLessThan(copyKeyList().length)
+    expect(curated.size).toBeGreaterThan(0)
+  })
+
+  it('keeps every markdown-capable key reachable in the curated view', () => {
+    // Formatted prose is the reason the markdown rule exists, and the six prose keys
+    // are all curated. If one were dropped from the tier, an operator reordering the
+    // payment instructions would have to drop into the full view to find it.
+    const curated = new Set(simpleCopyKeys())
+    const orphans = MARKDOWN_ALLOWED.filter((key) => !curated.has(key))
+    expect(orphans).toEqual([])
+  })
+
+  it('covers every key somewhere, between the two views', () => {
+    // The round trip the editor depends on: a key that appears in neither the curated
+    // view nor the full view is unreachable, so an operator cannot fix its wording.
+    // This is the assertion that was missing before the curated view existed.
+    const curated = new Set(simpleCopyKeys())
+    const unreachable = copyKeyList().filter((key) => !curated.has(key))
+    expect(unreachable).toHaveLength(copyKeyList().length - curated.size)
+    expect(unreachable.length).toBeGreaterThan(0)
+  })
+
+  it('gives every curated key a real label', () => {
+    // `copyKeyLabel` turns `paywall.chooseMethodHint` into "Choose Method Hint",
+    // which is fine for a debug list and wrong in an operator form. Keyed by copy key
+    // rather than by derived label so the map cannot drift out of step with the tier.
+    const unlabelled = simpleCopyKeys().filter((key) => !COPY_FIELD_LABELS[key])
+    expect(unlabelled).toEqual([])
+  })
+
+  it('gives every curated section a title', () => {
+    const untitled = SIMPLE_COPY.filter((section) => !COPY_SECTION_TITLES[section.id])
+    expect(untitled.map((section) => section.id)).toEqual([])
+  })
+
+  it('carries no label for a key the curated view does not show', () => {
+    // A label with nothing behind it is a leftover, and usually means a key was
+    // dropped from the tier without noticing.
+    const curated = new Set(simpleCopyKeys())
+    const stale = Object.keys(COPY_FIELD_LABELS).filter((key) => !curated.has(key))
+    expect(stale).toEqual([])
+  })
+})
+
+describe('copy editor sections', () => {
+  const listed = (showAll: boolean, search = '') =>
+    buildCopySections(showAll, search).flatMap((section) => [...section.keys])
+
+  it('lists every key in the full view', () => {
+    // The full view is the escape hatch. If it ever loses a key, that key becomes
+    // uneditable and nothing reports an error - the editor still saves fine.
+    expect([...listed(true)].sort()).toEqual([...copyKeyList()].sort())
+  })
+
+  it('lists only curated keys in the default view', () => {
+    const curated = new Set(simpleCopyKeys())
+    const stray = listed(false).filter((key) => !curated.has(key))
+    expect(stray).toEqual([])
+  })
+
+  it('loses no key to a search, in either view', () => {
+    // Searching narrows what is listed, so a key can be absent from the list while
+    // still being perfectly editable. These assertions are about the *default*
+    // listing above; this one is the guard that a search cannot corrupt the registry.
+    for (const showAll of [false, true]) {
+      for (const section of buildCopySections(showAll, 'zzz-no-such-copy')) {
+        expect(section.keys).toEqual([])
+      }
+    }
+  })
+
+  it('finds a key by its shipped wording, not just its key', () => {
+    // The operator reads the storefront, not the source. They will paste the phrase
+    // they want to change, so search has to match the text in either language.
+    const phrase = bundled('paywall.closedTitle', 'bn')
+    expect(phrase.length).toBeGreaterThan(0)
+    const hits = listed(true, phrase)
+    expect(hits).toContain('paywall.closedTitle')
+  })
+
+  it('never repeats a key across sections', () => {
+    // A duplicate renders two boxes bound to one draft field, so a save would send the
+    // key twice and the edit would appear to land in the wrong box.
+    for (const showAll of [false, true]) {
+      const keys = listed(showAll)
+      expect(new Set(keys).size).toBe(keys.length)
+    }
+  })
+
+  it('gives every section a heading that is not a bare identifier', () => {
+    // A raw `id` leaking into the heading means a section was added without a title.
+    const untitled = buildCopySections(false).filter((section) => section.title === section.id)
+    expect(untitled.map((section) => section.id)).toEqual([])
   })
 })

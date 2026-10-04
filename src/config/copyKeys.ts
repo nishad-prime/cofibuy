@@ -137,6 +137,69 @@ export type CopyKey = (typeof COPY_KEYS)[CopyNamespace][number]
 
 const NAMESPACE_KEYS = new Set<string>(COPY_NAMESPACES)
 
+/** A group of related keys as one editor section. */
+export interface CopySection {
+  id: string
+  keys: readonly string[]
+}
+
+/**
+ * The copy an operator has an actual reason to change, grouped by where it appears.
+ *
+ * Every key stays editable and overridable - this is a presentation tier, not a
+ * permission. It exists because all 82 keys on one page is 164 inputs, and roughly
+ * 56 of them are chrome (`common.yes`, `evidence.errTrxid`, `order.status.*`) that
+ * nobody rewords. Putting those in front of someone asking them to fix a typo is how
+ * a settings page stops being usable.
+ *
+ * The tier is a hand-written positive list rather than the complement of
+ * `COPY_KEYS`, for the reason `MARKDOWN_ALLOWED` is: a key added tomorrow must not
+ * appear in the curated view by accident. If it is worth surfacing, it gets added
+ * here on purpose.
+ *
+ * Grouped by screen rather than by namespace, because the question an operator has
+ * is "what does the payment page say?", not "what does the paywall namespace hold?".
+ *
+ * All six markdown-capable keys fall inside this tier, so formatted prose is
+ * available wherever prose actually lives, in both the curated and the full view.
+ */
+export const SIMPLE_COPY: readonly CopySection[] = [
+  {
+    id: 'identity',
+    keys: ['app.name', 'app.tagline'],
+  },
+  {
+    id: 'home',
+    keys: ['home.heading', 'home.subheading', 'home.empty', 'home.browse'],
+  },
+  {
+    id: 'paywall',
+    keys: [
+      'paywall.chooseMethod',
+      'paywall.chooseMethodHint',
+      'paywall.submit',
+      'paywall.noMethods',
+      'paywall.deliverable',
+    ],
+  },
+  {
+    id: 'closed',
+    keys: ['paywall.closedTitle', 'paywall.closedBody', 'paywall.closedContact'],
+  },
+  {
+    id: 'order',
+    keys: ['order.reminder', 'order.reminderBody', 'order.evidenceHint', 'order.submitEvidence'],
+  },
+  { id: 'notFound', keys: ['notFound.title', 'notFound.body', 'notFound.cta'] },
+  { id: 'recovery', keys: ['recovery.title', 'recovery.body'] },
+  { id: 'evidence', keys: ['evidence.chooseImage'] },
+]
+
+/** Every key the curated view shows, flat. */
+export function simpleCopyKeys(): string[] {
+  return SIMPLE_COPY.flatMap((section) => [...section.keys])
+}
+
 /**
  * A human label for the editor. Shown instead of the raw key so an operator reads
  * "Home heading" rather than `home.heading`. Not itself editable - this is admin
@@ -192,7 +255,7 @@ export function copyKeyList(): string[] {
  * added to `COPY_KEYS` is not accidentally markdown-capable until an explicit
  * decision is made.
  */
-const MARKDOWN_ALLOWED = [
+export const MARKDOWN_ALLOWED = [
   'notFound.body',
   'order.evidenceHint',
   'order.reminderBody',

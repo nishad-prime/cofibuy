@@ -42,13 +42,47 @@
     <template v-else>
       <p class="hint mb-4">{{ t('admin.copy.fallbackHint') }}</p>
 
-      <section v-for="ns in namespaceList" :key="ns" class="card card-pad mb-4">
-        <h2 class="text-sm font-semibold text-stone-900">{{ namespaceLabel(ns) }}</h2>
+      <!-- One view, two tiers. The toggle swaps which sections are listed; the draft,
+           the dirty count and the save payload are computed over every key either way,
+           so filtering the list can never hide an unsaved edit from the operator. -->
+      <div class="mb-4 flex flex-wrap items-center gap-3">
+        <button type="button" class="btn-secondary" @click="showAll = !showAll">
+          {{ showAll ? t('admin.copy.showFewer') : t('admin.copy.showAll') }}
+        </button>
+        <span class="hint">{{
+          showAll ? t('admin.copy.allHint') : t('admin.copy.simpleHint')
+        }}</span>
+        <input
+          v-if="showAll"
+          v-model="search"
+          type="search"
+          class="field max-w-xs"
+          :placeholder="t('admin.copy.search')"
+          :aria-label="t('admin.copy.search')"
+        />
+      </div>
 
-        <div v-for="key in keysIn(ns)" :key="key" class="mt-4 first:mt-3">
+      <p v-if="visibleSections.length === 0" class="empty-state">
+        {{ t('admin.copy.noMatches') }}
+      </p>
+
+      <section v-for="section in visibleSections" :key="section.id" class="card card-pad mb-4">
+        <h2 class="text-sm font-semibold text-stone-900">{{ section.title }}</h2>
+
+        <div v-for="key in section.keys" :key="key" class="mt-4 first:mt-3">
           <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <label class="label" :for="`bn-${key}`">{{ copyKeyLabel(key) }}</label>
-            <span class="font-mono text-[11px] text-stone-400">{{ key }}</span>
+            <label class="label" :for="`bn-${key}`">{{ fieldLabel(key) }}</label>
+            <!-- The raw key is admin chrome for the person debugging a missing string,
+                 and noise on the page most operators ever see. -->
+            <span v-if="showAll" class="font-mono text-[11px] text-stone-400">{{ key }}</span>
+            <button
+              v-if="differs(key)"
+              type="button"
+              class="text-xs text-stone-500 underline underline-offset-2"
+              @click="resetField(key)"
+            >
+              {{ t('admin.copy.resetField') }}
+            </button>
           </div>
 
           <textarea
@@ -113,8 +147,6 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { getSupabase } from '@/lib/supabase'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import { useAdminI18n } from '@/i18n/admin'
-import bnCustomer from '@/i18n/locales/bn/customer.json'
-import enCustomer from '@/i18n/locales/en/customer.json'
 import {
   COPY_KEYS,
   COPY_NAMESPACES,
@@ -123,7 +155,7 @@ import {
   missingPlaceholders,
   placeholdersIn,
 } from '@/config/copyKeys'
-import type { CopyNamespace } from '@/config/copyKeys'
+import { bundled, buildCopySections, fieldLabel } from '@/config/copySections'
 
 const supabase = getSupabase()
 const { t } = useAdminI18n()
@@ -155,43 +187,28 @@ const saving = ref(false)
 const success = ref(false)
 const errors = ref<string[]>([])
 
-const namespaceList = COPY_NAMESPACES
-const allKeys = namespaceList.flatMap((ns) => [...COPY_KEYS[ns]])
+/**
+ * The curated tier and the full registry, rendered by the same loop.
+ *
+ * `buildCopySections` owns which sections are listed. Nothing here depends on the
+ * answer: `dirtyCount`, `resetDraft` and `save` all iterate `allKeys`, so a filtered
+ * or searched list cannot swallow an edit or make the save bar lie about what is
+ * pending.
+ */
+const showAll = ref(false)
+const search = ref('')
 
-function keysIn(ns: CopyNamespace): readonly string[] {
-  return COPY_KEYS[ns]
-}
+/** Every key, regardless of what the list is showing. */
+const allKeys = COPY_NAMESPACES.flatMap((ns) => [...COPY_KEYS[ns]])
 
-const NAMESPACE_TITLES: Record<string, string> = {
-  app: 'Site identity',
-  home: 'Index page',
-  paywall: 'Paywall',
-  order: 'Order status',
-  evidence: 'Evidence form',
-  recovery: 'Access recovery',
-  common: 'Shared labels',
-  footer: 'Footer',
-  lang: 'Language switch',
-  notFound: 'Not found',
-  setup: 'Setup warning',
-}
+const visibleSections = computed(() => buildCopySections(showAll.value, search.value))
 
-function namespaceLabel(ns: string): string {
-  return NAMESPACE_TITLES[ns] ?? ns
-}
-
-/** The shipped text, shown as the placeholder so the operator sees what they override. */
-function bundled(key: string, locale: 'bn' | 'en'): string {
-  const source: unknown = locale === 'bn' ? bnCustomer : enCustomer
-  let node = source
-  for (const part of key.split('.')) {
-    if (node && typeof node === 'object' && part in (node as Record<string, unknown>)) {
-      node = (node as Record<string, unknown>)[part]
-    } else {
-      return ''
-    }
-  }
-  return typeof node === 'string' ? node : ''
+/** Puts one field back to the stored value, without discarding the rest of the draft. */
+function resetField(key: string): void {
+  const row = stored.value[key]
+  draft.bn[key] = row?.value_bn ?? ''
+  draft.en[key] = row?.value_en ?? ''
+  draft.markdown[key] = allowsMarkdown(key) ? (row?.is_markdown ?? false) : false
 }
 
 function isSet(key: string): boolean {

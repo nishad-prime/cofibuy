@@ -31,11 +31,19 @@ begin
       return;
   end;
 
+  -- The extension and its functions do not always share a schema: on Supabase the
+  -- `pg_cron` extension is registered with `extnamespace = pg_catalog` while
+  -- `schedule()` lives in `cron`, so `format('%I.schedule', extnamespace)` builds
+  -- `pg_catalog.schedule` and fails with 42883. Ask the extension's own `schedule`
+  -- function where it actually is.
   select n.nspname
   into v_schema
-  from pg_extension e
-  join pg_namespace n on n.oid = e.extnamespace
-  where e.extname = 'pg_cron';
+  from pg_depend d
+  join pg_extension e on e.oid = d.refobjid
+  join pg_proc p on p.oid = d.objid
+  join pg_namespace n on n.oid = p.pronamespace
+  where e.extname = 'pg_cron' and p.proname = 'schedule'
+  limit 1;
 
   if v_schema is null then
     raise notice 'pg_cron is not installed; skipping schedules.';

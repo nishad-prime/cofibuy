@@ -114,18 +114,47 @@ Verified by `supabase/tests/10_settings.sql` (33 assertions), plus unit tests in
 
 ## Phase 5 — Validation and removing hardcoded copy
 
-**Status: not started.** The currency-symbol half landed early: Phase 4 added a
-`copyKeys.test.ts` guard that fails if any customer copy embeds a currency glyph,
-so a symbol cannot creep back into the wording.
+**Status: partial.**
 
-- Decide whether brand colour becomes a setting. Phase 4 deliberately deferred it:
-  the palette is eleven `oklch()` shades in `main.css`, so a colour setting needs a
-  generated ramp, not one column. If it happens, validate server-side (hex or
-  `oklch()` only) the way `admin_set_copy` rejects unknown keys.
-- Reject empty or oversized CTA copy at `admin_set_copy`.
-- Add a regression test that fails when a customer view contains a raw
-  user-visible string instead of `t()`. This is what stops the rest of the phase
-  from silently regressing.
+Delivered:
+
+- Copy is length-capped in the database. `api.admin_set_copy` refuses a value over
+  400 characters with `22023`, measured in both languages, before the write. The
+  editor is a trust boundary for the same reason markdown is refused on a label: a
+  reviewer who can approve orders has no business rewriting what the shopfront says
+  about taking payment. Per-key limits would be tighter but would mean eighty numbers
+  to keep in step with the bundles, so instead `copyKeys.test.ts` reads the cap out of
+  the migration and asserts every shipped string fits inside it — the number can never
+  be set below copy that already exists.
+- Copy that renders as nothing is refused. `private.tidy_blank_to_null` normalises a
+  space-only value, but `btrim`'s one-argument form trims the space alone, so a value
+  made of a tab or a zero-width space was stored as an override that displays nothing:
+  the editor showed the field as filled in and the button came out with no label.
+  Rejected rather than normalised, since normalising would silently revert what the
+  operator saved.
+- `src/config/rawCustomerCopy.test.ts` parses every customer template with
+  `@vue/compiler-sfc` and fails on a raw user-visible string — a text node or a static
+  `alt`/`aria-label`/`placeholder`/`title` containing a letter. It parses rather than
+  pattern-matches so an interpolation, a bound attribute or a comment cannot be
+  mistaken for copy, and it collects every violation before asserting so one run
+  reports all of them. An allowlist carries two entries with reasons, and a second
+  assertion fails when an entry is no longer used, so it cannot quietly become a
+  loophole.
+- The guard immediately paid for itself: it found three hardcoded English labels —
+  "Phone number" and "Verification code" — in the middle of a Bangla-first
+  storefront. Both are now `recovery.phone` and `recovery.code`, editable in both
+  languages.
+
+Remaining:
+
+- Decide whether brand colour becomes a setting. Deferred again, deliberately: the
+  palette is eleven `oklch()` shades in `main.css` whose hue walks 82.7→55.6, so a
+  colour setting needs a generated ramp rather than one column, and a half-correct
+  one would let an operator break button contrast. If it happens, validate
+  server-side the way `admin_set_copy` rejects an unknown key.
+- `tidy_blank_to_null` still normalises only what one-argument `btrim` considers
+  blank. The visible-copy rule now refuses those values at the API, but any other
+  write path to `copy_strings` would still store them.
 
 ## Known loose ends
 

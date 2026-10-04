@@ -108,6 +108,8 @@ export const COPY_KEYS = {
   ],
   recovery: [
     'recovery.title',
+    'recovery.phone',
+    'recovery.code',
     'recovery.body',
     'recovery.submit',
     'recovery.submitting',

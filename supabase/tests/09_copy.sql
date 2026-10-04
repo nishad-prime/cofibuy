@@ -5,7 +5,7 @@
 -- cleared language reverts rather than blanking, and a customer cannot read the
 -- table even though they hold the anon key.
 
-select plan(29);
+select plan(38);
 
 select test_data.reset();
 
@@ -271,6 +271,108 @@ select is(
   0,
   'whitespace-only is normalised to unset'
 );
+
+-- ---------------------------------------------------------------------------
+-- Oversized values
+--
+-- The editor is a trust boundary, so length is capped in the database for the same
+-- reason markdown is refused on a label. The boundary is asserted on both sides: a
+-- cap that cannot be reached is not a cap, and one that rejects its own limit is
+-- just an outage waiting for the operator who needs one more character.
+-- ---------------------------------------------------------------------------
+
+select lives_ok(
+  $$select api.admin_set_copy(jsonb_build_array(
+    jsonb_build_object('key', 'home.heading', 'value_en', repeat('a', 400))))$$,
+  'a value exactly at the cap is accepted'
+);
+
+select throws_ok(
+  $$select api.admin_set_copy(jsonb_build_array(
+    jsonb_build_object('key', 'home.heading', 'value_en', repeat('a', 401))))$$,
+  '22023',
+  'copy key home.heading (en): 401 characters, the limit is 400',
+  'one character over the cap is refused'
+);
+
+-- Bangla runs longer than English for the same sentence, so measuring only the
+-- English value would leave the language this store is written in unguarded.
+select throws_ok(
+  $$select api.admin_set_copy(jsonb_build_array(
+    jsonb_build_object('key', 'home.heading', 'value_bn', repeat('ক', 401))))$$,
+  '22023',
+  'copy key home.heading (bn): 401 characters, the limit is 400',
+  'the cap measures Bangla too'
+);
+
+-- Prose keys are where long copy legitimately lives, so the cap is deliberately
+-- store-wide rather than tighter on labels. It still applies here.
+select throws_ok(
+  $$select api.admin_set_copy(jsonb_build_array(
+    jsonb_build_object('key', 'recovery.body', 'value_en', repeat('a', 401))))$$,
+  '22023',
+  'copy key recovery.body (en): 401 characters, the limit is 400',
+  'the cap applies to a prose key as well'
+);
+
+-- ---------------------------------------------------------------------------
+-- Values that render as nothing
+--
+-- `private.tidy_blank_to_null` already normalises a space-only value to NULL, but
+-- `btrim` with one argument trims the space alone - so a tab, a zero-width space or
+-- a bidi mark used to be stored as an override that displays nothing. The editor
+-- would show the field as filled in and the label would come out empty.
+-- ---------------------------------------------------------------------------
+
+select throws_ok(
+  $$select api.admin_set_copy(jsonb_build_array(
+    jsonb_build_object('key', 'home.heading', 'value_en', E'\t')))$$,
+  '22023',
+  'copy key home.heading (en): contains no visible characters',
+  'a tab on its own is refused'
+);
+
+select throws_ok(
+  $$select api.admin_set_copy(jsonb_build_array(
+    jsonb_build_object('key', 'home.heading', 'value_en', E'\u200b\u200c\ufeff')))$$,
+  '22023',
+  'copy key home.heading (en): contains no visible characters',
+  'zero-width and BOM characters are refused'
+);
+
+-- An invisible character glued to a real one is ordinary text: pasting a string
+-- that picked up a zero-width joiner must not fail, or the rule would be teaching
+-- operators to strip characters they cannot see.
+select lives_ok(
+  $$select api.admin_set_copy(jsonb_build_array(
+    jsonb_build_object('key', 'home.heading', 'value_en', E'\u200bPay here')))$$,
+  'an invisible character alongside real text is accepted'
+);
+
+-- ---------------------------------------------------------------------------
+-- A refused batch writes nothing
+--
+-- The call is one transaction, so raising anywhere in it rolls back the items
+-- already written - which is what makes the per-item checks above safe to run in a
+-- loop rather than requiring a pre-pass over the whole array.
+-- ---------------------------------------------------------------------------
+
+select throws_ok(
+  $$select api.admin_set_copy(jsonb_build_array(
+    jsonb_build_object('key', 'home.browse', 'value_en', 'Fine'),
+    jsonb_build_object('key', 'home.empty', 'value_en', repeat('a', 401))))$$,
+  '22023',
+  'copy key home.empty (en): 401 characters, the limit is 400',
+  'a batch containing one oversized item is refused'
+);
+
+select is(
+  (select count(*)::int from public.copy_strings where key = 'home.browse'),
+  0,
+  'and the item written before it was rolled back'
+);
+
+delete from public.copy_strings where key in ('home.heading', 'home.browse');
 
 select test_data.as_anon();
 select lives_ok(

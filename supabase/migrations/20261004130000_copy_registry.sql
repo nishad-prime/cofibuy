@@ -99,6 +99,8 @@ insert into private.copy_registry (key, markdown_allowed) values
   ('evidence.errMaxLen', false),
   ('evidence.errFileSize', false),
   ('recovery.title', false),
+  ('recovery.phone', false),
+  ('recovery.code', false),
   ('recovery.body', true),
   ('recovery.submit', false),
   ('recovery.submitting', false),

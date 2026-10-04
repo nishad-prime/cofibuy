@@ -17,7 +17,7 @@
 
     <form v-else class="card card-pad space-y-5" @submit.prevent="submitRequest">
       <div>
-        <label class="label" for="phone">Phone number</label>
+        <label class="label" for="phone">{{ t('customer.recovery.phone') }}</label>
         <input
           id="phone"
           v-model="phone"

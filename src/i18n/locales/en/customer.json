@@ -92,6 +92,8 @@
   },
   "recovery": {
     "title": "Recover access",
+    "phone": "Phone number",
+    "code": "Verification code",
     "body": "Enter the mobile number you ordered with and we will send you a one-time code.",
     "submit": "Send code",
     "submitting": "Sending.",

@@ -4,7 +4,7 @@
 
     <form v-if="!verified" class="card card-pad mt-8 space-y-5" @submit.prevent="submitVerify">
       <div>
-        <label class="label" for="phone">Phone number</label>
+        <label class="label" for="phone">{{ t('customer.recovery.phone') }}</label>
         <input
           id="phone"
           v-model="phone"
@@ -17,7 +17,7 @@
       </div>
 
       <div>
-        <label class="label" for="code">Verification code</label>
+        <label class="label" for="code">{{ t('customer.recovery.code') }}</label>
         <input
           id="code"
           v-model="code"

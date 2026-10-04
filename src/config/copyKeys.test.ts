@@ -1,7 +1,30 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { COPY_KEYS, copyKeyList, allowsMarkdown, placeholdersIn } from '@/config/copyKeys'
 import enCustomer from '@/i18n/locales/en/customer.json'
 import bnCustomer from '@/i18n/locales/bn/customer.json'
+
+/**
+ * The copy length cap lives in SQL because the database is what refuses the write.
+ * Read it out of the migration rather than repeating the number, so lowering the cap
+ * under the shipped copy fails here instead of at the operator's save.
+ */
+const here = dirname(fileURLToPath(import.meta.url))
+const capMigration = join(
+  here,
+  '..',
+  '..',
+  'supabase',
+  'migrations',
+  '20261004200000_copy_value_limits.sql',
+)
+
+function readCap(): number {
+  const sql = readFileSync(capMigration, 'utf8')
+  return Number(sql.match(/c_max integer := (\d+);/)?.[1])
+}
 
 /** Walk a bundled message file the same way vue-i18n would. */
 function resolve(source: unknown, key: string): string | undefined {
@@ -101,6 +124,27 @@ describe('copy key registry', () => {
       if (glyph.test(resolve(enCustomer, key) ?? '')) offenders.push(`en:${key}`)
       if (glyph.test(resolve(bnCustomer, key) ?? '')) offenders.push(`bn:${key}`)
     }
+    expect(offenders).toEqual([])
+  })
+
+  it('fits every bundled string inside the cap the database enforces', () => {
+    const cap = readCap()
+    expect(cap).toBeGreaterThan(0)
+
+    // Counted by code point, because that is what Postgres `char_length` counts.
+    const offenders: string[] = []
+    for (const key of copyKeyList()) {
+      for (const [lang, bundle] of [
+        ['en', enCustomer],
+        ['bn', bnCustomer],
+      ] as const) {
+        const length = [...(resolve(bundle, key) ?? '')].length
+        if (length > cap) offenders.push(`${lang}:${key} (${length} chars)`)
+      }
+    }
+
+    // A bundled string over the cap is copy the database would refuse to store, so
+    // an operator could never restore it.
     expect(offenders).toEqual([])
   })
 })

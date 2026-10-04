@@ -131,6 +131,7 @@ import CopyText from '@/components/CopyText.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 import EvidenceForm, { type EvidenceField } from '@/components/customer/EvidenceForm.vue'
+import { buildEvidencePayload } from '@/lib/evidencePayload'
 
 const route = useRoute()
 const supabase = getSupabase()
@@ -246,26 +247,23 @@ onMounted(async () => {
   }
 })
 
-const submitEvidence = async (evidence: Record<string, any>): Promise<void> => {
+/**
+ * The form hands back one value per field, and a File for the image ones.
+ *
+ * The split into two flat maps is `buildEvidencePayload`'s job, and it is tested
+ * there: the previous inline version nested each value as `{ value, storage_path }`,
+ * which `->>` reads as null, so evidence submission failed on every manual order.
+ */
+const submitEvidence = async (evidence: Record<string, unknown>): Promise<void> => {
   submitting.value = true
+  error.value = null
+
   try {
-    const processedEvidence: Record<string, any> = {}
+    const payload = await buildEvidencePayload(evidence, fileUpload.upload, orderId.value)
 
-    for (const [key, value] of Object.entries(evidence)) {
-      if (value instanceof File) {
-        const result = await fileUpload.upload(value, key, orderId.value)
-        processedEvidence[key] = {
-          value: value.name,
-          storage_path: result.storage_path,
-        }
-      } else {
-        processedEvidence[key] = { value }
-      }
-    }
-
-    const { error: submitError } = await (supabase.rpc as any)('submit_evidence', {
+    const { error: submitError } = await supabase.rpc('submit_evidence', {
       p_order_id: orderId.value,
-      p_evidence: processedEvidence,
+      ...payload,
     })
 
     if (submitError) {

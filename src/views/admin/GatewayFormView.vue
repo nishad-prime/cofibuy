@@ -14,10 +14,13 @@
       </p>
     </header>
 
-    <form class="space-y-6" @submit.prevent="save">
-      <section class="card space-y-5 p-6">
-        <h2 class="text-sm font-semibold tracking-wide text-stone-500 uppercase">Basics</h2>
-
+    <form class="space-y-4" @submit.prevent="save">
+      <CollapsibleSection
+        panel-id="basics"
+        title="Basics"
+        :open="openSection === 'basics'"
+        @update:open="toggleSection('basics')"
+      >
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="block">
             <span class="mb-1 block text-sm font-medium text-stone-700">Kind *</span>
@@ -58,7 +61,7 @@
           </label>
         </div>
 
-        <label class="flex items-start gap-2">
+        <label class="mt-4 flex items-start gap-2">
           <input v-model="form.is_active" type="checkbox" class="mt-0.5 rounded border-stone-300" />
           <span>
             <span class="block text-sm font-medium text-stone-800">Active</span>
@@ -67,13 +70,14 @@
             </span>
           </span>
         </label>
-      </section>
+      </CollapsibleSection>
 
-      <section class="card space-y-5 p-6">
-        <h2 class="text-sm font-semibold tracking-wide text-stone-500 uppercase">
-          How the money arrives
-        </h2>
-
+      <CollapsibleSection
+        panel-id="mode"
+        title="How the money arrives"
+        :open="openSection === 'mode'"
+        @update:open="toggleSection('mode')"
+      >
         <fieldset class="space-y-3">
           <legend class="sr-only">How the money arrives</legend>
 
@@ -129,7 +133,7 @@
 
         <div
           v-if="isAutomated"
-          class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
+          class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
         >
           <p class="font-medium">Automatic methods carry no forms.</p>
           <p class="mt-1 text-xs">
@@ -138,17 +142,26 @@
             saved on it are dropped when you save.
           </p>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section v-if="!isAutomated" class="card p-6">
+      <CollapsibleSection
+        v-if="!isAutomated"
+        panel-id="accounts"
+        title="Account details"
+        :open="openSection === 'accounts'"
+        :has-error="hasAccountProblems"
+        :note="accountFields.length ? String(accountFields.length) : undefined"
+        @update:open="toggleSection('accounts')"
+      >
         <AccountFieldEditor ref="accountEditor" v-model="accountFields" />
-      </section>
+      </CollapsibleSection>
 
-      <section class="card space-y-5 p-6">
-        <h2 class="text-sm font-semibold tracking-wide text-stone-500 uppercase">
-          Customer instructions
-        </h2>
-
+      <CollapsibleSection
+        panel-id="instructions"
+        title="Customer instructions"
+        :open="openSection === 'instructions'"
+        @update:open="toggleSection('instructions')"
+      >
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="block">
             <span class="mb-1 block text-sm font-medium text-stone-700">Instructions (EN)</span>
@@ -168,12 +181,12 @@
           </label>
         </div>
 
-        <p class="text-xs text-stone-500">
+        <p class="mt-3 text-xs text-stone-500">
           Markdown is supported in the instruction boxes. The reference prompt is the short line
           shown next to the amount field.
         </p>
 
-        <label class="flex items-start gap-2">
+        <label class="mt-4 flex items-start gap-2">
           <input
             v-model="form.supports_reference"
             type="checkbox"
@@ -186,18 +199,26 @@
             </span>
           </span>
         </label>
-      </section>
+      </CollapsibleSection>
 
-      <section v-if="!isAutomated" class="card p-6">
+      <CollapsibleSection
+        v-if="!isAutomated"
+        panel-id="evidence"
+        title="Evidence fields"
+        :open="openSection === 'evidence'"
+        :has-error="hasEvidenceProblems"
+        :note="fields.length ? String(fields.length) : undefined"
+        @update:open="toggleSection('evidence')"
+      >
         <EvidenceFieldEditor ref="editor" v-model="fields" />
-      </section>
+      </CollapsibleSection>
 
       <div v-if="error" class="card border-red-200 bg-red-50 p-4 text-sm text-red-800">
         {{ error }}
       </div>
 
       <div class="flex items-center gap-3">
-        <button type="submit" class="btn-primary" :disabled="saving || !isValid">
+        <button type="submit" class="btn-primary" :disabled="saving">
           {{ saving ? 'Saving…' : 'Save payment method' }}
         </button>
         <router-link to="/admin/gateways" class="btn-secondary">Cancel</router-link>
@@ -212,6 +233,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import EvidenceFieldEditor, { type FieldDraft } from '@/components/admin/EvidenceFieldEditor.vue'
 import AccountFieldEditor, { type AccountDraft } from '@/components/admin/AccountFieldEditor.vue'
+import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
 
 interface Gateway {
   id: string
@@ -265,22 +287,58 @@ const form = ref({
 
 const isAutomated = computed(() => !!form.value.provider)
 
-const isValid = computed(
-  () =>
-    (editor.value?.problems ?? []).every((problem) => !problem) &&
-    (accountEditor.value?.problems ?? []).every((problem) => !problem),
+/**
+ * Which panel is open. One id rather than a boolean per panel, because the rule the
+ * form needs is "one at a time", and a set of independent booleans cannot express that
+ * without every panel agreeing about the others.
+ *
+ * `accounts` and `evidence` only exist for a manual method, so the id can point at a
+ * panel that is not on the page. `onProviderChange` and the mount path both repair
+ * that; without it the operator toggles to automatic, switches to manual again, and
+ * finds every panel folded with nothing marking why.
+ */
+const openSection = ref<string | null>('basics')
+
+/** The panels a manual method has, in order. `mode` is shared by both kinds. */
+const MANUAL_SECTIONS = ['basics', 'mode', 'accounts', 'instructions', 'evidence'] as const
+
+function toggleSection(id: string): void {
+  openSection.value = openSection.value === id ? null : id
+}
+
+/** Keep the open id pointing at a panel that is actually rendered. */
+function ensureOpenSectionExists(): void {
+  const available = isAutomated.value
+    ? MANUAL_SECTIONS.filter((id) => id !== 'accounts' && id !== 'evidence')
+    : MANUAL_SECTIONS
+  if (!openSection.value || !available.includes(openSection.value as never)) {
+    openSection.value = 'basics'
+  }
+}
+
+const hasAccountProblems = computed(
+  () => (accountEditor.value?.problems ?? []).some(Boolean) || false,
 )
+const hasEvidenceProblems = computed(() => (editor.value?.problems ?? []).some(Boolean) || false)
+
+const isValid = computed(() => !hasAccountProblems.value && !hasEvidenceProblems.value)
 
 /**
  * Switching to an automated method has to clear the forms, not just hide them. The
  * database refuses a row that carries both, so leaving them in place would turn the next
  * save into a constraint error with a message about a check constraint rather than
  * anything about the box the operator just ticked.
+ *
+ * The open panel is repaired here too: two of the five panels stop existing when the
+ * method becomes automatic, and the id naming one of them would otherwise survive the
+ * switch and reappear collapsed when it comes back.
  */
 const onProviderChange = (): void => {
-  if (!isAutomated.value) return
-  fields.value = []
-  accountFields.value = []
+  if (isAutomated.value) {
+    fields.value = []
+    accountFields.value = []
+  }
+  ensureOpenSectionExists()
 }
 
 const toDraft = (raw: Partial<FieldDraft>): FieldDraft => ({
@@ -334,10 +392,19 @@ onMounted(async () => {
   }
   fields.value = (gateway.evidence_fields ?? []).map(toDraft)
   accountFields.value = (gateway.account_fields ?? []).map(toAccountDraft)
+  ensureOpenSectionExists()
 })
 
 const save = async (): Promise<void> => {
-  if (!isValid.value) return
+  // An invalid field is reported inline by the editor that owns it, so opening that
+  // panel is the whole error message. Silently refusing to save would leave a dead
+  // button and no explanation, which is worse than the previous behaviour of disabling
+  // the button outright.
+  if (!isValid.value) {
+    if (hasAccountProblems.value) openSection.value = 'accounts'
+    else if (hasEvidenceProblems.value) openSection.value = 'evidence'
+    return
+  }
 
   saving.value = true
   error.value = null

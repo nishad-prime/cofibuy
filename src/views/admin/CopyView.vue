@@ -66,86 +66,95 @@
         {{ t('admin.copy.noMatches') }}
       </p>
 
-      <section v-for="section in visibleSections" :key="section.id" class="card card-pad mb-4">
-        <h2 class="text-sm font-semibold text-stone-900">{{ section.title }}</h2>
+      <div class="space-y-3">
+        <CollapsibleSection
+          v-for="section in visibleSections"
+          :key="section.id"
+          :panel-id="`copy-${section.id}`"
+          :title="section.title"
+          :open="openSection === section.id"
+          :has-error="(sectionProblems.get(section.id) ?? 0) > 0"
+          @update:open="toggleSection(section.id)"
+        >
+          <div v-for="key in section.keys" :key="key" class="mt-4 first:mt-0">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <label class="label" :for="`bn-${key}`">{{ fieldLabel(key) }}</label>
+              <!-- The raw key is admin chrome for the person debugging a missing string,
+                   and noise on the page most operators ever see. -->
+              <span v-if="showAll" class="font-mono text-[11px] text-stone-400">{{ key }}</span>
+              <button
+                v-if="differs(key)"
+                type="button"
+                class="text-xs text-stone-500 underline underline-offset-2"
+                @click="resetField(key)"
+              >
+                {{ t('admin.copy.resetField') }}
+              </button>
+            </div>
 
-        <div v-for="key in section.keys" :key="key" class="mt-4 first:mt-3">
-          <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <label class="label" :for="`bn-${key}`">{{ fieldLabel(key) }}</label>
-            <!-- The raw key is admin chrome for the person debugging a missing string,
-                 and noise on the page most operators ever see. -->
-            <span v-if="showAll" class="font-mono text-[11px] text-stone-400">{{ key }}</span>
-            <button
-              v-if="differs(key)"
-              type="button"
-              class="text-xs text-stone-500 underline underline-offset-2"
-              @click="resetField(key)"
-            >
-              {{ t('admin.copy.resetField') }}
-            </button>
-          </div>
+            <textarea
+              v-if="allowsMarkdown(key)"
+              :id="`bn-${key}`"
+              v-model="draft.bn[key]"
+              rows="3"
+              class="field mt-1"
+            ></textarea>
+            <input v-else :id="`bn-${key}`" v-model="draft.bn[key]" class="field mt-1" />
 
-          <textarea
-            v-if="allowsMarkdown(key)"
-            :id="`bn-${key}`"
-            v-model="draft.bn[key]"
-            rows="3"
-            class="field mt-1"
-          ></textarea>
-          <input v-else :id="`bn-${key}`" v-model="draft.bn[key]" class="field mt-1" />
-
-          <label class="mt-3 block text-xs font-medium text-stone-600" :for="`en-${key}`">
-            EN
-          </label>
-          <textarea
-            :id="`en-${key}`"
-            v-model="draft.en[key]"
-            rows="2"
-            class="field mt-1"
-            :placeholder="bundled(key, 'en')"
-          ></textarea>
-
-          <p v-if="placeholderWarning(key)" class="mt-1 text-xs text-amber-700">
-            {{ placeholderWarning(key) }}
-          </p>
-
-          <div class="mt-2 flex flex-wrap items-center gap-4">
-            <label v-if="allowsMarkdown(key)" class="flex items-center text-xs text-stone-600">
-              <input v-model="draft.markdown[key]" type="checkbox" class="mr-1.5 rounded" />
-              {{ t('admin.copy.markdown') }}
+            <label class="mt-3 block text-xs font-medium text-stone-600" :for="`en-${key}`">
+              EN
             </label>
-            <span class="text-xs text-stone-400">
-              {{ isSet(key) ? t('admin.copy.overridden') : t('admin.copy.usingBundle') }}
-            </span>
-          </div>
+            <textarea
+              :id="`en-${key}`"
+              v-model="draft.en[key]"
+              rows="2"
+              class="field mt-1"
+              :placeholder="bundled(key, 'en')"
+            ></textarea>
 
-          <!-- Only once the key is actually flagged. Ticking the box with no preview
-               would mean saving blind and then discovering on the storefront that a
-               stray asterisk ate the rest of the sentence. Falls back to the bundled
-               text so the box is not empty before anything is typed. -->
-          <div v-if="allowsMarkdown(key) && draft.markdown[key]" class="mt-3">
-            <p class="text-xs font-medium text-stone-600">{{ t('admin.copy.preview') }}</p>
-            <div
-              v-for="locale in PREVIEW_LOCALES"
-              :key="locale"
-              class="mt-1 rounded-lg border border-stone-200 bg-stone-50 p-3"
-            >
-              <p class="mb-1 font-mono text-[11px] text-stone-400">
-                {{ locale === 'bn' ? 'বাংলা' : 'EN' }}
-              </p>
-              <MarkdownBody :source="previewSource(key, locale)" />
+            <p v-if="placeholderWarning(key)" class="mt-1 text-xs text-amber-700">
+              {{ placeholderWarning(key) }}
+            </p>
+
+            <div class="mt-2 flex flex-wrap items-center gap-4">
+              <label v-if="allowsMarkdown(key)" class="flex items-center text-xs text-stone-600">
+                <input v-model="draft.markdown[key]" type="checkbox" class="mr-1.5 rounded" />
+                {{ t('admin.copy.markdown') }}
+              </label>
+              <span class="text-xs text-stone-400">
+                {{ isSet(key) ? t('admin.copy.overridden') : t('admin.copy.usingBundle') }}
+              </span>
+            </div>
+
+            <!-- Only once the key is actually flagged. Ticking the box with no preview
+                 would mean saving blind and then discovering on the storefront that a
+                 stray asterisk ate the rest of the sentence. Falls back to the bundled
+                 text so the box is not empty before anything is typed. -->
+            <div v-if="allowsMarkdown(key) && draft.markdown[key]" class="mt-3">
+              <p class="text-xs font-medium text-stone-600">{{ t('admin.copy.preview') }}</p>
+              <div
+                v-for="locale in PREVIEW_LOCALES"
+                :key="locale"
+                class="mt-1 rounded-lg border border-stone-200 bg-stone-50 p-3"
+              >
+                <p class="mb-1 font-mono text-[11px] text-stone-400">
+                  {{ locale === 'bn' ? 'বাংলা' : 'EN' }}
+                </p>
+                <MarkdownBody :source="previewSource(key, locale)" />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </CollapsibleSection>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getSupabase } from '@/lib/supabase'
 import MarkdownBody from '@/components/MarkdownBody.vue'
+import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
 import { useAdminI18n } from '@/i18n/admin'
 import {
   COPY_KEYS,
@@ -202,6 +211,44 @@ const search = ref('')
 const allKeys = COPY_NAMESPACES.flatMap((ns) => [...COPY_KEYS[ns]])
 
 const visibleSections = computed(() => buildCopySections(showAll.value, search.value))
+
+/**
+ * Which panel is open, as a section id rather than a boolean per panel so that
+ * "one at a time" is the only thing the template has to express.
+ *
+ * The set of sections is not fixed: switching tiers or typing in the search box
+ * replaces it, and ids do not carry across the two views. The watcher below re-points
+ * the open panel at whatever came first, which is also what makes the curated view
+ * open on Shop identity without naming it - the registry decides the order.
+ */
+const openSection = ref<string | null>(null)
+
+function toggleSection(id: string): void {
+  openSection.value = openSection.value === id ? null : id
+}
+
+watch(
+  visibleSections,
+  (sections) => {
+    const ids = sections.map((section) => section.id)
+    if (!openSection.value || !ids.includes(openSection.value)) {
+      openSection.value = ids[0] ?? null
+    }
+  },
+  { immediate: true },
+)
+
+/**
+ * Placeholder warnings per section, so a panel holding a bad string is marked even
+ * while folded. The badge lives in the header, which is the only part on screen.
+ */
+const sectionProblems = computed(() => {
+  const counts = new Map<string, number>()
+  for (const section of visibleSections.value) {
+    counts.set(section.id, section.keys.filter((key) => placeholderWarning(key) !== '').length)
+  }
+  return counts
+})
 
 /** Puts one field back to the stored value, without discarding the rest of the draft. */
 function resetField(key: string): void {
@@ -313,7 +360,20 @@ async function save(): Promise<void> {
     const warning = placeholderWarning(key)
     if (warning) errors.value.push(`${copyKeyLabel(key)}: ${warning}`)
   }
-  if (errors.value.length > 0) return
+  if (errors.value.length > 0) {
+    // Folding the panels means the field that stopped the save is usually off screen,
+    // and an alert naming a key the operator cannot see reads as a broken editor. Open
+    // the first panel that holds one.
+    //
+    // A warning on a key that no visible panel lists is still reported by name above
+    // and is reachable through the search box; that gap predates the folding, since
+    // the curated tier has never rendered every key.
+    const first = visibleSections.value.find(
+      (section) => (sectionProblems.value.get(section.id) ?? 0) > 0,
+    )
+    if (first) openSection.value = first.id
+    return
+  }
 
   const items = allKeys.filter(differs).map((key) => ({
     key,

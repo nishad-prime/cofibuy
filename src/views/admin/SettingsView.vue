@@ -59,6 +59,28 @@
         </label>
       </section>
 
+      <section class="card card-pad">
+        <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.settings.maintenance') }}</h2>
+
+        <label class="mt-4 flex items-start gap-3">
+          <input v-model="form.maintenance_mode" type="checkbox" class="mt-0.5 size-4 rounded" />
+          <span class="text-sm text-stone-700">
+            {{ t('admin.settings.maintenanceEnabled') }}
+            <span class="hint block">{{ t('admin.settings.maintenanceHint') }}</span>
+          </span>
+        </label>
+
+        <p v-if="form.maintenance_mode" class="alert-error mt-4" role="alert">
+          {{ t('admin.settings.maintenanceWarning') }}
+        </p>
+
+        <div class="mt-4">
+          <label class="label" for="contact">{{ t('admin.settings.contact') }}</label>
+          <input id="contact" v-model="form.contact" type="text" class="field ltr-value" />
+          <p class="hint">{{ t('admin.settings.contactHint') }}</p>
+        </div>
+      </section>
+
       <div class="flex items-center gap-3">
         <button type="submit" class="btn-primary" :disabled="saving">
           {{ saving ? t('admin.settings.saving') : t('admin.settings.save') }}
@@ -82,23 +104,27 @@ interface SettingsForm {
   hide_min_amount: boolean
   default_lang: 'bn' | 'en'
   recovery_enabled: boolean
+  maintenance_mode: boolean
+  contact: string
 }
 
 /**
- * The row and the form do not share column names, so the row is copied field by
- * field rather than assigned wholesale. `Object.assign` used to leave the old
- * `min_amount_minor` / `hide_min` keys in place and write back nothing at all.
- * The same trap is documented at the top of `LinkFormView`.
+ * The row and the form do not share column names in every case, so the row is copied
+ * field by field rather than assigned wholesale. `Object.assign` used to leave the old
+ * `min_amount_minor` / `hide_min` keys in place and write back nothing at all. The
+ * same trap is documented at the top of `LinkFormView`.
  *
- * `contact` is deliberately absent: `admin_set_settings` clears a key that is
- * present but blank, so sending an empty `contact` would erase it. The panel
- * does not edit contact, so it must not send it either.
+ * `contact` is sent even when blank: `admin_set_settings` treats present-but-blank as
+ * "clear it", which is how an operator removes stale contact details. It is loaded on
+ * mount, so an untouched field round-trips the existing value rather than erasing it.
  */
 const form = ref<SettingsForm>({
   min_amount: 100,
   hide_min_amount: false,
   default_lang: 'bn',
   recovery_enabled: false,
+  maintenance_mode: false,
+  contact: '',
 })
 
 const loading = ref(true)
@@ -119,6 +145,8 @@ onMounted(async () => {
         hide_min_amount: Boolean(data.hide_min_amount),
         default_lang: data.default_lang === 'en' ? 'en' : 'bn',
         recovery_enabled: Boolean(data.recovery_enabled),
+        maintenance_mode: Boolean(data.maintenance_mode),
+        contact: typeof data.contact === 'string' ? data.contact : '',
       }
     }
   } catch (err) {
@@ -143,6 +171,8 @@ const save = async (): Promise<void> => {
         hide_min_amount: form.value.hide_min_amount,
         default_lang: form.value.default_lang,
         recovery_enabled: form.value.recovery_enabled,
+        maintenance_mode: form.value.maintenance_mode,
+        contact: form.value.contact,
       },
     })
     if (rpcError) {

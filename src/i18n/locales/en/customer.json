@@ -55,7 +55,10 @@
     "submitting": "Creating order…",
     "refused": "The order could not be created. Please try again.",
     "refusedLocked": "Too many attempts on your previous orders. This one is locked; contact support.",
-    "deliverable": "What you get after payment"
+    "deliverable": "What you get after payment",
+    "closedTitle": "Payments are temporarily paused",
+    "closedBody": "We have the shop closed for maintenance. The report is still here, but it cannot be paid for right now. Please check back a little later.",
+    "closedContact": "Get in touch if urgent"
   },
   "order": {
     "title": "Order status",
@@ -97,10 +100,11 @@
   },
   "recovery": {
     "title": "Recover access",
-    "body": "Enter the email you ordered with and we will send you a one-time code.",
+    "body": "Enter the mobile number you ordered with and we will send you a one-time code.",
     "submit": "Send code",
-    "submitting": "Sending…",
-    "sent": "Check your email for the code.",
-    "back": "Use a different email"
+    "submitting": "Sending.",
+    "sent": "Check your phone for the code.",
+    "back": "Use a different number",
+    "disabled": "Account recovery is temporarily unavailable. Please contact support."
   }
 }

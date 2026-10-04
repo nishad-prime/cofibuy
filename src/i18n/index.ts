@@ -73,3 +73,31 @@ export function setI18nLocale(locale: Locale): void {
   i18n.global.locale.value = locale
   document.documentElement.lang = locale
 }
+
+/**
+ * Applies the owner's `default_lang` setting, but only when the visitor has not
+ * expressed a preference of their own.
+ *
+ * The owner default sits below every signal `detectLocale()` already honours, so it
+ * only ever replaces the final hardcoded fallback. A `?lang=` link is a deliberate
+ * request, a stored value is a previous choice, and a browser or geo language of `en`
+ * or `bn` is a real signal -- the owner default must not override any of them.
+ *
+ * Called after `get_public_settings()` returns, which is later than first paint, so
+ * this can change the language under the visitor. It only fires for someone whose
+ * browser language is neither Bangla nor English and who has never chosen, which is
+ * the one case where the pre-paint script had nothing better than the hardcoded
+ * default anyway.
+ */
+export function applySiteDefaultLocale(locale: Locale): void {
+  if (new URLSearchParams(window.location.search).get('lang')) return
+  if (readStoredLocale()) return
+
+  const geo = document.documentElement.dataset.geoLang?.toLowerCase()
+  if (geo === 'en' || geo?.startsWith('bn')) return
+
+  const nav = navigator.language?.toLowerCase() ?? ''
+  if (nav === 'en' || nav.startsWith('bn')) return
+
+  if (i18n.global.locale.value !== locale) setI18nLocale(locale)
+}

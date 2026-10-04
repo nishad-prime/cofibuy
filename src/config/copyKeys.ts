@@ -63,6 +63,11 @@ export const COPY_KEYS = {
     'paywall.refused',
     'paywall.refusedLocked',
     'paywall.deliverable',
+    // Maintenance notice. Replaces the order form entirely, so `closedBody` is the
+    // only place a customer learns why.
+    'paywall.closedTitle',
+    'paywall.closedBody',
+    'paywall.closedContact',
   ],
   order: [
     'order.title',
@@ -110,6 +115,7 @@ export const COPY_KEYS = {
     'recovery.submitting',
     'recovery.sent',
     'recovery.back',
+    'recovery.disabled',
   ],
   common: [
     'common.loading',

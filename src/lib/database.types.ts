@@ -138,6 +138,14 @@ export type Database = {
         }
         Returns: Json
       }
+      create_order_unchecked: {
+        Args: {
+          p_slug: string
+          p_gateway_id: string
+          p_amount: number
+        }
+        Returns: Json
+      }
       get_public_copy: { Args: Record<PropertyKey, never>; Returns: Json[] }
       get_public_link: {
         Args: {
@@ -145,6 +153,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_public_settings: { Args: Record<PropertyKey, never>; Returns: Json }
       get_unlocked_link: {
         Args: {
           p_slug: string
@@ -167,6 +176,12 @@ export type Database = {
         Returns: Json
       }
       my_orders: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      public_link_payload: {
+        Args: {
+          p_slug: string
+        }
+        Returns: Json
+      }
       record_otp_sent: {
         Args: {
           p_request_id: string
@@ -778,6 +793,7 @@ export type Database = {
           recovery_enabled: boolean
           contact: string | null
           updated_at: string
+          maintenance_mode: boolean
         }
         Insert: {
           id?: number
@@ -787,6 +803,7 @@ export type Database = {
           recovery_enabled?: boolean
           contact?: string | null
           updated_at?: string
+          maintenance_mode?: boolean
         }
         Update: {
           id?: number
@@ -796,6 +813,7 @@ export type Database = {
           recovery_enabled?: boolean
           contact?: string | null
           updated_at?: string
+          maintenance_mode?: boolean
         }
         Relationships: []
       }

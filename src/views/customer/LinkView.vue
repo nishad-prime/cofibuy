@@ -30,7 +30,31 @@
         <MarkdownBody :source="linkTeaser" />
       </section>
 
-      <form class="mt-8 space-y-6" @submit.prevent="createOrder">
+      <!--
+        Maintenance replaces the whole form rather than disabling it. A greyed-out
+        button still invites the customer to type a phone number, and
+        `create_order` would then refuse the order they just filled in -- so the form
+        is taken away rather than made inert.
+      -->
+      <div v-if="maintenance" class="card card-pad mt-8" role="status">
+        <div class="flex items-start gap-3">
+          <AppIcon name="clock" :size="20" class="mt-0.5 shrink-0 text-amber-600" />
+          <div>
+            <h2 class="text-base font-semibold text-stone-900">
+              {{ t('customer.paywall.closedTitle') }}
+            </h2>
+            <p class="mt-1 text-sm text-stone-600">{{ t('customer.paywall.closedBody') }}</p>
+            <p v-if="supportContact" class="mt-3 text-sm text-stone-600">
+              {{ t('customer.paywall.closedContact') }}:
+              <a :href="`tel:${supportContact}`" class="font-medium text-brand-800 underline">{{
+                supportContact
+              }}</a>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <form v-else class="mt-8 space-y-6" @submit.prevent="createOrder">
         <section class="card card-pad">
           <h2 class="text-lg font-semibold text-stone-900">
             {{ t('customer.paywall.chooseMethod') }}
@@ -135,6 +159,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
 import { useContent } from '@/composables/useContent'
+import { useSiteSettings } from '@/composables/useSiteSettings'
 import AppIcon from '@/components/AppIcon.vue'
 import CopyText from '@/components/CopyText.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
@@ -145,6 +170,13 @@ const router = useRouter()
 const supabase = getSupabase()
 const { pick } = useContent()
 const { t } = useI18n()
+const { settings } = useSiteSettings()
+
+// Decides what is rendered. `create_order()` refuses independently, so if this is
+// stale or the settings fetch failed, the worst case is a form that fails on submit
+// rather than an order that slips through.
+const maintenance = computed(() => settings.value.maintenance_mode)
+const supportContact = computed(() => settings.value.contact)
 
 interface Gateway {
   id: string

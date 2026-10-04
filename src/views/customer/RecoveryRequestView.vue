@@ -4,7 +4,7 @@
     <CopyText copy-key="recovery.body" tag="p" class="page-subtitle mb-8" />
 
     <section v-if="recoveryDisabled" class="alert-error" role="alert">
-      {{ error }}
+      {{ t('customer.recovery.disabled') }}
     </section>
 
     <section v-else-if="submitted" class="card card-pad text-center">
@@ -39,21 +39,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getSupabase } from '@/lib/supabase'
 import { normalizeBdPhone } from '@/lib/phone'
+import { useSiteSettings } from '@/composables/useSiteSettings'
 import AppIcon from '@/components/AppIcon.vue'
 import CopyText from '@/components/CopyText.vue'
 
 const { t } = useI18n()
 const supabase = getSupabase()
+const { settings, loaded, load } = useSiteSettings()
 
 const phone = ref('')
 const requesting = ref(false)
 const submitted = ref(false)
 const error = ref<string | null>(null)
-const recoveryDisabled = ref(false)
+
+// `recovery_enabled` used to be discovered by matching the words "not available"
+// in whatever the RPC happened to raise. That makes the copy of a server message
+// load-bearing, so rephrasing the error would silently re-open a closed form. The
+// flag is now read directly.
+//
+// While `loaded` is false the form stays up rather than showing a spurious
+// "unavailable" message before the fetch lands. If the fetch fails, `request_recovery`
+// still refuses authoritatively and the error is shown then.
+const recoveryDisabled = computed(() => loaded.value && !settings.value.recovery_enabled)
+
+onMounted(() => {
+  void load()
+})
 
 const submitRequest = async (): Promise<void> => {
   error.value = null
@@ -71,11 +86,8 @@ const submitRequest = async (): Promise<void> => {
     })
 
     if (rpcError) {
-      // `request_recovery` refuses when the feature is switched off, which is
-      // the authoritative answer; the flag cannot be read from the client.
-      if (rpcError.message.includes('not available')) {
-        recoveryDisabled.value = true
-      }
+      // No substring sniffing. If the flag was on and the request was refused
+      // anyway, this is an ordinary failure the customer should see verbatim.
       error.value = rpcError.message
       return
     }

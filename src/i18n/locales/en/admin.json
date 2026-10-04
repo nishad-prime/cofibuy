@@ -138,7 +138,12 @@
     "recovery": "Recovery",
     "recoveryEnabled": "Enable Telegram recovery",
     "recoveryHint": "Off until the OTP worker is deployed. Turning it on without the worker leaves customers waiting for a code that never arrives.",
+    "maintenance": "Maintenance",
+    "maintenanceEnabled": "Close the shop to new orders",
+    "maintenanceHint": "Customers see a closed notice instead of the order form. The database refuses orders as well, so this is a real gate, not only a banner.",
+    "maintenanceWarning": "The shop is closed. Customers cannot place orders right now.",
     "contact": "Contact details",
+    "contactHint": "Shown to customers while the shop is closed. Leave blank to remove.",
     "save": "Save settings",
     "saving": "Saving...",
     "saved": "Settings saved."

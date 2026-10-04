@@ -35,8 +35,14 @@ const green = (s) => `\u001b[32m${s}\u001b[0m`
 // Files prefixed with `_` are support, not tests: fixtures and the assertion
 // shim. They are applied once, outside the per-file transaction, and never
 // reported as passing suites of their own.
-const isSupport = (file) => file.split('/').pop().startsWith('_')
-const isEnvironment = (file) => file.endsWith('00_environment.sql')
+//
+// Split on both separators. `join` yields backslashes on Windows, so a `'/'`
+// split would leave the whole path as the last segment, every support file
+// would fail the `_` test, and the fixtures would load *after* the tests that
+// need them.
+const basename = (file) => file.split(/[/\\]/).pop()
+const isSupport = (file) => basename(file).startsWith('_')
+const isEnvironment = (file) => basename(file).endsWith('00_environment.sql')
 
 let pg
 
@@ -79,8 +85,8 @@ async function impersonate(client, { userId, role, email }) {
 
 async function runTestFile(client, file, { useShim }) {
   const sql = readFileSync(file, 'utf8')
-  const relative = file.replace(`${root}/`, '')
-  const name = relative.split('/').pop()
+  const relative = file.replace(root, '').replace(/^[\\/]/, '')
+  const name = basename(file)
 
   await client.query('begin')
   if (useShim) await client.query('select _shim_reset()')

@@ -27,3 +27,12 @@ npm-debug.log*
 
 # typescript incremental build state
 tsconfig.tsbuildinfo
+
+# python test tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+selenium_tests/venv/
+
+# debugging output from the browser tests, not fixtures
+selenium_tests/screenshots/

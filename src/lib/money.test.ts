@@ -67,6 +67,32 @@ describe('formatDigits', () => {
   })
 })
 
+/**
+ * The unit is taka, and the figure printed has to be the figure the customer
+ * types into bKash. Three views used to divide by 100 before printing, which
+ * turned a taka 3100 order into "31.00".
+ */
+describe('taka amounts print unscaled', () => {
+  it('shows the entered figure, not a fraction of it', () => {
+    expect(formatMoney(100, 'en')).toMatch(/100/)
+    expect(formatMoney(100, 'en')).not.toMatch(/1\D?00\./)
+  })
+
+  it('does not shrink an order that used to be divided by 100', () => {
+    expect(formatMoney(3100, 'en')).toMatch(/3\D?100/)
+    expect(formatMoney(3100, 'en')).not.toMatch(/31\D?00\D/)
+  })
+
+  it('keeps a four-figure amount whole in Bangla too', () => {
+    expect(formatMoney(3100, 'bn')).toMatch(BENGALI_DIGIT)
+    expect(formatMoney(3100, 'bn')).toMatch(/৩\D*১০০/)
+  })
+
+  it('treats zero as a real amount rather than a missing one', () => {
+    expect(formatMoney(0, 'en')).toMatch(/0/)
+  })
+})
+
 describe('dates', () => {
   it('uses the Bangla calendar for a Bangla viewer', () => {
     const formatted = formatDate('2026-03-09T00:00:00Z', 'bn')

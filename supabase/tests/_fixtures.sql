@@ -215,7 +215,7 @@ $$;
 -- the `bd_phone` validator, which is what makes the phone double as the
 -- recovery identity.
 create or replace function test_data.gateway(
-  p_kind public.gateway_kind default 'bkash',
+  p_kind text default 'bkash',
   p_fields jsonb default null,
   p_active boolean default true
 )
@@ -250,6 +250,37 @@ begin
 end
 $$;
 
+
+-- An automated gateway: bKash captures the payment itself, so there is no evidence to
+-- collect and nothing for staff to review. Deliberately a separate helper from
+-- `test_data.gateway` rather than another flag, because the whole point of the
+-- distinction is that an automated method carries no evidence schema - and a fixture
+-- that could express both would quietly stop testing that.
+create or replace function test_data.pgw_gateway(
+  p_active boolean default true
+)
+returns public.payment_gateways
+language plpgsql
+as $$
+declare
+  v_gateway public.payment_gateways;
+begin
+  insert into public.payment_gateways (
+    kind, provider, name_en, account_number, account_name, evidence_fields, is_active
+  )
+  values (
+    'bkash',
+    'bkash_pgw',
+    'bKash (instant)',
+    '01700000000',
+    'Cofibuy',
+    '[]'::jsonb,
+    p_active
+  )
+  returning * into v_gateway;
+  return v_gateway;
+end
+$$;
 -- ---------------------------------------------------------------------------
 -- Reset
 -- ---------------------------------------------------------------------------
@@ -589,3 +620,87 @@ $$;
 
 grant usage on schema test_data to anon, authenticated, service_role;
 grant execute on all functions in schema test_data to anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- Orders for the payment integration
+-- ---------------------------------------------------------------------------
+
+-- A fresh customer with an order against the automated bKash method. Creates its own
+-- user so each order is owned by somebody nobody else is impersonating, which is what
+-- makes "someone else's order" a real refusal rather than a coincidence.
+--
+-- Returns the order id. The customer is left anonymous, because every test that calls a
+-- customer function has to choose its own identity deliberately - the fixture guessing
+-- on their behalf is how a test ends up passing for the wrong reason.
+create or replace function test_data.pgw_order(p_slug text, p_amount numeric default 500)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_user uuid := test_data.new_user();
+  v_order_id uuid;
+begin
+  perform test_data.as_user(v_user);
+  select (api.create_order(
+    p_slug,
+    (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
+    p_amount
+  )) ->> 'order_id' into v_order_id;
+  perform test_data.as_anon();
+  return v_order_id;
+end
+$$;
+
+-- The same, against the manual method, for the tests that need to prove the manual path
+-- is left alone.
+create or replace function test_data.manual_order(p_slug text, p_amount numeric default 500)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_user uuid := test_data.new_user();
+  v_order_id uuid;
+begin
+  perform test_data.as_user(v_user);
+  select (api.create_order(
+    p_slug,
+    (select id from public.payment_gateways where provider is null and kind = 'bkash' limit 1),
+    p_amount
+  )) ->> 'order_id' into v_order_id;
+  perform test_data.as_anon();
+  return v_order_id;
+end
+$$;
+
+create or replace function test_data.customer_of(p_slug text)
+returns uuid
+language sql
+stable
+as $$
+  select o.user_id
+  from public.orders o
+  join public.paywall_links l on l.id = o.link_id
+  where l.slug = p_slug
+$$;
+
+create or replace function test_data.owner()
+returns uuid
+language plpgsql
+as $$
+begin
+  return test_data.new_staff('owner');
+end
+$$;
+-- The order behind a slug. Every integration test needs to name an order many times
+-- over, and this runner executes plain SQL with no variables to hold one, so the slug is
+-- what ties an assertion back to the row it is about.
+create or replace function test_data.order_for_customer(p_slug text)
+returns uuid
+language sql
+stable
+as $$
+  select o.id
+  from public.orders o
+  join public.paywall_links l on l.id = o.link_id
+  where l.slug = p_slug
+$$;

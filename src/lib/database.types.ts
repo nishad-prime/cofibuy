@@ -44,6 +44,12 @@ export type Database = {
         }
         Returns: Json[]
       }
+      admin_order_payments: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
       admin_orders: {
         Args: {
           p_status?: string
@@ -53,7 +59,7 @@ export type Database = {
           slug?: string
           title_en?: string
           title_bn?: string
-          kind?: Json
+          kind?: string
           status?: Json
           reference_code?: string
           amount?: number
@@ -118,6 +124,59 @@ export type Database = {
         }
         Returns: Json
       }
+      bkash_claim_refresh: {
+        Args: {
+          p_environment: string
+        }
+        Returns: boolean
+      }
+      bkash_fail_session: {
+        Args: {
+          p_order_id: string
+          p_payment_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      bkash_payment_start: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      bkash_record_session: {
+        Args: {
+          p_order_id: string
+          p_payment_id: string
+          p_amount: number
+        }
+        Returns: string
+      }
+      bkash_settle_order: {
+        Args: {
+          p_order_id: string
+          p_payment_id: string
+          p_trx_id: string
+          p_payer_account?: string
+          p_amount?: number
+        }
+        Returns: Json
+      }
+      bkash_store_token: {
+        Args: {
+          p_environment: string
+          p_id_token: string
+          p_refresh_token: string
+          p_expires_in: number
+        }
+        Returns: Json
+      }
+      bkash_token_state: {
+        Args: {
+          p_environment: string
+        }
+        Returns: Json
+      }
       claim_pending_recovery: {
         Args: {
           p_limit?: number
@@ -177,6 +236,18 @@ export type Database = {
       }
       my_orders: { Args: Record<PropertyKey, never>; Returns: Json[] }
       public_link_payload: {
+        Args: {
+          p_slug: string
+        }
+        Returns: Json
+      }
+      public_link_payload_v1: {
+        Args: {
+          p_slug: string
+        }
+        Returns: Json
+      }
+      public_link_payload_v2: {
         Args: {
           p_slug: string
         }
@@ -286,6 +357,12 @@ export type Database = {
         Returns: string
       }
       touch_updated_at: { Args: Record<PropertyKey, never>; Returns: Json }
+      validate_account_fields: {
+        Args: {
+          p_fields: Json
+        }
+        Returns: Json
+      }
       validate_evidence_fields: {
         Args: {
           p_fields: Json
@@ -625,9 +702,9 @@ export type Database = {
       payment_gateways: {
         Row: {
           id: string
-          kind: 'bkash' | 'nagad' | 'bank'
-          account_number: string
-          account_name: string
+          kind: string
+          account_number: string | null
+          account_name: string | null
           name_en: string
           name_bn: string | null
           instructions_md_en: string | null
@@ -640,13 +717,15 @@ export type Database = {
           sort_order: number
           created_at: string
           updated_at: string
+          provider: string | null
+          account_fields: Json
         }
         Insert: {
-          kind: 'bkash' | 'nagad' | 'bank'
-          account_number: string
-          account_name: string
+          kind: string
           name_en: string
           id?: string
+          account_number?: string | null
+          account_name?: string | null
           name_bn?: string | null
           instructions_md_en?: string | null
           instructions_md_bn?: string | null
@@ -658,12 +737,14 @@ export type Database = {
           sort_order?: number
           created_at?: string
           updated_at?: string
+          provider?: string | null
+          account_fields?: Json
         }
         Update: {
           id?: string
-          kind?: 'bkash' | 'nagad' | 'bank'
-          account_number?: string
-          account_name?: string
+          kind?: string
+          account_number?: string | null
+          account_name?: string | null
           name_en?: string
           name_bn?: string | null
           instructions_md_en?: string | null
@@ -676,8 +757,60 @@ export type Database = {
           sort_order?: number
           created_at?: string
           updated_at?: string
+          provider?: string | null
+          account_fields?: Json
         }
         Relationships: []
+      }
+      payment_sessions: {
+        Row: {
+          id: string
+          order_id: string
+          provider: string
+          provider_payment_id: string
+          provider_trx_id: string | null
+          provider_account: string | null
+          status: string
+          amount: number
+          currency: string
+          created_at: string
+          executed_at: string | null
+        }
+        Insert: {
+          order_id: string
+          provider: string
+          provider_payment_id: string
+          amount: number
+          id?: string
+          provider_trx_id?: string | null
+          provider_account?: string | null
+          status?: string
+          currency?: string
+          created_at?: string
+          executed_at?: string | null
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          provider?: string
+          provider_payment_id?: string
+          provider_trx_id?: string | null
+          provider_account?: string | null
+          status?: string
+          amount?: number
+          currency?: string
+          created_at?: string
+          executed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'payment_sessions_order_id_fkey'
+            columns: ['order_id']
+            isOneToOne: true
+            referencedRelation: 'orders'
+            referencedColumns: ['id']
+          },
+        ]
       }
       paywall_links: {
         Row: {
@@ -851,9 +984,11 @@ export type Database = {
       payment_gateways_public: {
         Row: {
           id: string | null
-          kind: Json | null
+          kind: string | null
+          provider: string | null
           account_number: string | null
           account_name: string | null
+          account_fields: Json | null
           name_en: string | null
           name_bn: string | null
           instructions_md_en: string | null
@@ -886,7 +1021,6 @@ export type Database = {
     Enums: {
       evidence_type: 'text' | 'textarea' | 'number' | 'image'
       field_validator: 'bd_phone' | 'trxid' | 'numeric'
-      gateway_kind: 'bkash' | 'nagad' | 'bank'
       order_status:
         'draft' | 'awaiting_proof' | 'under_review' | 'approved' | 'rejected' | 'expired' | 'locked'
       recovery_status: 'pending' | 'sent' | 'verified' | 'expired' | 'failed' | 'undeliverable'

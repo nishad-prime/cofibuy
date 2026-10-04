@@ -3,7 +3,9 @@
     <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 class="page-title">Payment methods</h1>
-        <p class="page-subtitle">Accounts customers pay to, and the evidence they must submit.</p>
+        <p class="page-subtitle">
+          Any method you like — the account customers pay to, or an automatic one.
+        </p>
       </div>
       <router-link to="/admin/gateways/new" class="btn-primary">
         <AppIcon name="plus" :size="18" />
@@ -18,7 +20,7 @@
     <div v-else-if="gateways.length === 0" class="card empty-state">
       <AppIcon name="card" :size="28" class="mx-auto mb-3 text-stone-400" />
       <p class="font-medium text-stone-700">No payment methods yet</p>
-      <p class="mt-1">Add bKash, Nagad, or a bank account so customers can pay.</p>
+      <p class="mt-1">Add bKash, Nagad, a bank account, or anything else you accept.</p>
     </div>
 
     <div v-else class="table-wrap">
@@ -27,7 +29,8 @@
           <thead class="bg-stone-50">
             <tr>
               <th class="th">Name</th>
-              <th class="th">Account</th>
+              <th class="th">How it is paid</th>
+              <th class="th">Send money to</th>
               <th class="th">Evidence fields</th>
               <th class="th">Status</th>
               <th class="th"><span class="sr-only">Actions</span></th>
@@ -40,13 +43,19 @@
                 <p class="text-xs text-stone-500 uppercase">{{ gw.kind }}</p>
               </td>
               <td class="td">
-                <span v-if="gw.account_number" class="ltr-value block">
-                  {{ gw.account_number }}
+                <span v-if="gw.provider" class="badge-ok">Automatic</span>
+                <span v-else class="badge-muted">Manual</span>
+                <p v-if="gw.provider" class="mt-1 text-xs text-stone-500">
+                  Approves itself on confirmation
+                </p>
+              </td>
+              <td class="td">
+                <span v-if="detailCount(gw) > 0" :title="detailSummary(gw)">
+                  {{ detailCount(gw) }} ·
+                  {{ detailSummary(gw) }}
                 </span>
-                <span v-if="gw.account_name" class="block text-xs text-stone-500">
-                  {{ gw.account_name }}
-                </span>
-                <span v-if="!gw.account_number && !gw.account_name" class="text-stone-400">—</span>
+                <span v-else-if="gw.provider" class="text-stone-400">Collected by provider</span>
+                <span v-else class="text-stone-400">—</span>
               </td>
               <td class="td">
                 <span
@@ -94,14 +103,64 @@ import { ref, onMounted } from 'vue'
 import { getSupabase } from '@/lib/supabase'
 import AppIcon from '@/components/AppIcon.vue'
 
+/**
+ * The row `admin_gateways` returns. Typed because this view now reasons about two
+ * different shapes of "where the money goes" - `account_fields` for a method saved since
+ * the column existed, the legacy pair for one that has not been resaved - and reading
+ * either off an `any` would let a rename pass typecheck while every detail rendered as
+ * nothing.
+ */
+interface GatewayRow {
+  id: string
+  kind: string
+  provider: string | null
+  name_en: string | null
+  name_bn: string | null
+  account_fields: { key: string; label_en: string; value: string }[] | null
+  account_number: string | null
+  account_name: string | null
+  evidence_fields: { key: string }[] | null
+  is_active: boolean
+}
+
 const supabase = getSupabase()
-const gateways = ref<any[]>([])
+const gateways = ref<GatewayRow[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-const fieldCount = (gw: any): number => gw.evidence_fields?.length ?? 0
+const fieldCount = (gw: GatewayRow): number => gw.evidence_fields?.length ?? 0
 
-const fieldKeys = (gw: any): string[] => (gw.evidence_fields ?? []).map((f: any) => f.key)
+const fieldKeys = (gw: GatewayRow): string[] => (gw.evidence_fields ?? []).map((f) => f.key)
+
+/**
+ * How many destinations this method publishes, counting the legacy pair for a gateway
+ * saved before `account_fields` existed. Without the fallback the list would show an
+ * em dash for a bank transfer that very much has an account number.
+ */
+const details = (gw: GatewayRow): { key: string; label_en: string; value: string }[] => {
+  const configured = (gw.account_fields ?? []).filter((f) => f.value?.trim())
+  if (configured.length > 0) return configured
+
+  const fallback: { key: string; label_en: string; value: string }[] = []
+  if (gw.account_number?.trim()) {
+    fallback.push({
+      key: 'account_number',
+      label_en: 'Account number',
+      value: gw.account_number,
+    })
+  }
+  if (gw.account_name?.trim()) {
+    fallback.push({ key: 'account_name', label_en: 'Account name', value: gw.account_name })
+  }
+  return fallback
+}
+
+const detailCount = (gw: GatewayRow): number => details(gw).length
+
+const detailSummary = (gw: GatewayRow): string =>
+  details(gw)
+    .map((d) => d.label_en)
+    .join(', ')
 
 const loadGateways = async (): Promise<void> => {
   error.value = null

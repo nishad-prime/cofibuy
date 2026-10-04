@@ -44,7 +44,7 @@ $$;
 -- `on conflict do nothing` without one silently inserts a second copy every time
 -- the seed is re-run.
 insert into public.payment_gateways (
-  id, kind, name_en, name_bn, account_number, account_name,
+  id, kind, name_en, name_bn, account_number, account_name, account_fields,
   supports_reference, evidence_fields, is_active, sort_order
 )
 values (
@@ -54,6 +54,10 @@ values (
   'বিকাশ',
   '01700000000',
   'Cofibuy',
+  '[
+    {"key":"account_number","label_en":"Account / wallet number","value":"01700000000"},
+    {"key":"account_name","label_en":"Account name","value":"Cofibuy"}
+  ]'::jsonb,
   true,
   '[
     {"key":"sender_number","type":"text","label_en":"Sender number","label_bn":"প্রেরকের নম্বর","required":true,"validate":"bd_phone","max_len":20},

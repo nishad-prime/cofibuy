@@ -49,6 +49,12 @@ export const COPY_KEYS = {
     'paywall.chooseMethodHint',
     'paywall.noMethods',
     'paywall.sendTo',
+    // Fallback labels for a gateway saved before `account_fields` existed. Only the
+    // default routes can be translated; a method with its own rows uses the admin's
+    // `label_en`/`label_bn` instead.
+    'paywall.accountNumber',
+    'paywall.accountName',
+    'paywall.noDetails',
     'paywall.amount',
     'paywall.amountMin',
     'paywall.amountAny',

@@ -56,12 +56,13 @@
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <p class="label">{{ t('customer.paywall.sendTo') }}</p>
-            <p
-              class="ltr-value rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-stone-900"
-            >
-              {{ gateway.account_number || '—' }}
-            </p>
-            <p v-if="gateway.account_name" class="hint">{{ gateway.account_name }}</p>
+            <GatewayAccountDetails
+              class="rounded-lg bg-white px-3 py-2.5"
+              :fields="gateway.account_fields"
+              :legacy-number="gateway.account_number"
+              :legacy-name="gateway.account_name"
+            />
+            <p v-if="!hasDetails" class="hint">{{ t('customer.paywall.noDetails') }}</p>
           </div>
         </div>
 
@@ -131,6 +132,9 @@ import CopyText from '@/components/CopyText.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 import EvidenceForm, { type EvidenceField } from '@/components/customer/EvidenceForm.vue'
+import GatewayAccountDetails, {
+  type AccountField,
+} from '@/components/customer/GatewayAccountDetails.vue'
 import { buildEvidencePayload } from '@/lib/evidencePayload'
 
 const route = useRoute()
@@ -147,6 +151,7 @@ interface OrderGateway {
   kind: string
   name_en: string | null
   name_bn: string | null
+  account_fields: AccountField[] | null
   account_number: string | null
   account_name: string | null
   instructions_md_en: string | null
@@ -178,6 +183,14 @@ const gatewayInstructions = computed(() =>
     ? pick({ bn: gateway.value.instructions_md_bn, en: gateway.value.instructions_md_en } as any)
     : '',
 )
+
+/** Whether this method has anywhere to send money. Automated ones do not. */
+const hasDetails = computed(() => {
+  const g = gateway.value
+  if (!g) return false
+  if ((g.account_fields ?? []).some((field) => field.value?.trim())) return true
+  return !!(g.account_number?.trim() || g.account_name?.trim())
+})
 
 // The order RPC returns the reason per language and never a bare
 // `reject_reason`, so fall back to English when the Bangla one was not set.

@@ -73,13 +73,14 @@
           <div class="grid gap-5 sm:grid-cols-2">
             <div>
               <p class="label">{{ t('customer.paywall.sendTo') }}</p>
-              <p
-                class="ltr-value rounded-lg bg-stone-50 px-3 py-2.5 text-sm font-semibold text-stone-900"
-              >
-                {{ selectedGateway.account_number || '—' }}
-              </p>
-              <p v-if="selectedGateway.account_name" class="hint">
-                {{ selectedGateway.account_name }}
+              <GatewayAccountDetails
+                class="rounded-lg bg-stone-50 px-3 py-2.5"
+                :fields="selectedGateway.account_fields"
+                :legacy-number="selectedGateway.account_number"
+                :legacy-name="selectedGateway.account_name"
+              />
+              <p v-if="!hasDetails(selectedGateway)" class="hint">
+                {{ t('customer.paywall.noDetails') }}
               </p>
             </div>
 
@@ -164,6 +165,9 @@ import AppIcon from '@/components/AppIcon.vue'
 import CopyText from '@/components/CopyText.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import GatewaySelector from '@/components/customer/GatewaySelector.vue'
+import GatewayAccountDetails, {
+  type AccountField,
+} from '@/components/customer/GatewayAccountDetails.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -187,6 +191,7 @@ interface Gateway {
   instructions_md_en: string | null
   reference_prompt_bn: string | null
   reference_prompt_en: string | null
+  account_fields: AccountField[] | null
   account_number: string | null
   account_name: string | null
   supports_reference: boolean
@@ -248,6 +253,12 @@ const hideMin = computed(() => link.value?.min_hidden === true)
 const selectedGateway = computed(
   () => gateways.value.find((g) => g.id === selectedGatewayId.value) || null,
 )
+
+/** Whether the chosen method has anywhere to send money. Automated ones do not. */
+const hasDetails = (gateway: Gateway): boolean => {
+  if ((gateway.account_fields ?? []).some((field) => field.value?.trim())) return true
+  return !!(gateway.account_number?.trim() || gateway.account_name?.trim())
+}
 
 const selectedGatewayInstructions = computed(() =>
   selectedGateway.value

@@ -84,6 +84,24 @@
               {{ isSet(key) ? t('admin.copy.overridden') : t('admin.copy.usingBundle') }}
             </span>
           </div>
+
+          <!-- Only once the key is actually flagged. Ticking the box with no preview
+               would mean saving blind and then discovering on the storefront that a
+               stray asterisk ate the rest of the sentence. Falls back to the bundled
+               text so the box is not empty before anything is typed. -->
+          <div v-if="allowsMarkdown(key) && draft.markdown[key]" class="mt-3">
+            <p class="text-xs font-medium text-stone-600">{{ t('admin.copy.preview') }}</p>
+            <div
+              v-for="locale in PREVIEW_LOCALES"
+              :key="locale"
+              class="mt-1 rounded-lg border border-stone-200 bg-stone-50 p-3"
+            >
+              <p class="mb-1 font-mono text-[11px] text-stone-400">
+                {{ locale === 'bn' ? 'বাংলা' : 'EN' }}
+              </p>
+              <MarkdownBody :source="previewSource(key, locale)" />
+            </div>
+          </div>
         </div>
       </section>
     </template>
@@ -93,6 +111,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getSupabase } from '@/lib/supabase'
+import MarkdownBody from '@/components/MarkdownBody.vue'
 import { useAdminI18n } from '@/i18n/admin'
 import bnCustomer from '@/i18n/locales/bn/customer.json'
 import enCustomer from '@/i18n/locales/en/customer.json'
@@ -178,6 +197,24 @@ function bundled(key: string, locale: 'bn' | 'en'): string {
 function isSet(key: string): boolean {
   const row = stored.value[key]
   return Boolean(row && (row.value_bn || row.value_en))
+}
+
+const PREVIEW_LOCALES = ['bn', 'en'] as const
+
+/**
+ * What the storefront would render for this key and locale right now.
+ *
+ * Prefers the draft, then the stored override, then the bundled text, so the box
+ * shows the sentence that is actually in force rather than going blank while an
+ * operator decides what to type. A key cleared in the draft is not overridden, so
+ * falling through to the bundle is the honest answer for it.
+ */
+function previewSource(key: string, locale: 'bn' | 'en'): string {
+  return (
+    draft[locale][key] ||
+    stored.value[key]?.[locale === 'bn' ? 'value_bn' : 'value_en'] ||
+    bundled(key, locale)
+  )
 }
 
 function differs(key: string): boolean {

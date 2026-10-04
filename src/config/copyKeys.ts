@@ -201,6 +201,17 @@ const MARKDOWN_ALLOWED = [
   'recovery.body',
 ] as const satisfies readonly string[]
 
+/**
+ * The keys `CopyText` accepts.
+ *
+ * Narrower than `CopyKey` on purpose. `CopyText` renders through `MarkdownBody`
+ * whenever the database says a key is markdown, so passing it a label would put
+ * operator input inside a heading. The database already refuses that, and
+ * `allowsMarkdown` already refuses it, but this makes it a type error too - the
+ * call site cannot be written wrong in the first place.
+ */
+export type MarkdownCopyKey = (typeof MARKDOWN_ALLOWED)[number]
+
 /** True when a key may be stored and rendered as markdown. */
 export function allowsMarkdown(key: string): boolean {
   return (MARKDOWN_ALLOWED as readonly string[]).includes(key)

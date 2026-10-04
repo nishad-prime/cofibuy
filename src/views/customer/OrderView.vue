@@ -51,7 +51,7 @@
           <AppIcon name="clock" :size="18" />
           {{ t('customer.order.reminder') }}
         </h2>
-        <p class="mt-2 text-sm text-brand-900/80">{{ t('customer.order.reminderBody') }}</p>
+        <CopyText copy-key="order.reminderBody" tag="p" class="mt-2 text-sm text-brand-900/80" />
 
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
@@ -74,7 +74,7 @@
         <h2 class="text-lg font-semibold text-stone-900">
           {{ t('customer.order.submitEvidence') }}
         </h2>
-        <p class="hint mb-5">{{ t('customer.order.evidenceHint') }}</p>
+        <CopyText copy-key="order.evidenceHint" tag="p" class="hint mb-5" />
         <EvidenceForm
           :evidence-fields="evidenceFields"
           :submitting="submitting"
@@ -127,6 +127,7 @@ import { useContent } from '@/composables/useContent'
 import { useOrderPolling } from '@/composables/useOrderPolling'
 import { useFileUpload } from '@/composables/useFileUpload'
 import AppIcon from '@/components/AppIcon.vue'
+import CopyText from '@/components/CopyText.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 import EvidenceForm, { type EvidenceField } from '@/components/customer/EvidenceForm.vue'

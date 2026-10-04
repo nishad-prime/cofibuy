@@ -17,7 +17,7 @@
     <div v-else-if="!link" class="card card-pad text-center">
       <AppIcon name="link" :size="28" class="mx-auto mb-3 text-stone-400" />
       <h1 class="text-xl font-semibold text-stone-900">{{ t('customer.notFound.title') }}</h1>
-      <p class="mt-2 text-sm text-stone-600">{{ t('customer.notFound.body') }}</p>
+      <CopyText copy-key="notFound.body" tag="p" class="mt-2 text-sm text-stone-600" />
       <router-link to="/" class="btn-primary mt-6">{{ t('customer.notFound.cta') }}</router-link>
     </div>
 
@@ -35,7 +35,7 @@
           <h2 class="text-lg font-semibold text-stone-900">
             {{ t('customer.paywall.chooseMethod') }}
           </h2>
-          <p class="hint mb-4">{{ t('customer.paywall.chooseMethodHint') }}</p>
+          <CopyText copy-key="paywall.chooseMethodHint" tag="p" class="hint mb-4" />
 
           <GatewaySelector
             v-if="gateways.length > 0"
@@ -97,9 +97,11 @@
           </dl>
 
           <div v-if="linkCta || ctaUrl" class="mt-5 border-t border-stone-100 pt-4">
-            <p class="text-sm font-medium text-stone-700">
-              {{ t('customer.paywall.deliverable') }}
-            </p>
+            <CopyText
+              copy-key="paywall.deliverable"
+              tag="p"
+              class="text-sm font-medium text-stone-700"
+            />
             <p class="mt-1 text-sm text-stone-600">{{ linkCta }}</p>
             <a
               v-if="ctaUrl"
@@ -134,6 +136,7 @@ import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
 import { useContent } from '@/composables/useContent'
 import AppIcon from '@/components/AppIcon.vue'
+import CopyText from '@/components/CopyText.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import GatewaySelector from '@/components/customer/GatewaySelector.vue'
 

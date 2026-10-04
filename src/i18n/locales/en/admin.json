@@ -152,6 +152,7 @@
     "saved": "Copy saved",
     "revert": "Discard changes",
     "markdown": "Render as markdown",
+    "preview": "Preview",
     "overridden": "Overridden",
     "usingBundle": "Using the shipped wording",
     "missingPlaceholder": "Missing required placeholder:",

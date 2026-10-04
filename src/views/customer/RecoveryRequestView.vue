@@ -1,7 +1,7 @@
 <template>
   <main class="mx-auto max-w-md px-4 py-12 sm:px-6">
     <h1 class="page-title">{{ t('customer.recovery.title') }}</h1>
-    <p class="page-subtitle mb-8">{{ t('customer.recovery.body') }}</p>
+    <CopyText copy-key="recovery.body" tag="p" class="page-subtitle mb-8" />
 
     <section v-if="recoveryDisabled" class="alert-error" role="alert">
       {{ error }}
@@ -44,6 +44,7 @@ import { useI18n } from 'vue-i18n'
 import { getSupabase } from '@/lib/supabase'
 import { normalizeBdPhone } from '@/lib/phone'
 import AppIcon from '@/components/AppIcon.vue'
+import CopyText from '@/components/CopyText.vue'
 
 const { t } = useI18n()
 const supabase = getSupabase()

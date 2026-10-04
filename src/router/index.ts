@@ -1,31 +1,43 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAdminGuard } from '@/composables/useAdminGuard'
+import { ensureAdminMessages } from '@/i18n/admin'
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'home',
-    component: () => import('@/views/HomeView.vue'),
-  },
-  {
-    path: '/:slug',
-    name: 'link',
-    component: () => import('@/views/customer/LinkView.vue'),
-  },
-  {
-    path: '/:slug/order/:orderId',
-    name: 'order',
-    component: () => import('@/views/customer/OrderView.vue'),
-  },
-  {
-    path: '/recover',
-    name: 'recover',
-    component: () => import('@/views/customer/RecoveryRequestView.vue'),
-  },
-  {
-    path: '/recover/verify',
-    name: 'recover-verify',
-    component: () => import('@/views/customer/RecoveryVerifyView.vue'),
+    component: () => import('@/layouts/CustomerLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'home',
+        component: () => import('@/views/HomeView.vue'),
+      },
+      {
+        path: ':slug',
+        name: 'link',
+        component: () => import('@/views/customer/LinkView.vue'),
+      },
+      {
+        path: ':slug/order/:orderId',
+        name: 'order',
+        component: () => import('@/views/customer/OrderView.vue'),
+      },
+      {
+        path: 'recover',
+        name: 'recover',
+        component: () => import('@/views/customer/RecoveryRequestView.vue'),
+      },
+      {
+        path: 'recover/verify',
+        name: 'recover-verify',
+        component: () => import('@/views/customer/RecoveryVerifyView.vue'),
+      },
+      {
+        path: ':pathMatch(.*)*',
+        name: 'not-found',
+        component: () => import('@/views/NotFoundView.vue'),
+      },
+    ],
   },
   {
     path: '/admin/login',
@@ -93,12 +105,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/admin/SettingsView.vue'),
         meta: { requiresOwner: true },
       },
+      {
+        // Copy rewrites what the shopfront says, including the text of the
+        // buttons that take a payment, so it sits with the other owner-only
+        // surfaces rather than with the review queue.
+        path: 'copy',
+        name: 'admin-copy',
+        component: () => import('@/views/admin/CopyView.vue'),
+        meta: { requiresOwner: true },
+      },
     ],
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'not-found',
-    component: () => import('@/views/NotFoundView.vue'),
   },
 ]
 
@@ -111,6 +127,13 @@ export const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+  // The admin message bundle is a dynamic import, so it is fetched on the first
+  // admin navigation rather than shipping to customers. Awaiting it here means
+  // the panel never paints with raw keys.
+  if (to.path.startsWith('/admin')) {
+    await ensureAdminMessages()
+  }
+
   const { requireStaff, requireOwner } = useAdminGuard()
 
   if (to.meta.requiresOwner) {

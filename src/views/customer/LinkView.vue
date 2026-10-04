@@ -1,111 +1,184 @@
 <template>
-  <div class="mx-auto max-w-2xl px-4 py-8">
-    <router-link to="/" class="mb-4 inline-block text-blue-600 hover:underline">
-      ← Back to home
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <router-link
+      to="/"
+      class="mb-6 inline-flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900"
+    >
+      <AppIcon name="arrowLeft" :size="16" />
+      {{ t('customer.paywall.back') }}
     </router-link>
 
-    <div v-if="loading" class="py-8 text-center text-gray-600">Loading...</div>
+    <div v-if="loading" class="empty-state">{{ t('customer.common.loading') }}</div>
 
-    <div v-else-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">
-      {{ error }}
+    <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
+
+    <!-- `get_public_link` returns no row for an unknown or inactive slug, so
+           without this branch the page rendered blank. -->
+    <div v-else-if="!link" class="card card-pad text-center">
+      <AppIcon name="link" :size="28" class="mx-auto mb-3 text-stone-400" />
+      <h1 class="text-xl font-semibold text-stone-900">{{ t('customer.notFound.title') }}</h1>
+      <p class="mt-2 text-sm text-stone-600">{{ t('customer.notFound.body') }}</p>
+      <router-link to="/" class="btn-primary mt-6">{{ t('customer.notFound.cta') }}</router-link>
     </div>
 
-    <div v-else-if="link">
-      <h1 class="mb-4 text-3xl font-bold text-gray-900">
+    <template v-else>
+      <h1 class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
         {{ linkTitle }}
       </h1>
 
-      <div v-if="linkTeaser" class="mb-4 text-lg text-gray-600">
-        {{ linkTeaser }}
-      </div>
+      <section v-if="linkTeaser" class="card card-pad mt-6">
+        <MarkdownBody :source="linkTeaser" />
+      </section>
 
-      <div v-if="linkBody" class="mb-6 text-gray-700">
-        <MarkdownBody :content="linkBody" />
-      </div>
+      <form class="mt-8 space-y-6" @submit.prevent="createOrder">
+        <section class="card card-pad">
+          <h2 class="text-lg font-semibold text-stone-900">
+            {{ t('customer.paywall.chooseMethod') }}
+          </h2>
+          <p class="hint mb-4">{{ t('customer.paywall.chooseMethodHint') }}</p>
 
-      <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-6">
-        <h2 class="mb-4 text-xl font-semibold">Select Payment Method</h2>
-        <GatewaySelector
-          v-if="gateways.length > 0"
-          v-model:selected="selectedGatewayId"
-          :gateways="gateways"
-          @select="selectedGatewayId = $event"
-        />
-        <div v-else class="text-gray-600">No payment methods available.</div>
-      </div>
-
-      <div v-if="selectedGateway" class="mb-6">
-        <h2 class="mb-4 text-xl font-semibold">Payment Amount</h2>
-        <div class="space-y-2">
-          <p v-if="!hideMin && effectiveMin" class="text-sm text-gray-600">
-            Minimum amount: ৳{{ formatAmount(effectiveMin) }}
-          </p>
-          <p v-if="hideMin" class="text-sm text-gray-600">Amount</p>
-          <input
-            v-model.number="amount"
-            type="number"
-            min="0"
-            step="1"
-            class="w-full rounded-md border border-gray-300 px-3 py-2"
-            placeholder="Enter amount in BDT (minor units not shown)"
+          <GatewaySelector
+            v-if="gateways.length > 0"
+            v-model:selected="selectedGatewayId"
+            :gateways="gateways"
           />
-        </div>
-      </div>
+          <p v-else class="empty-state">{{ t('customer.paywall.noMethods') }}</p>
+        </section>
 
-      <button
-        v-if="selectedGateway"
-        :disabled="creating || !isAmountValid"
-        class="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-        @click="createOrder"
-      >
-        {{ creating ? 'Creating...' : 'Create Order' }}
-      </button>
-    </div>
+        <section v-if="selectedGateway" class="card card-pad">
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <p class="label">{{ t('customer.paywall.sendTo') }}</p>
+              <p
+                class="ltr-value rounded-lg bg-stone-50 px-3 py-2.5 text-sm font-semibold text-stone-900"
+              >
+                {{ selectedGateway.account_number || '—' }}
+              </p>
+              <p v-if="selectedGateway.account_name" class="hint">
+                {{ selectedGateway.account_name }}
+              </p>
+            </div>
 
-    <LanguageToggle class="mt-8" />
-  </div>
+            <div>
+              <label class="label" for="amount">{{ t('customer.paywall.amount') }}</label>
+              <input
+                id="amount"
+                v-model.number="amount"
+                type="number"
+                min="0"
+                step="1"
+                inputmode="decimal"
+                class="field ltr-value"
+                :placeholder="t('customer.paywall.amountAny')"
+                :aria-describedby="amountHintId"
+              />
+              <p :id="amountHintId" class="hint" :class="amountError ? 'text-red-600' : ''">
+                {{ amountError || amountHint }}
+              </p>
+            </div>
+          </div>
+
+          <div v-if="selectedGatewayInstructions" class="mt-5 border-t border-stone-100 pt-4">
+            <MarkdownBody :source="selectedGatewayInstructions" />
+          </div>
+        </section>
+
+        <section v-if="selectedGateway" class="card card-pad">
+          <h2 class="text-sm font-semibold text-stone-900">{{ t('customer.paywall.summary') }}</h2>
+          <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('customer.paywall.summaryLink') }}</dt>
+              <dd class="text-right font-medium text-stone-900">{{ linkTitle }}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('customer.paywall.summaryAmount') }}</dt>
+              <dd class="ltr-value font-medium text-stone-900">{{ money(amount) }}</dd>
+            </div>
+          </dl>
+
+          <div v-if="linkCta || ctaUrl" class="mt-5 border-t border-stone-100 pt-4">
+            <p class="text-sm font-medium text-stone-700">
+              {{ t('customer.paywall.deliverable') }}
+            </p>
+            <p class="mt-1 text-sm text-stone-600">{{ linkCta }}</p>
+            <a
+              v-if="ctaUrl"
+              :href="ctaUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-2 inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline"
+            >
+              <span class="ltr-value">{{ ctaUrl }}</span>
+              <AppIcon name="external" :size="14" />
+            </a>
+          </div>
+
+          <button
+            type="submit"
+            class="btn-primary mt-6 w-full"
+            :disabled="creating || !isAmountValid"
+          >
+            {{ creating ? t('customer.paywall.submitting') : t('customer.paywall.submit') }}
+          </button>
+        </section>
+      </form>
+    </template>
+  </main>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
+import { formatMoney } from '@/lib/money'
 import { useContent } from '@/composables/useContent'
-import GatewaySelector from '@/components/customer/GatewaySelector.vue'
+import AppIcon from '@/components/AppIcon.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
-import LanguageToggle from '@/components/LanguageToggle.vue'
+import GatewaySelector from '@/components/customer/GatewaySelector.vue'
 
 const route = useRoute()
 const router = useRouter()
 const supabase = getSupabase()
 const { pick } = useContent()
+const { t } = useI18n()
+
+interface Gateway {
+  id: string
+  kind: string
+  name_bn: string | null
+  name_en: string | null
+  instructions_md_bn: string | null
+  instructions_md_en: string | null
+  reference_prompt_bn: string | null
+  reference_prompt_en: string | null
+  account_number: string | null
+  account_name: string | null
+  supports_reference: boolean
+  evidence_fields: unknown
+}
 
 interface Link {
   id: string
   slug: string
   title_bn: string | null
   title_en: string | null
-  teaser_bn: string | null
-  teaser_en: string | null
-  body_bn: string | null
-  body_en: string | null
-  cta_label_bn: string | null
-  cta_label_en: string | null
-  min_override: number | null
-  hide_min: boolean | null
+  teaser_md_bn: string | null
+  teaser_md_en: string | null
+  unlock_cta_label_bn: string | null
+  unlock_cta_label_en: string | null
+  unlock_cta_url: string | null
+  /**
+   * Already resolved for the link's override and the global default, and
+   * forced to null when the minimum is hidden, so there is no second path by
+   * which a client could learn it.
+   */
+  min_amount: number | null
+  min_hidden: boolean
+  gateways: Gateway[]
 }
 
-interface Gateway {
-  id: string
-  name_bn: string | null
-  name_en: string | null
-  instructions_bn: string | null
-  instructions_en: string | null
-  account_number: string | null
-  account_name: string | null
-  evidence_fields: any
-  active: boolean
-}
+const amountHintId = 'amount-hint'
 
 const link = ref<Link | null>(null)
 const gateways = ref<Gateway[]>([])
@@ -114,8 +187,6 @@ const error = ref<string | null>(null)
 const selectedGatewayId = ref<string | null>(null)
 const amount = ref<number>(0)
 const creating = ref(false)
-const globalMin = ref<number>(0)
-const hideMin = ref(false)
 
 const slug = computed(() => route.params.slug as string)
 
@@ -123,33 +194,75 @@ const linkTitle = computed(() =>
   link.value ? pick({ bn: link.value.title_bn, en: link.value.title_en } as any) : '',
 )
 const linkTeaser = computed(() =>
-  link.value ? pick({ bn: link.value.teaser_bn, en: link.value.teaser_en } as any) : '',
+  link.value ? pick({ bn: link.value.teaser_md_bn, en: link.value.teaser_md_en } as any) : '',
 )
-const linkBody = computed(() =>
-  link.value ? pick({ bn: link.value.body_bn, en: link.value.body_en } as any) : '',
+const linkCta = computed(() =>
+  link.value
+    ? pick({ bn: link.value.unlock_cta_label_bn, en: link.value.unlock_cta_label_en } as any)
+    : '',
 )
 
-const effectiveMin = computed(() => {
-  if (link.value?.min_override != null) {
-    return link.value.min_override
-  }
-  return globalMin.value
-})
+const ctaUrl = computed(() => link.value?.unlock_cta_url || '')
+
+// The unlocked body is deliberately absent from `get_public_link`; it is served
+// per-order once the order is approved, so it is never rendered from this page.
+const effectiveMin = computed(() => link.value?.min_amount ?? 0)
+
+const hideMin = computed(() => link.value?.min_hidden === true)
 
 const selectedGateway = computed(
   () => gateways.value.find((g) => g.id === selectedGatewayId.value) || null,
 )
 
+const selectedGatewayInstructions = computed(() =>
+  selectedGateway.value
+    ? pick({
+        bn: selectedGateway.value.instructions_md_bn,
+        en: selectedGateway.value.instructions_md_en,
+      } as any)
+    : '',
+)
+
 const isAmountValid = computed(() => {
-  if (!effectiveMin.value && amount.value < 0) return false
-  if (effectiveMin.value > 0) {
-    return amount.value >= effectiveMin.value
-  }
+  if (effectiveMin.value > 0) return amount.value >= effectiveMin.value
   return amount.value >= 0
 })
 
-const formatAmount = (amt: number): string => {
-  return (amt / 100).toFixed(2)
+const amountHint = computed(() => {
+  if (hideMin.value || effectiveMin.value <= 0) return t('customer.paywall.amountAny')
+  return t('customer.paywall.amountMin', { amount: money(effectiveMin.value) })
+})
+
+const amountError = computed(() => {
+  if (isAmountValid.value || amount.value === 0) return ''
+  return t('customer.paywall.amountError', { amount: money(effectiveMin.value) })
+})
+
+/**
+ * The customer types this figure into bKash, so it stays Latin in both locales
+ * — the R1 exception documented in `src/lib/money.ts`.
+ *
+ * One rendering for the whole page: the number the customer reads, the number
+ * in the hint and the number in the error have to agree with the number they
+ * transcribe, or the order is refused.
+ */
+const money = (amt: number): string => formatMoney(amt, 'en')
+
+/**
+ * `create_order` refuses in the payload rather than as an error, so the reason
+ * has to be surfaced instead of navigating to a nonexistent order.
+ */
+const describeRefusal = (code?: string): string => {
+  switch (code) {
+    case 'below_minimum':
+      return effectiveMin.value > 0
+        ? t('customer.paywall.amountError', { amount: money(effectiveMin.value) })
+        : t('customer.paywall.refused')
+    case 'locked':
+      return t('customer.paywall.refusedLocked')
+    default:
+      return t('customer.paywall.refused')
+  }
 }
 
 onMounted(async () => {
@@ -165,24 +278,17 @@ onMounted(async () => {
 
     link.value = linkData as Link
 
-    // const { data: gatewaysData } = await (supabase.rpc as any)('list_public_links')
-    // Fallback - we'll need to fetch gateways separately; for now load from link context not available
-    // But gateways are tied to link? Check: public links show gateways via order creation;
-    // get_public_link returns link; gateways fetched separately - but not exposed.
-    // For now, skip detailed gateway fetch; this is a structural view.
-    gateways.value = []
+    // `get_public_link` already returns the active payment methods nested in the
+    // same payload, filtered to `is_active` server side.
+    gateways.value = Array.isArray((linkData as any)?.gateways)
+      ? ((linkData as any).gateways as Gateway[])
+      : []
 
-    // Try to get settings
-    const { data: settingsData } = await supabase
-      .from('site_settings')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle()
-    if (settingsData) {
-      globalMin.value =
-        (settingsData as any).min_amount_minor || (settingsData as any).min_amount || 0
-      hideMin.value =
-        (settingsData as any).hide_min || (settingsData as any).hide_min_amount || false
+    // Preselect when there is only one choice; with several, let the customer
+    // choose rather than silently charging them to one.
+    const onlyGateway = gateways.value.length === 1 ? gateways.value[0] : undefined
+    if (onlyGateway) {
+      selectedGatewayId.value = onlyGateway.id
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load link'
@@ -197,16 +303,30 @@ const createOrder = async (): Promise<void> => {
   }
 
   creating.value = true
+  error.value = null
   try {
-    // Ensure authenticated (anon allowed)
-    await supabase.auth.getUser().catch(async () => {
-      await supabase.auth.signInAnonymously()
-    })
+    // Orders belong to a user, so an anonymous sign-in is the floor. Checking the
+    // stored session is cheaper and safer than calling getUser(), which also
+    // rejects for an expired session and would silently orphan the old user.
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (!sessionData.session) {
+      const { error: anonError } = await supabase.auth.signInAnonymously()
+      if (anonError) {
+        // This one is an operator problem, not a customer problem: the project
+        // has anonymous sign-ins switched off, so nobody can order at all.
+        error.value = anonError.message.includes('Anonymous sign-ins are disabled')
+          ? 'Checkout is not available yet: anonymous sign-ins are disabled for this store.'
+          : anonError.message
+        return
+      }
+    }
 
+    // Signature is `create_order(p_slug, p_gateway_id, p_amount)`, with the
+    // amount in whole taka.
     const { data, error: createError } = await (supabase.rpc as any)('create_order', {
-      p_link_id: link.value.id,
+      p_slug: slug.value,
       p_gateway_id: selectedGatewayId.value,
-      p_amount_minor: amount.value,
+      p_amount: amount.value,
     })
 
     if (createError) {
@@ -214,9 +334,14 @@ const createOrder = async (): Promise<void> => {
       return
     }
 
-    if (data) {
-      // Navigate to order view
-      router.push(`/${slug.value}/order/${data.id}`)
+    // The function reports refusals in the payload rather than as an error.
+    if (!data?.ok) {
+      error.value = describeRefusal(data?.code)
+      return
+    }
+
+    if (data.order_id) {
+      router.push(`/${slug.value}/order/${data.order_id}`)
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to create order'

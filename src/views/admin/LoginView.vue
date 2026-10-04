@@ -1,45 +1,72 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50">
-    <div class="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow">
-      <div>
-        <h1 class="text-center text-2xl font-bold text-gray-900">Admin Sign In</h1>
+  <div class="grid min-h-screen lg:grid-cols-2">
+    <!-- Brand panel, hidden on small screens where it would just push the form down -->
+    <div class="relative hidden flex-col justify-between bg-brand-800 p-12 text-white lg:flex">
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-lg bg-white/15 text-base font-bold">
+          C
+        </span>
+        <span class="text-lg font-semibold">Cofibuy</span>
       </div>
 
-      <form @submit.prevent="signIn" class="space-y-6">
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-          <input
-            id="email"
-            v-model="email"
-            type="email"
-            required
-            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-          />
+      <div class="max-w-sm">
+        <h1 class="text-3xl font-bold tracking-tight">Run your storefront from one place.</h1>
+        <p class="mt-4 text-brand-100">
+          Review incoming orders, publish paid reports, and configure the payment methods your
+          customers use.
+        </p>
+      </div>
+
+      <p class="text-sm text-brand-200">Staff accounts are managed by the owner.</p>
+    </div>
+
+    <div class="flex items-center justify-center bg-stone-50 p-6 sm:p-12">
+      <div class="w-full max-w-sm">
+        <div class="mb-8 lg:hidden">
+          <span
+            class="mb-4 grid h-10 w-10 place-items-center rounded-lg bg-brand-700 text-base font-bold text-white"
+          >
+            C
+          </span>
         </div>
 
-        <div>
-          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            required
-            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-          />
-        </div>
+        <h2 class="page-title">Sign in</h2>
+        <p class="page-subtitle">Use your staff account to continue.</p>
 
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-        >
-          {{ loading ? 'Signing in...' : 'Sign In' }}
-        </button>
+        <form class="mt-8 space-y-5" @submit.prevent="signIn">
+          <div>
+            <label class="label" for="email">Email</label>
+            <input
+              id="email"
+              v-model="email"
+              type="email"
+              class="field"
+              autocomplete="username"
+              required
+              placeholder="you@example.com"
+            />
+          </div>
 
-        <div v-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">
-          {{ error }}
-        </div>
-      </form>
+          <div>
+            <label class="label" for="password">Password</label>
+            <input
+              id="password"
+              v-model="password"
+              type="password"
+              class="field"
+              autocomplete="current-password"
+              required
+              placeholder="••••••••"
+            />
+          </div>
+
+          <p v-if="error" class="alert-error" role="alert">{{ error }}</p>
+
+          <button type="submit" class="btn-primary w-full" :disabled="loading">
+            {{ loading ? 'Signing in...' : 'Sign in' }}
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 </template>
@@ -53,7 +80,7 @@ import { useStaffRole } from '@/composables/useStaffRole'
 const route = useRoute()
 const router = useRouter()
 const supabase = getSupabase()
-const { refresh } = useStaffRole()
+const { refresh, isStaff } = useStaffRole()
 
 const email = ref('')
 const password = ref('')
@@ -81,9 +108,17 @@ const signIn = async (): Promise<void> => {
       return
     }
 
+    // Sign-in to a staff account that has been demoted since the last visit
+    // should say so here rather than bouncing to the queue and back.
     await refresh()
 
-    router.push('/admin/queue')
+    if (!isStaff.value) {
+      await supabase.auth.signOut()
+      error.value = 'This account does not have admin access.'
+      return
+    }
+
+    await router.push('/admin/queue')
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Sign in failed'
   } finally {

@@ -1,53 +1,69 @@
 <template>
   <div>
-    <h1 class="mb-6 text-2xl font-bold text-gray-900">Settings</h1>
+    <header class="mb-6">
+      <h1 class="page-title">{{ t('admin.settings.heading') }}</h1>
+      <p class="page-subtitle">{{ t('admin.settings.subtitle') }}</p>
+    </header>
 
-    <div v-if="loading" class="text-gray-600">Loading...</div>
-    <div v-else-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">{{ error }}</div>
+    <div v-if="loading" class="empty-state">{{ t('admin.settings.loading') }}</div>
 
-    <form v-else @submit.prevent="save" class="max-w-2xl space-y-6">
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Minimum Amount (minor units)</label>
-        <input
-          v-model.number="form.min_amount_minor"
-          type="number"
-          min="0"
-          class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-        />
-      </div>
+    <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
 
-      <div class="flex items-center">
-        <input type="checkbox" v-model="form.hide_min" class="rounded border-gray-300" />
-        <label class="ml-2 text-sm text-gray-700">Hide minimum from customers</label>
-      </div>
+    <form v-else class="max-w-2xl space-y-6" @submit.prevent="save">
+      <section class="card card-pad">
+        <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.settings.pricing') }}</h2>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Default Language</label>
-        <select
-          v-model="form.default_lang"
-          class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-        >
-          <option value="bn">Bangla</option>
-          <option value="en">English</option>
-        </select>
-      </div>
+        <div class="mt-4">
+          <label class="label" for="min_amount">{{ t('admin.settings.minAmount') }}</label>
+          <input
+            id="min_amount"
+            v-model.number="form.min_amount"
+            type="number"
+            min="0"
+            step="1"
+            class="field ltr-value"
+          />
+          <p class="hint">{{ t('admin.settings.minAmountHint') }}</p>
+        </div>
 
-      <div class="flex items-center">
-        <input type="checkbox" v-model="form.recovery_enabled" class="rounded border-gray-300" />
-        <label class="ml-2 text-sm text-gray-700">Enable Telegram recovery</label>
-        <p class="mt-1 ml-6 text-xs text-gray-500">Warning: OTP worker must be deployed first.</p>
-      </div>
+        <label class="mt-4 flex items-start gap-3">
+          <input v-model="form.hide_min_amount" type="checkbox" class="mt-0.5 size-4 rounded" />
+          <span class="text-sm text-stone-700">
+            {{ t('admin.settings.hideMin') }}
+            <span class="hint block">{{ t('admin.settings.hideMinHint') }}</span>
+          </span>
+        </label>
+      </section>
 
-      <button
-        type="submit"
-        :disabled="saving"
-        class="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-gray-400"
-      >
-        {{ saving ? 'Saving...' : 'Save Settings' }}
-      </button>
+      <section class="card card-pad">
+        <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.settings.localisation') }}</h2>
 
-      <div v-if="success" class="rounded-lg bg-green-50 p-4 text-green-800">
-        Settings saved successfully.
+        <div class="mt-4">
+          <label class="label" for="default_lang">{{ t('admin.settings.defaultLang') }}</label>
+          <select id="default_lang" v-model="form.default_lang" class="field">
+            <option value="bn">বাংলা</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card card-pad">
+        <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.settings.recovery') }}</h2>
+
+        <label class="mt-4 flex items-start gap-3">
+          <input v-model="form.recovery_enabled" type="checkbox" class="mt-0.5 size-4 rounded" />
+          <span class="text-sm text-stone-700">
+            {{ t('admin.settings.recoveryEnabled') }}
+            <span class="hint block">{{ t('admin.settings.recoveryHint') }}</span>
+          </span>
+        </label>
+      </section>
+
+      <div class="flex items-center gap-3">
+        <button type="submit" class="btn-primary" :disabled="saving">
+          {{ saving ? t('admin.settings.saving') : t('admin.settings.save') }}
+        </button>
+        <p v-if="success" class="alert-success" role="status">{{ t('admin.settings.saved') }}</p>
       </div>
     </form>
   </div>
@@ -56,12 +72,31 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getSupabase } from '@/lib/supabase'
+import { useAdminI18n } from '@/i18n/admin'
 
 const supabase = getSupabase()
+const { t } = useAdminI18n()
 
-const form = ref<any>({
-  min_amount_minor: 0,
-  hide_min: false,
+interface SettingsForm {
+  min_amount: number
+  hide_min_amount: boolean
+  default_lang: 'bn' | 'en'
+  recovery_enabled: boolean
+}
+
+/**
+ * The row and the form do not share column names, so the row is copied field by
+ * field rather than assigned wholesale. `Object.assign` used to leave the old
+ * `min_amount_minor` / `hide_min` keys in place and write back nothing at all.
+ * The same trap is documented at the top of `LinkFormView`.
+ *
+ * `contact` is deliberately absent: `admin_set_settings` clears a key that is
+ * present but blank, so sending an empty `contact` would erase it. The panel
+ * does not edit contact, so it must not send it either.
+ */
+const form = ref<SettingsForm>({
+  min_amount: 100,
+  hide_min_amount: false,
   default_lang: 'bn',
   recovery_enabled: false,
 })
@@ -79,10 +114,15 @@ onMounted(async () => {
       return
     }
     if (data) {
-      Object.assign(form.value, data)
+      form.value = {
+        min_amount: Number(data.min_amount ?? 0),
+        hide_min_amount: Boolean(data.hide_min_amount),
+        default_lang: data.default_lang === 'en' ? 'en' : 'bn',
+        recovery_enabled: Boolean(data.recovery_enabled),
+      }
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load settings'
+    error.value = err instanceof Error ? err.message : t('admin.errors.generic')
   } finally {
     loading.value = false
   }
@@ -93,8 +133,17 @@ const save = async (): Promise<void> => {
   error.value = null
   success.value = false
   try {
+    // An emptied number input arrives as `''`, and `''::numeric` is a database
+    // error rather than a null, so the value is normalised before it is sent.
+    const amount = Number(form.value.min_amount)
+
     const { error: rpcError } = await (supabase.rpc as any)('admin_set_settings', {
-      p_settings: form.value,
+      p_settings: {
+        min_amount: Number.isFinite(amount) ? amount : 0,
+        hide_min_amount: form.value.hide_min_amount,
+        default_lang: form.value.default_lang,
+        recovery_enabled: form.value.recovery_enabled,
+      },
     })
     if (rpcError) {
       error.value = rpcError.message
@@ -103,7 +152,7 @@ const save = async (): Promise<void> => {
     success.value = true
     setTimeout(() => (success.value = false), 3000)
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to save settings'
+    error.value = err instanceof Error ? err.message : t('admin.errors.generic')
   } finally {
     saving.value = false
   }

@@ -86,9 +86,25 @@
  * A shared button base. Declared with `@utility` rather than as a plain class
  * so the other button variants can compose it with `@apply btn`, which Tailwind
  * only allows for registered utilities.
+ *
+ * Same reason for `badge`, `card`, and `alert` below: each has variants that
+ * `@apply` it, and a plain class in `@layer components` is not a valid `@apply`
+ * argument. Anything composed by another rule has to be a `@utility`.
  */
 @utility btn {
   @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+@utility card {
+  @apply rounded-xl border border-stone-200 bg-white shadow-sm;
+}
+
+@utility badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+}
+
+@utility alert {
+  @apply rounded-lg border px-4 py-3 text-sm;
 }
 
 @layer components {
@@ -108,12 +124,84 @@
     @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-200 focus:outline-none;
   }
 
-  .card {
-    @apply rounded-xl border border-stone-200 bg-white shadow-sm;
+  .badge-ok {
+    @apply badge bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200;
   }
 
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  .badge-muted {
+    @apply badge bg-stone-100 text-stone-600 ring-1 ring-stone-200;
+  }
+
+  .badge-warn {
+    @apply badge bg-amber-50 text-amber-800 ring-1 ring-amber-200;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-50 text-red-700 ring-1 ring-red-200;
+  }
+
+  .badge-info {
+    @apply badge bg-sky-50 text-sky-800 ring-1 ring-sky-200;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold tracking-tight text-stone-900;
+  }
+
+  .page-subtitle {
+    @apply mt-1 text-sm text-stone-500;
+  }
+
+  .card-pad {
+    @apply p-5;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-stone-700;
+  }
+
+  .hint {
+    @apply mt-1.5 text-xs text-stone-500;
+  }
+
+  .table-wrap {
+    @apply card overflow-hidden;
+  }
+
+  .table-scroll {
+    @apply overflow-x-auto;
+  }
+
+  .th {
+    @apply whitespace-nowrap px-4 py-3 text-left text-xs font-semibold tracking-wide text-stone-500 uppercase;
+  }
+
+  .td {
+    @apply px-4 py-3 align-middle text-sm text-stone-700;
+  }
+
+  .row-link {
+    @apply hover:bg-stone-50;
+  }
+
+  .alert {
+    @apply rounded-lg border px-4 py-3 text-sm;
+  }
+
+  .alert-error {
+    @apply alert border-red-200 bg-red-50 text-red-800;
+  }
+
+  .alert-info {
+    @apply alert border-brand-200 bg-brand-50 text-brand-900;
+  }
+
+  .alert-success {
+    @apply alert border-emerald-200 bg-emerald-50 text-emerald-800;
+  }
+
+  .empty-state {
+    @apply px-6 py-16 text-center text-sm text-stone-500;
   }
 }
 

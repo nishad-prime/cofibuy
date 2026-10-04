@@ -1,74 +1,90 @@
 <template>
   <div>
-    <h1 class="mb-6 text-2xl font-bold text-gray-900">Team</h1>
+    <header class="mb-6">
+      <h1 class="page-title">Team</h1>
+      <p class="page-subtitle">Who can sign in to this admin panel.</p>
+    </header>
 
-    <div v-if="loading" class="text-gray-600">Loading...</div>
-    <div v-else-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">{{ error }}</div>
+    <div v-if="loading" class="empty-state">Loading...</div>
 
-    <div v-else class="space-y-6">
-      <div class="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 class="mb-4 text-lg font-semibold">Add Team Member</h2>
-        <form @submit.prevent="addMember" class="flex space-x-4">
+    <p v-else-if="error" class="alert-error mb-6" role="alert">{{ error }}</p>
+
+    <div class="space-y-6">
+      <section class="card card-pad">
+        <h2 class="text-sm font-semibold text-stone-900">Add team member</h2>
+        <p class="hint mb-4">
+          The address must belong to an account that has already signed up. Granting a role does not
+          create the login.
+        </p>
+
+        <form class="grid gap-3 sm:grid-cols-[1fr_auto_auto]" @submit.prevent="addMember">
           <input
             v-model="email"
             type="email"
             required
-            placeholder="Email"
-            class="flex-1 rounded-md border border-gray-300 px-3 py-2"
+            autocomplete="off"
+            placeholder="teammate@example.com"
+            class="field ltr-value"
+            aria-label="Email address"
           />
-          <select v-model="role" class="rounded-md border border-gray-300 px-3 py-2">
+          <select v-model="role" class="field sm:w-36" aria-label="Role">
             <option value="staff">Staff</option>
             <option value="owner">Owner</option>
           </select>
-          <button
-            type="submit"
-            :disabled="adding"
-            class="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-gray-400"
-          >
-            Add
+          <button type="submit" class="btn-primary" :disabled="adding">
+            {{ adding ? 'Adding...' : 'Add' }}
           </button>
         </form>
+      </section>
+
+      <div v-if="team.length === 0" class="card empty-state">
+        <AppIcon name="team" :size="28" class="mx-auto mb-3 text-stone-400" />
+        <p class="font-medium text-stone-700">No team members</p>
       </div>
 
-      <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-              >
-                User ID
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-              >
-                Staff
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-              >
-                Owner
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200 bg-white">
-            <tr v-for="member in team" :key="member.user_id">
-              <td class="px-6 py-4 text-sm text-gray-900">{{ member.user_id }}</td>
-              <td class="px-6 py-4 text-sm text-gray-500">{{ member.is_staff ? 'Yes' : 'No' }}</td>
-              <td class="px-6 py-4 text-sm text-gray-500">{{ member.is_owner ? 'Yes' : 'No' }}</td>
-              <td class="px-6 py-4 text-sm">
-                <button @click="removeMember(member.user_id)" class="text-red-600 hover:underline">
-                  Remove
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-else class="table-wrap">
+        <div class="table-scroll">
+          <table class="min-w-full divide-y divide-stone-200">
+            <thead class="bg-stone-50">
+              <tr>
+                <th class="th">Email</th>
+                <th class="th">Role</th>
+                <th class="th">Added</th>
+                <th class="th"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-200">
+              <tr v-for="member in team" :key="member.user_id" class="row-link">
+                <td class="td">
+                  <span class="ltr-value text-stone-900">
+                    {{ member.email || 'No signed-up account' }}
+                  </span>
+                </td>
+                <td class="td">
+                  <span :class="member.role === 'owner' ? 'badge-warn' : 'badge-muted'">
+                    {{ member.role }}
+                  </span>
+                </td>
+                <td class="td whitespace-nowrap text-stone-500">
+                  {{ formatDate(member.created_at) }}
+                </td>
+                <td class="td">
+                  <div class="flex justify-end">
+                    <button
+                      type="button"
+                      class="btn-secondary !px-2.5 !py-1.5 text-red-700 hover:!bg-red-50"
+                      :aria-label="`Remove ${member.email || member.user_id}`"
+                      :disabled="removingId === member.user_id"
+                      @click="removeMember(member)"
+                    >
+                      <AppIcon name="trash" :size="16" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -77,60 +93,91 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getSupabase } from '@/lib/supabase'
+import AppIcon from '@/components/AppIcon.vue'
+
+interface TeamMember {
+  user_id: string
+  email: string | null
+  role: 'staff' | 'owner'
+  created_at: string
+}
 
 const supabase = getSupabase()
 
-const team = ref<any[]>([])
+const team = ref<TeamMember[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const email = ref('')
-const role = ref('staff')
+const role = ref<'staff' | 'owner'>('staff')
 const adding = ref(false)
+const removingId = ref<string | null>(null)
+
+const formatDate = (value: string): string => {
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString()
+}
 
 const loadTeam = async (): Promise<void> => {
-  try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('admin_team')
-    if (rpcError) {
-      error.value = rpcError.message
-      return
-    }
-    team.value = data || []
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load team'
-  } finally {
-    loading.value = false
+  const { data, error: rpcError } = await (supabase.rpc as any)('admin_team')
+
+  if (rpcError) {
+    error.value = rpcError.message
+    return
   }
+
+  error.value = null
+  team.value = data ?? []
 }
 
 const addMember = async (): Promise<void> => {
   adding.value = true
   error.value = null
+
   try {
-    // For now, we need user_id - in practice, lookup by email would require service role
-    // This is a simplified UI; actual flow requires user to exist
-    error.value = 'Add member requires user lookup by email - implement as needed'
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to add member'
+    const { error: rpcError } = await (supabase.rpc as any)('admin_set_staff', {
+      p_email: email.value,
+      p_role: role.value,
+    })
+
+    if (rpcError) {
+      error.value = rpcError.message
+      return
+    }
+
+    email.value = ''
+    await loadTeam()
   } finally {
     adding.value = false
   }
 }
 
-const removeMember = async (userId: string): Promise<void> => {
-  if (!confirm('Remove this team member?')) return
+const removeMember = async (member: TeamMember): Promise<void> => {
+  if (!confirm(`Remove ${member.email || member.user_id} from the team?`)) return
+
+  removingId.value = member.user_id
+  error.value = null
+
   try {
     const { error: rpcError } = await (supabase.rpc as any)('admin_remove_staff', {
-      p_user_id: userId,
+      p_user_id: member.user_id,
     })
+
     if (rpcError) {
       error.value = rpcError.message
       return
     }
+
     await loadTeam()
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to remove member'
+  } finally {
+    removingId.value = null
   }
 }
 
-onMounted(loadTeam)
+onMounted(async () => {
+  try {
+    await loadTeam()
+  } finally {
+    loading.value = false
+  }
+})
 </script>

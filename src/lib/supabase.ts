@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { requireSupabaseConfig } from './env'
 import type { Database } from './database.types'
 
-let client: SupabaseClient<Database> | null = null
+let client: any = null
 
 /**
  * Lazily creates the Supabase client.
@@ -11,11 +11,11 @@ let client: SupabaseClient<Database> | null = null
  * without a configured project, and so the anon key is never read into a
  * module that a tooling pass might evaluate.
  */
-export function getSupabase(): SupabaseClient<Database> {
+export function getSupabase(): any {
   if (client) return client
 
   const { url, anonKey } = requireSupabaseConfig()
-  client = createClient<Database>(url, anonKey, {
+  client = createClient<Database, 'api'>(url, anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -27,6 +27,11 @@ export function getSupabase(): SupabaseClient<Database> {
     },
     global: {
       headers: { 'x-application-name': 'cofibuy' },
+    },
+    db: {
+      // The RPCs live in `api`, not `public`, so PostgREST has to be told to
+      // resolve calls against that schema.
+      schema: 'api',
     },
   })
 

@@ -1,54 +1,58 @@
 <template>
-  <div class="mx-auto max-w-4xl px-4 py-8">
-    <h1 class="mb-8 text-3xl font-bold text-gray-900">{{ t('app.title') }}</h1>
+  <main class="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:py-14">
+    <section class="max-w-2xl">
+      <h1 class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
+        {{ t('customer.home.heading') }}
+      </h1>
+      <p class="mt-3 text-base text-stone-600">{{ t('customer.home.subheading') }}</p>
+    </section>
 
-    <div v-if="loading" class="py-8 text-center text-gray-600">Loading...</div>
+    <div v-if="loading" class="empty-state">{{ t('customer.common.loading') }}</div>
 
-    <div v-else-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">
-      {{ error }}
+    <p v-else-if="error" class="alert-error mt-10" role="alert">{{ error }}</p>
+
+    <div v-else-if="links.length === 0" class="card empty-state mt-10">
+      <AppIcon name="link" :size="28" class="mx-auto mb-3 text-stone-400" />
+      <p class="font-medium text-stone-700">{{ t('customer.home.empty') }}</p>
     </div>
 
-    <div v-else-if="links.length === 0" class="py-8 text-center text-gray-600">
-      No links available.
-    </div>
-
-    <div v-else class="grid gap-6 md:grid-cols-2">
+    <div v-else class="mt-10 grid gap-5 sm:grid-cols-2">
       <LinkCard
         v-for="link in links"
         :key="link.id"
         :slug="link.slug"
         :title-bn="link.title_bn"
         :title-en="link.title_en"
-        :teaser-bn="link.teaser_bn"
-        :teaser-en="link.teaser_en"
-        :cta-label-bn="link.cta_label_bn"
-        :cta-label-en="link.cta_label_en"
+        :teaser-md-bn="link.teaser_md_bn"
+        :teaser-md-en="link.teaser_md_en"
+        :cta-label-bn="link.unlock_cta_label_bn"
+        :cta-label-en="link.unlock_cta_label_en"
       />
     </div>
-
-    <LanguageToggle class="mt-8" />
-  </div>
+  </main>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getSupabase } from '@/lib/supabase'
+import AppIcon from '@/components/AppIcon.vue'
 import LinkCard from '@/components/customer/LinkCard.vue'
-import LanguageToggle from '@/components/LanguageToggle.vue'
 
 const { t } = useI18n()
 const supabase = getSupabase()
 
+// `list_public_links` returns the `paywall_links_public` view, so the teaser and
+// CTA columns are the `*_md_*` variants.
 interface PublicLink {
   id: string
   slug: string
   title_bn: string | null
   title_en: string | null
-  teaser_bn: string | null
-  teaser_en: string | null
-  cta_label_bn: string | null
-  cta_label_en: string | null
+  teaser_md_bn: string | null
+  teaser_md_en: string | null
+  unlock_cta_label_bn: string | null
+  unlock_cta_label_en: string | null
 }
 
 const links = ref<PublicLink[]>([])

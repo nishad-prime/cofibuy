@@ -1,83 +1,81 @@
 <template>
-  <div class="mx-auto max-w-md px-4 py-8">
-    <h1 class="mb-6 text-2xl font-bold text-gray-900">Verify Recovery Code</h1>
+  <main class="mx-auto max-w-md px-4 py-12 sm:px-6">
+    <h1 class="page-title">{{ t('customer.recovery.title') }}</h1>
 
-    <form v-if="!verified" @submit.prevent="submitVerify" class="space-y-4">
+    <form v-if="!verified" class="card card-pad mt-8 space-y-5" @submit.prevent="submitVerify">
       <div>
-        <label for="phone" class="block text-sm font-medium text-gray-700">Phone Number</label>
+        <label class="label" for="phone">Phone number</label>
         <input
           id="phone"
           v-model="phone"
           type="tel"
+          inputmode="tel"
           required
           placeholder="01XXXXXXXXX"
-          class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+          class="field ltr-value"
         />
       </div>
 
       <div>
-        <label for="code" class="block text-sm font-medium text-gray-700">Verification Code</label>
+        <label class="label" for="code">Verification code</label>
         <input
           id="code"
           v-model="code"
           type="text"
           required
           inputmode="numeric"
-          class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+          autocomplete="one-time-code"
+          class="field ltr-value"
         />
       </div>
 
-      <button
-        type="submit"
-        :disabled="verifying"
-        class="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-      >
-        {{ verifying ? 'Verifying...' : 'Verify Code' }}
-      </button>
+      <p v-if="error" class="alert-error" role="alert">{{ error }}</p>
 
-      <div v-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">
-        {{ error }}
-      </div>
+      <button type="submit" class="btn-primary w-full" :disabled="verifying">
+        {{ verifying ? t('customer.common.loading') : t('customer.recovery.submit') }}
+      </button>
     </form>
 
-    <div v-else class="space-y-4">
-      <div class="rounded-lg bg-green-50 p-4 text-green-800">Recovery verified successfully.</div>
+    <div v-else class="mt-8 space-y-4">
+      <div class="alert-success flex items-center gap-2">
+        <AppIcon name="check" :size="18" />
+        {{ t('customer.recovery.sent') }}
+      </div>
 
-      <div v-if="grantedLinks.length > 0">
-        <h2 class="mb-2 text-lg font-semibold">Granted Links</h2>
+      <div v-if="grantedLinks.length > 0" class="card card-pad">
         <ul class="space-y-2">
-          <li
-            v-for="link in grantedLinks"
-            :key="link.slug"
-            class="rounded-md border border-gray-200 p-3"
-          >
-            <router-link :to="`/${link.slug}`" class="text-blue-600 hover:underline">
-              {{ pick({ bn: link.title_bn, en: link.title_en } as any) || '' }}
+          <li v-for="link in grantedLinks" :key="link.slug">
+            <router-link
+              :to="`/${link.slug}`"
+              class="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-3 py-2.5 text-sm font-medium text-stone-900 transition hover:border-brand-400 hover:bg-brand-50"
+            >
+              {{ pick({ bn: link.title_bn, en: link.title_en } as any) || link.slug }}
+              <AppIcon name="arrowLeft" :size="16" class="rotate-180 text-stone-400" />
             </router-link>
           </li>
         </ul>
       </div>
 
-      <div v-else class="rounded-lg bg-yellow-50 p-4 text-yellow-800">
-        No links were granted for this phone number.
+      <div v-else class="card empty-state">
+        {{ t('customer.recovery.sent') }}
       </div>
 
-      <router-link to="/" class="block text-center text-blue-600 hover:underline">
-        Go to home
-      </router-link>
+      <router-link to="/" class="btn-secondary w-full">{{
+        t('customer.notFound.cta')
+      }}</router-link>
     </div>
-
-    <LanguageToggle class="mt-8" />
-  </div>
+  </main>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getSupabase } from '@/lib/supabase'
 import { normalizeBdPhone } from '@/lib/phone'
 import { useContent } from '@/composables/useContent'
-import LanguageToggle from '@/components/LanguageToggle.vue'
+import AppIcon from '@/components/AppIcon.vue'
 
+const { t } = useI18n()
 const supabase = getSupabase()
 const { pick } = useContent()
 
@@ -117,7 +115,7 @@ const submitVerify = async (): Promise<void> => {
     } else {
       error.value = 'Invalid code'
     }
-  } catch (err) {
+  } catch {
     error.value = 'Invalid code'
   } finally {
     verifying.value = false

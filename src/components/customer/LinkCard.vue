@@ -1,30 +1,36 @@
 <template>
-  <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-    <h3 class="mb-2 text-xl font-semibold text-gray-900">
-      {{ title }}
-    </h3>
-    <p v-if="teaser" class="mb-4 text-gray-600">
-      {{ teaser }}
-    </p>
-    <router-link
-      :to="`/${slug}`"
-      class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-    >
+  <article class="card card-pad flex flex-col transition hover:-translate-y-0.5 hover:shadow-md">
+    <h3 class="text-lg font-semibold text-stone-900">{{ title }}</h3>
+
+    <!--
+      The teaser is admin-authored Markdown, so a heading at the start would
+      render a block element where the surrounding card expects inline text.
+      Render it properly when it is block content, strip the markers when not.
+    -->
+    <div v-if="isBlockTeaser" class="mt-3 border-t border-stone-100 pt-1">
+      <MarkdownBody :source="teaser" />
+    </div>
+    <p v-else-if="teaser" class="mt-2 text-sm text-stone-600">{{ plainTeaser }}</p>
+
+    <router-link :to="`/${slug}`" class="btn-primary mt-5 self-start">
       {{ ctaLabel || 'View' }}
+      <AppIcon name="arrowLeft" :size="16" class="rotate-180" />
     </router-link>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useContent } from '@/composables/useContent'
+import AppIcon from '@/components/AppIcon.vue'
+import MarkdownBody from '@/components/MarkdownBody.vue'
 
 const props = defineProps<{
   slug: string
   titleBn: string | null
   titleEn: string | null
-  teaserBn: string | null
-  teaserEn: string | null
+  teaserMdBn: string | null
+  teaserMdEn: string | null
   ctaLabelBn: string | null
   ctaLabelEn: string | null
 }>()
@@ -32,6 +38,15 @@ const props = defineProps<{
 const { pick } = useContent()
 
 const title = computed(() => pick({ bn: props.titleBn, en: props.titleEn } as any) || '')
-const teaser = computed(() => pick({ bn: props.teaserBn, en: props.teaserEn } as any) || '')
+const teaser = computed(() => pick({ bn: props.teaserMdBn, en: props.teaserMdEn } as any) || '')
 const ctaLabel = computed(() => pick({ bn: props.ctaLabelBn, en: props.ctaLabelEn } as any) || '')
+
+const isBlockTeaser = computed(() => /(^|\n)\s*(#{1,6}\s|[-*]\s|>\s|\|)/.test(teaser.value))
+
+const plainTeaser = computed(() =>
+  teaser.value
+    .replace(/[#*_`>[\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim(),
+)
 </script>

@@ -7,13 +7,11 @@ type OrderStatus = Database['public']['Enums']['order_status']
 interface OrderStatusResponse {
   status: OrderStatus
   expires_at: string | null
-  locked_until: string | null
-  attempts: number
   reference_code: string | null
-  reject_reason: string | null
-  approved_at: string | null
-  rejected_at: string | null
-  evidence_submitted_at: string | null
+  attempt_count: number
+  /** The RPC returns the reason per language; there is no bare `reject_reason`. */
+  reject_reason_en: string | null
+  reject_reason_bn: string | null
 }
 
 export interface OrderPollingState {

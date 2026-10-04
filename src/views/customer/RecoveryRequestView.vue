@@ -1,56 +1,51 @@
 <template>
-  <div class="mx-auto max-w-md px-4 py-8">
-    <h1 class="mb-6 text-2xl font-bold text-gray-900">Account Recovery</h1>
+  <main class="mx-auto max-w-md px-4 py-12 sm:px-6">
+    <h1 class="page-title">{{ t('customer.recovery.title') }}</h1>
+    <p class="page-subtitle mb-8">{{ t('customer.recovery.body') }}</p>
 
-    <div v-if="recoveryDisabled" class="rounded-lg bg-yellow-50 p-4 text-yellow-800">
-      Account recovery is not available at this time.
-    </div>
+    <section v-if="recoveryDisabled" class="alert-error" role="alert">
+      {{ error }}
+    </section>
 
-    <form v-else-if="!submitted" @submit.prevent="submitRequest" class="space-y-4">
+    <section v-else-if="submitted" class="card card-pad text-center">
+      <AppIcon name="check" :size="28" class="mx-auto mb-3 text-emerald-600" />
+      <p class="text-sm text-stone-700">{{ t('customer.recovery.sent') }}</p>
+      <router-link to="/recover/verify" class="btn-primary mt-6">
+        {{ t('customer.order.title') }}
+      </router-link>
+    </section>
+
+    <form v-else class="card card-pad space-y-5" @submit.prevent="submitRequest">
       <div>
-        <label for="phone" class="block text-sm font-medium text-gray-700"
-          >Phone Number (Bangladesh)</label
-        >
+        <label class="label" for="phone">Phone number</label>
         <input
           id="phone"
           v-model="phone"
           type="tel"
+          inputmode="tel"
           required
           placeholder="01XXXXXXXXX"
-          class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+          class="field ltr-value"
         />
       </div>
 
-      <button
-        type="submit"
-        :disabled="requesting"
-        class="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-      >
-        {{ requesting ? 'Requesting...' : 'Request Recovery' }}
+      <p v-if="error" class="alert-error" role="alert">{{ error }}</p>
+
+      <button type="submit" class="btn-primary w-full" :disabled="requesting">
+        {{ requesting ? t('customer.recovery.submitting') : t('customer.recovery.submit') }}
       </button>
-
-      <div v-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">
-        {{ error }}
-      </div>
     </form>
-
-    <div v-else class="rounded-lg bg-green-50 p-4 text-green-800">
-      Recovery request submitted. Please check your messages for the verification code.
-      <router-link to="/recover/verify" class="mt-2 block text-blue-600 hover:underline">
-        Continue to verification →
-      </router-link>
-    </div>
-
-    <LanguageToggle class="mt-8" />
-  </div>
+  </main>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getSupabase } from '@/lib/supabase'
 import { normalizeBdPhone } from '@/lib/phone'
-import LanguageToggle from '@/components/LanguageToggle.vue'
+import AppIcon from '@/components/AppIcon.vue'
 
+const { t } = useI18n()
 const supabase = getSupabase()
 
 const phone = ref('')
@@ -58,21 +53,6 @@ const requesting = ref(false)
 const submitted = ref(false)
 const error = ref<string | null>(null)
 const recoveryDisabled = ref(false)
-
-onMounted(async () => {
-  try {
-    const { data: settings } = await supabase
-      .from('site_settings')
-      .select('recovery_enabled')
-      .eq('id', 1)
-      .maybeSingle()
-    if (settings && settings.recovery_enabled === false) {
-      recoveryDisabled.value = true
-    }
-  } catch {
-    // Ignore
-  }
-})
 
 const submitRequest = async (): Promise<void> => {
   error.value = null
@@ -90,6 +70,11 @@ const submitRequest = async (): Promise<void> => {
     })
 
     if (rpcError) {
+      // `request_recovery` refuses when the feature is switched off, which is
+      // the authoritative answer; the flag cannot be read from the client.
+      if (rpcError.message.includes('not available')) {
+        recoveryDisabled.value = true
+      }
       error.value = rpcError.message
       return
     }

@@ -1,74 +1,58 @@
 <template>
   <div>
-    <h1 class="mb-6 text-2xl font-bold text-gray-900">Order Queue</h1>
+    <header class="mb-6">
+      <h1 class="page-title">Order queue</h1>
+      <p class="page-subtitle">Payments awaiting your review and approval.</p>
+    </header>
 
-    <div v-if="loading" class="text-gray-600">Loading...</div>
+    <div v-if="loading" class="empty-state">Loading...</div>
 
-    <div v-else-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">
-      {{ error }}
+    <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
+
+    <div v-else-if="orders.length === 0" class="card empty-state">
+      <AppIcon name="check" :size="28" class="mx-auto mb-3 text-emerald-600" />
+      <p class="font-medium text-stone-700">Nothing to review</p>
+      <p class="mt-1">New orders will appear here as soon as customers submit payment.</p>
     </div>
 
-    <div
-      v-else-if="orders.length === 0"
-      class="rounded-lg bg-gray-50 p-8 text-center text-gray-600"
-    >
-      Nothing to review.
-    </div>
-
-    <div v-else class="overflow-hidden rounded-lg border border-gray-200 bg-white">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th
-              class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+    <div v-else class="table-wrap">
+      <div class="table-scroll">
+        <table class="min-w-full divide-y divide-stone-200">
+          <thead class="bg-stone-50">
+            <tr>
+              <th class="th">Reference</th>
+              <th class="th">Status</th>
+              <th class="th">Amount</th>
+              <th class="th">Gateway</th>
+              <th class="th">Submitted</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-stone-200">
+            <tr
+              v-for="order in orders"
+              :key="order.id"
+              class="row-link cursor-pointer"
+              @click="viewOrder(order.id)"
             >
-              Reference
-            </th>
-            <th
-              class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-            >
-              Status
-            </th>
-            <th
-              class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-            >
-              Amount
-            </th>
-            <th
-              class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-            >
-              Gateway
-            </th>
-            <th
-              class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-            >
-              Submitted
-            </th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 bg-white">
-          <tr
-            v-for="order in orders"
-            :key="order.id"
-            class="cursor-pointer hover:bg-gray-50"
-            @click="viewOrder(order.id)"
-          >
-            <td class="px-6 py-4 text-sm font-medium text-gray-900">
-              {{ order.reference_code || '-' }}
-            </td>
-            <td class="px-6 py-4 text-sm text-gray-500">
-              <OrderStatusBadge :status="order.status" />
-            </td>
-            <td class="px-6 py-4 text-sm text-gray-500">৳{{ formatAmount(order.amount_minor) }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500">
-              {{ order.gateway?.name_en || '-' }}
-            </td>
-            <td class="px-6 py-4 text-sm text-gray-500">
-              {{ formatDate(order.created_at) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <td class="td">
+                <span class="ltr-value font-medium text-stone-900">
+                  {{ order.reference_code || '—' }}
+                </span>
+              </td>
+              <td class="td">
+                <OrderStatusBadge :status="order.status" :label="statusLabel(order.status)" />
+              </td>
+              <td class="td">
+                <span class="ltr-value">{{ formatMoney(order.amount, 'en') }}</span>
+              </td>
+              <td class="td">{{ gatewayLabel(order.kind) }}</td>
+              <td class="td whitespace-nowrap text-stone-500">
+                {{ formatDate(order.created_at) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -77,18 +61,29 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
+import { formatMoney } from '@/lib/money'
+import { useAdminI18n } from '@/i18n/admin'
+import AppIcon from '@/components/AppIcon.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 
 const router = useRouter()
 const supabase = getSupabase()
+const { t } = useAdminI18n()
 
 const orders = ref<any[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-const formatAmount = (amt: number): string => {
-  return (amt / 100).toFixed(2)
-}
+/**
+ * `admin_orders` returns flat columns, not a nested gateway object: the amount
+ * column is `amount`, in whole taka, and the method is `kind`.
+ *
+ * The queue is an operator tool and the amount gets reconciled against a bank
+ * statement, so it stays Latin whatever the customer-facing locale is doing.
+ */
+const statusLabel = (status: string): string => t(`admin.status.${status}`)
+
+const gatewayLabel = (kind: string): string => (kind ? t(`admin.gateways.${kind}`) || kind : '—')
 
 const formatDate = (date: string): string => {
   return new Date(date).toLocaleString()

@@ -16,56 +16,111 @@ const html = computed(() => renderMarkdown(props.source))
 /*
  * Minimal typographic rules for rendered Markdown. Kept global rather than
  * scoped because v-html content is not processed by scoped styles.
+ *
+ * Every rule is written once. An earlier revision repeated the list/link block
+ * verbatim, which made later edits look applied when they were not.
  */
 .prose-en :is(h1, h2, h3) {
-  @apply mt-6 mb-2 font-semibold text-stone-900;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: rgb(28 25 23);
 }
 .prose-en :is(h1) {
-  @apply text-xl;
+  font-size: 1.25rem;
 }
 .prose-en :is(h2) {
-  @apply text-lg;
+  font-size: 1.125rem;
 }
 .prose-en :is(h3) {
-  @apply text-base;
+  font-size: 1rem;
+}
+.prose-en :is(h1, h2, h3):first-child {
+  margin-top: 0;
 }
 .prose-en p {
-  @apply my-3 leading-relaxed;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.625;
 }
-.prose-en :is(ul, ol) {
-  @apply my-3 space-y-1 ps-5;
+.prose-en ul,
+.prose-en ol {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.25rem;
 }
 .prose-en ul {
-  @apply list-disc;
+  list-style-type: disc;
 }
 .prose-en ol {
-  @apply list-decimal;
+  list-style-type: decimal;
+}
+.prose-en li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 .prose-en a {
-  @apply text-brand-700 underline underline-offset-2 hover:text-brand-800;
+  color: rgb(120 63 4);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-en a:hover {
+  color: rgb(87 45 3);
 }
 .prose-en code {
-  @apply rounded bg-stone-100 px-1 py-0.5 text-[0.85em];
+  border-radius: 0.25rem;
+  background-color: rgb(245 245 244);
+  padding: 0.125rem 0.25rem;
+  font-size: 0.85em;
 }
 .prose-en pre {
-  @apply my-3 overflow-x-auto rounded-lg bg-stone-900 p-3 text-xs text-stone-100;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background-color: rgb(28 25 23);
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  color: rgb(245 245 244);
 }
 .prose-en pre code {
-  @apply bg-transparent p-0 text-inherit;
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
 }
 .prose-en blockquote {
-  @apply my-3 border-s-4 border-stone-200 ps-4 text-stone-600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-left-width: 4px;
+  border-color: rgb(231 229 228);
+  padding-left: 1rem;
+  color: rgb(87 83 78);
 }
 .prose-en img {
-  @apply my-4 max-w-full rounded-lg;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  max-width: 100%;
+  border-radius: 0.5rem;
 }
 .prose-en hr {
-  @apply my-6 border-stone-200;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-color: rgb(231 229 228);
 }
 .prose-en table {
-  @apply my-3 w-full text-start text-sm;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+  text-align: start;
+  font-size: 0.875rem;
 }
 .prose-en :is(th, td) {
-  @apply border border-stone-200 px-2 py-1;
+  border-width: 1px;
+  border-color: rgb(231 229 228);
+  padding: 0.25rem 0.5rem;
+}
+.prose-en th {
+  background-color: rgb(250 250 249);
+  font-weight: 600;
 }
 </style>

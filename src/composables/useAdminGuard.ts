@@ -1,6 +1,6 @@
 import { type RouteLocationNormalized, type NavigationGuardNext } from 'vue-router'
 import { useStaffRole } from './useStaffRole'
-import { useAuthSession } from './useAuthSession'
+import { useAuthSession, whenAuthReady } from './useAuthSession'
 
 export function useAdminGuard() {
   const { isAuthenticated } = useAuthSession()
@@ -11,6 +11,11 @@ export function useAdminGuard() {
     _from: RouteLocationNormalized,
     next: NavigationGuardNext,
   ): Promise<void> => {
+    // Without this the first navigation after a page load is decided before
+    // the persisted session has been read, and a signed-in admin is bounced to
+    // the login form on every refresh.
+    await whenAuthReady()
+
     if (!isAuthenticated.value) {
       next({ path: '/admin/login' })
       return
@@ -31,6 +36,8 @@ export function useAdminGuard() {
     _from: RouteLocationNormalized,
     next: NavigationGuardNext,
   ): Promise<void> => {
+    await whenAuthReady()
+
     if (!isAuthenticated.value) {
       next({ path: '/admin/login' })
       return

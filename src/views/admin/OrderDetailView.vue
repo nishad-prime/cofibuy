@@ -1,135 +1,154 @@
 <template>
   <div>
-    <router-link to="/admin/queue" class="mb-4 inline-block text-blue-600 hover:underline">
-      ← Back to queue
+    <router-link
+      to="/admin/queue"
+      class="mb-6 inline-flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900"
+    >
+      <AppIcon name="arrowLeft" :size="16" />
+      {{ t('admin.queue.heading') }}
     </router-link>
 
-    <div v-if="loading" class="text-gray-600">Loading...</div>
+    <div v-if="loading" class="empty-state">Loading...</div>
 
-    <div v-else-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">
-      {{ error }}
-    </div>
+    <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
 
-    <div v-else-if="order">
-      <div class="mb-6 flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-900">Order {{ order.reference_code }}</h1>
-        <OrderStatusBadge :status="order.status" />
-      </div>
-
-      <div class="mb-6 grid gap-6 md:grid-cols-2">
-        <div class="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 class="mb-4 text-lg font-semibold">Order Details</h2>
-          <dl class="space-y-2">
-            <div>
-              <dt class="text-sm font-medium text-gray-500">Amount</dt>
-              <dd class="text-sm text-gray-900">৳{{ formatAmount(order.amount_minor) }}</dd>
-            </div>
-            <div>
-              <dt class="text-sm font-medium text-gray-500">Gateway</dt>
-              <dd class="text-sm text-gray-900">{{ order.gateway?.name_en || '-' }}</dd>
-            </div>
-            <div>
-              <dt class="text-sm font-medium text-gray-500">Customer Phone</dt>
-              <dd class="text-sm text-gray-900">{{ order.phone_e164 || '-' }}</dd>
-            </div>
-            <div>
-              <dt class="text-sm font-medium text-gray-500">Created</dt>
-              <dd class="text-sm text-gray-900">{{ formatDate(order.created_at) }}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div v-if="duplicates.length > 0" class="rounded-lg border border-red-200 bg-red-50 p-6">
-          <h2 class="mb-2 text-lg font-semibold text-red-800">Duplicate TrxID</h2>
-          <p class="mb-2 text-sm text-red-700">This transaction ID appears on other orders.</p>
-          <ul class="space-y-1">
-            <li v-for="dup in duplicates" :key="dup.id" class="text-sm text-red-700">
-              Order {{ dup.reference_code }} ({{ dup.status }})
-            </li>
-          </ul>
-        </div>
-      </div>
+    <template v-else-if="order">
+      <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 class="page-title">
+          <span class="ltr-value">{{ order.reference_code || order.id.slice(0, 8) }}</span>
+        </h1>
+        <OrderStatusBadge :status="order.status" :label="statusLabel(order.status)" />
+      </header>
 
       <div
-        v-if="order.evidence && Object.keys(order.evidence).length > 0"
-        class="mb-6 rounded-lg border border-gray-200 bg-white p-6"
+        v-if="order.has_duplicate_trxid || duplicates.length > 0"
+        class="alert-error mb-6"
+        role="alert"
       >
-        <h2 class="mb-4 text-lg font-semibold">Evidence</h2>
-        <div class="space-y-4">
-          <div v-for="(ev, key) in order.evidence" :key="key">
-            <dt class="text-sm font-medium text-gray-500">{{ key }}</dt>
-            <dd class="mt-1 text-sm text-gray-900">
-              <span v-if="ev.storage_path">File uploaded</span>
-              <span v-else>{{ ev.value }}</span>
-            </dd>
+        <p class="font-medium">{{ t('admin.queue.duplicate') }}</p>
+        <p class="mt-1">{{ t('admin.queue.duplicateHint') }}</p>
+        <ul v-if="duplicates.length > 0" class="mt-2 space-y-1">
+          <li v-for="dup in duplicates" :key="dup.id" class="ltr-value text-xs">
+            {{ dup.reference_code }} · {{ dup.status }}
+          </li>
+        </ul>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-2">
+        <section class="card card-pad">
+          <h2 class="text-sm font-semibold text-stone-900">Order details</h2>
+          <dl class="mt-4 space-y-3 text-sm">
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('admin.queue.amount') }}</dt>
+              <dd class="ltr-value font-medium text-stone-900">
+                {{ formatMoney(order.amount, 'en') }}
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('admin.queue.gateway') }}</dt>
+              <dd class="font-medium text-stone-900">{{ order.gateway?.name_en || '—' }}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('admin.queue.customerNumber') }}</dt>
+              <dd class="ltr-value font-medium text-stone-900">{{ order.phone_e164 || '—' }}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">Report</dt>
+              <dd class="text-right font-medium text-stone-900">
+                {{ order.link?.title_en || order.link?.slug || '—' }}
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('admin.queue.submitted') }}</dt>
+              <dd class="text-stone-600">
+                {{ formatDate(order.submitted_at || order.created_at) }}
+              </dd>
+            </div>
+            <div v-if="displayedRejectReason" class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('admin.queue.rejectReason') }}</dt>
+              <dd class="text-right text-red-700">{{ displayedRejectReason }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="card card-pad">
+          <h2 class="text-sm font-semibold text-stone-900">Evidence</h2>
+
+          <p v-if="evidenceRows.length === 0" class="empty-state !py-8">
+            {{ t('admin.queue.noScreenshot') }}
+          </p>
+
+          <ul v-else class="mt-4 space-y-3 text-sm">
+            <li
+              v-for="ev in evidenceRows"
+              :key="`${ev.field_key}-${ev.attempt}`"
+              class="flex justify-between gap-4"
+            >
+              <span class="text-stone-500">{{ ev.field_key }}</span>
+              <span class="text-right font-medium text-stone-900">
+                <span v-if="ev.file_path" class="badge-ok">
+                  {{ t('admin.queue.screenshot') }}
+                </span>
+                <span v-else>{{ ev.value_text_raw ?? '—' }}</span>
+              </span>
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <div v-if="canReview" class="mt-6 flex flex-wrap gap-3">
+        <button type="button" class="btn-primary" :disabled="actionLoading" @click="approve">
+          <AppIcon name="check" :size="18" />
+          {{ actionLoading ? t('admin.queue.approving') : t('admin.queue.approve') }}
+        </button>
+        <button
+          type="button"
+          class="btn-secondary text-red-700"
+          :disabled="actionLoading"
+          @click="showRejectModal = true"
+        >
+          {{ t('admin.queue.reject') }}
+        </button>
+        <button type="button" class="btn-secondary" :disabled="actionLoading" @click="resetProbes">
+          {{ t('admin.queue.resetProbes') }}
+        </button>
+      </div>
+
+      <p v-if="actionError" class="alert-error mt-4" role="alert">{{ actionError }}</p>
+
+      <div
+        v-if="showRejectModal"
+        class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+      >
+        <div class="card w-full max-w-md card-pad">
+          <h2 class="text-lg font-semibold text-stone-900">{{ t('admin.queue.reject') }}</h2>
+          <div class="mt-4">
+            <label class="label" for="reason">{{ t('admin.queue.rejectReason') }}</label>
+            <textarea
+              id="reason"
+              v-model="rejectReason"
+              rows="3"
+              class="field"
+              :placeholder="t('admin.queue.rejectReasonPlaceholder')"
+            />
+            <p class="hint">{{ t('admin.queue.rejectReasonRequired') }}</p>
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <button type="button" class="btn-secondary" @click="showRejectModal = false">
+              {{ t('common.close') }}
+            </button>
+            <button
+              type="button"
+              class="btn-danger"
+              :disabled="actionLoading || !rejectReason.trim()"
+              @click="reject"
+            >
+              {{ actionLoading ? t('admin.queue.rejecting') : t('admin.queue.reject') }}
+            </button>
           </div>
         </div>
       </div>
-
-      <div v-if="canReview" class="flex space-x-3">
-        <button
-          @click="approve"
-          :disabled="actionLoading"
-          class="rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:bg-gray-400"
-        >
-          Approve
-        </button>
-        <button
-          @click="showRejectModal = true"
-          :disabled="actionLoading"
-          class="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:bg-gray-400"
-        >
-          Reject
-        </button>
-        <button
-          @click="resetProbes"
-          :disabled="actionLoading"
-          class="rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700 disabled:bg-gray-400"
-        >
-          Reset Probes
-        </button>
-      </div>
-
-      <div v-if="actionError" class="mt-4 rounded-lg bg-red-50 p-4 text-red-800">
-        {{ actionError }}
-      </div>
-    </div>
-
-    <div
-      v-if="showRejectModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-    >
-      <div class="w-full max-w-md rounded-lg bg-white p-6">
-        <h2 class="mb-4 text-lg font-semibold">Reject Order</h2>
-        <div class="mb-4">
-          <label for="reason" class="block text-sm font-medium text-gray-700"
-            >Rejection Reason</label
-          >
-          <textarea
-            id="reason"
-            v-model="rejectReason"
-            rows="3"
-            required
-            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-          />
-        </div>
-        <div class="flex justify-end space-x-3">
-          <button
-            @click="showRejectModal = false"
-            class="rounded-md border border-gray-300 px-4 py-2 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            @click="reject"
-            :disabled="actionLoading || !rejectReason.trim()"
-            class="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:bg-gray-400"
-          >
-            Reject
-          </button>
-        </div>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -137,17 +156,20 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
+import { formatMoney } from '@/lib/money'
 import { useStaffRole } from '@/composables/useStaffRole'
+import { useAdminI18n } from '@/i18n/admin'
+import AppIcon from '@/components/AppIcon.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 
 const route = useRoute()
 const supabase = getSupabase()
 const { isStaff } = useStaffRole()
+const { t } = useAdminI18n()
 
 const orderId = computed(() => route.params.id as string)
 
 const order = ref<any>(null)
-const duplicates = ref<any[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const actionLoading = ref(false)
@@ -157,12 +179,28 @@ const rejectReason = ref('')
 
 const canReview = computed(() => isStaff.value)
 
-const formatAmount = (amt: number): string => {
-  return (amt / 100).toFixed(2)
-}
+/**
+ * `admin_order_detail` returns `amount` in whole taka, not `amount_minor`.
+ *
+ * The panel is an operator tool and the figure gets reconciled against a bank
+ * statement, so it stays Latin whatever the customer-facing locale is doing.
+ */
+const statusLabel = (status: string): string => t(`admin.status.${status}`)
+
+/**
+ * `admin_order_detail` returns evidence as an array of rows (one per field per
+ * attempt), not a keyed object, and embeds `duplicates` alongside it.
+ */
+const evidenceRows = computed<any[]>(() => order.value?.evidence ?? [])
+const duplicates = computed<any[]>(() => order.value?.duplicates ?? [])
+
+// The RPC stores the reason per language; the panel is English-only.
+const displayedRejectReason = computed(
+  () => order.value?.reject_reason_en || order.value?.reject_reason_bn || '',
+)
 
 const formatDate = (date: string): string => {
-  return new Date(date).toLocaleString()
+  return date ? new Date(date).toLocaleString() : '—'
 }
 
 const loadOrder = async (): Promise<void> => {
@@ -177,11 +215,6 @@ const loadOrder = async (): Promise<void> => {
     }
 
     order.value = data
-
-    const { data: dupData } = await (supabase.rpc as any)('admin_order_duplicate_trxids', {
-      p_order_id: orderId.value,
-    })
-    duplicates.value = dupData || []
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load order'
   } finally {
@@ -221,7 +254,6 @@ const reject = async (): Promise<void> => {
       return
     }
     showRejectModal.value = false
-    rejectReason.value = ''
     await loadOrder()
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : 'Failed to reject'

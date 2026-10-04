@@ -34,16 +34,28 @@
         </div>
       </div>
 
-      <div class="flex items-center space-x-4">
+      <div class="flex flex-wrap items-center space-x-4">
         <label class="flex items-center">
-          <input type="checkbox" v-model="form.active" class="rounded border-gray-300" />
+          <input type="checkbox" v-model="form.is_active" class="rounded border-gray-300" />
           <span class="ml-2 text-sm">Active</span>
+        </label>
+        <label class="flex items-center">
+          <input type="checkbox" v-model="form.is_listed" class="rounded border-gray-300" />
+          <span class="ml-2 text-sm">Show in index</span>
         </label>
         <label class="flex items-center">
           <input type="checkbox" v-model="form.hide_min" class="rounded border-gray-300" />
           <span class="ml-2 text-sm">Hide Min</span>
         </label>
       </div>
+
+      <!-- "Unlisted" is not "private". Spelling that out here prevents the
+           obvious wrong move: treating it as an access control and expecting
+           the slug to stop working. -->
+      <p v-if="form.is_active && !form.is_listed" class="text-sm text-amber-700">
+        This link is live and buyable by its URL, but it will not appear in the public index. Anyone
+        with the link can still open and pay for it.
+      </p>
 
       <button
         type="submit"
@@ -83,7 +95,8 @@ const form = ref<any>({
   cta_label_en: '',
   cta_label_bn: '',
   cta_url: '',
-  active: false,
+  is_active: false,
+  is_listed: true,
   sort_order: 0,
   min_override: null,
   hide_min: false,
@@ -97,7 +110,25 @@ onMounted(async () => {
     const { data } = await (supabase.rpc as any)('admin_links')
     const link = (data || []).find((l: any) => l.id === linkId.value)
     if (link) {
-      Object.assign(form.value, link)
+      // The row columns and the form fields have different names, so assigning
+      // the row wholesale would silently blank every markdown field on save.
+      Object.assign(form.value, {
+        slug: link.slug ?? '',
+        title_en: link.title_en ?? '',
+        title_bn: link.title_bn ?? '',
+        teaser_en: link.teaser_md_en ?? '',
+        teaser_bn: link.teaser_md_bn ?? '',
+        body_en: link.unlock_body_md_en ?? '',
+        body_bn: link.unlock_body_md_bn ?? '',
+        cta_label_en: link.unlock_cta_label_en ?? '',
+        cta_label_bn: link.unlock_cta_label_bn ?? '',
+        cta_url: link.unlock_cta_url ?? '',
+        is_active: link.is_active ?? false,
+        is_listed: link.is_listed ?? true,
+        sort_order: link.sort_order ?? 0,
+        min_override: link.min_amount_override ?? null,
+        hide_min: link.hide_min_override ?? false,
+      })
     }
   }
 })
@@ -106,22 +137,29 @@ const save = async (): Promise<void> => {
   saving.value = true
   error.value = null
   try {
+    // `api.admin_upsert_link` takes one jsonb argument; the keys must match the
+    // names it reads out of that jsonb exactly.
     const { error: rpcError } = await (supabase.rpc as any)('admin_upsert_link', {
-      p_id: isEdit.value ? linkId.value : null,
-      p_slug: form.value.slug,
-      p_title_bn: form.value.title_bn,
-      p_title_en: form.value.title_en,
-      p_teaser_bn: form.value.teaser_bn,
-      p_teaser_en: form.value.teaser_en,
-      p_body_bn: form.value.body_bn,
-      p_body_en: form.value.body_en,
-      p_cta_label_bn: form.value.cta_label_bn,
-      p_cta_label_en: form.value.cta_label_en,
-      p_cta_url: form.value.cta_url,
-      p_active: form.value.active,
-      p_sort_order: form.value.sort_order,
-      p_min_override: form.value.min_override,
-      p_hide_min: form.value.hide_min,
+      p_link: {
+        id: isEdit.value ? linkId.value : '',
+        slug: form.value.slug,
+        title_en: form.value.title_en,
+        title_bn: form.value.title_bn,
+        teaser_md_en: form.value.teaser_en,
+        teaser_md_bn: form.value.teaser_bn,
+        unlock_body_md_en: form.value.body_en,
+        unlock_body_md_bn: form.value.body_bn,
+        unlock_cta_label_en: form.value.cta_label_en,
+        unlock_cta_label_bn: form.value.cta_label_bn,
+        unlock_cta_url: form.value.cta_url,
+        is_active: form.value.is_active,
+        // Sent on every save, not just on create. The RPC's `on conflict` clause
+        // lists this explicitly, and a missing key would let the old value win.
+        is_listed: form.value.is_listed,
+        sort_order: form.value.sort_order,
+        min_amount_override: form.value.min_override,
+        hide_min_override: form.value.hide_min,
+      },
     })
     if (rpcError) {
       error.value = rpcError.message

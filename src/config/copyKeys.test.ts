@@ -12,18 +12,21 @@ import bnCustomer from '@/i18n/locales/bn/customer.json'
  * under the shipped copy fails here instead of at the operator's save.
  */
 const here = dirname(fileURLToPath(import.meta.url))
-const capMigration = join(
-  here,
-  '..',
-  '..',
-  'supabase',
-  'migrations',
-  '20261004200000_copy_value_limits.sql',
-)
+const migration = (...name: string) => join(here, '..', '..', 'supabase', 'migrations', ...name)
 
 function readCap(): number {
-  const sql = readFileSync(capMigration, 'utf8')
+  const sql = readFileSync(migration('20261004200000_copy_value_limits.sql'), 'utf8')
   return Number(sql.match(/c_max integer := (\d+);/)?.[1])
+}
+
+/**
+ * The same cap is repeated in a CHECK constraint, because a constraint cannot read a
+ * plpgsql variable. Two literals is a second source of truth waiting to drift, so the
+ * two are read and compared rather than assumed to agree.
+ */
+function readConstraintCap(): number {
+  const sql = readFileSync(migration('20261004220000_copy_value_length_constraint.sql'), 'utf8')
+  return Number(sql.match(/char_length\(value_bn\) <= (\d+)/)?.[1])
 }
 
 /** Walk a bundled message file the same way vue-i18n would. */
@@ -146,5 +149,12 @@ describe('copy key registry', () => {
     // A bundled string over the cap is copy the database would refuse to store, so
     // an operator could never restore it.
     expect(offenders).toEqual([])
+  })
+
+  it('caps the store constraint at the same number as the function', () => {
+    // If these drift, the function accepts a value the table then rejects, and the
+    // operator sees a raw constraint violation instead of the sentence the function
+    // would have given them.
+    expect(readConstraintCap()).toBe(readCap())
   })
 })

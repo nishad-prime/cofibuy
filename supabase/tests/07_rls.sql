@@ -12,7 +12,7 @@
 set client_min_messages = warning;
 set application_name = 'test-07-rls';
 
-select plan(41);
+select plan(48);
 
 -- ---------------------------------------------------------------------------
 -- Nothing sensitive is reachable as a table
@@ -350,6 +350,82 @@ select is(
   (select public from storage.buckets where id = 'proofs')::text,
   'false',
   'and the proofs bucket is not public'
+);
+
+-- ---------------------------------------------------------------------------
+-- The copy store's lockdown
+--
+-- `copy_strings` holds every operator override of customer-visible copy, and the
+-- only sanctioned way to write one is `api.admin_set_copy` - which validates the key
+-- against the registry, refuses markdown on a label, and caps the length. None of
+-- that matters if a role can reach the table directly and write around it, so the
+-- two properties the validation depends on are asserted here rather than assumed:
+-- no policy, and no privilege.
+--
+-- Both are needed and they are not redundant. Revoking the table privileges stops a
+-- direct read or write outright; enabling RLS with no policy stops it again at the
+-- row level, and is what a future migration would have to weaken to open a hole. A
+-- permissive policy added while the revoke is still in place would look harmless and
+-- would quietly make the function-level checks decorative.
+-- ---------------------------------------------------------------------------
+
+select is(
+  (
+    select count(*)
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'copy_strings'
+  )::text,
+  '0',
+  'no RLS policy touches the copy store'
+);
+
+-- Guards the assertion above against being vacuously true. A wrong schemaname or
+-- tablename would make that count zero forever while the table sat wide open, which
+-- is worse than not testing it. The same query, asked about a table that does have
+-- policies, has to come back non-empty. Deliberately `> 0` rather than an exact
+-- count, so adding a policy later does not fail this.
+select ok(
+  (
+    select count(*) > 0
+    from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+  ),
+  'the same policy query does find the proofs policies, so the zero above is real'
+);
+
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.copy_strings'::regclass),
+  'the copy store has RLS enabled, so a policy added later cannot be forgotten silently'
+);
+
+select is(
+  (
+    select bool_and(not has_table_privilege(r, 'public.copy_strings', p))
+    from unnest (array['anon', 'authenticated']) as r,
+      unnest (array['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES']) as p
+  )::text,
+  'true',
+  'and no role may write the copy store directly, bypassing admin_set_copy'
+);
+
+select is(
+  (select has_function_privilege('anon', 'api.admin_set_copy(jsonb)', 'EXECUTE')::text),
+  'false',
+  'anon cannot execute the copy writer at all'
+);
+
+select is(
+  (select has_function_privilege('authenticated', 'api.admin_set_copy(jsonb)', 'EXECUTE')::text),
+  'true',
+  'authenticated can, which is the grant the owner-only copy editor relies on'
+);
+
+select is(
+  test_data.as_role('anon', 'select * from public.copy_strings') ->> 'state',
+  '42501',
+  'and reading the store as anon is refused at the ACL before any policy is consulted'
 );
 
 select * from finish();

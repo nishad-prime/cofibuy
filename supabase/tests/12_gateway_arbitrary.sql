@@ -10,7 +10,7 @@
 -- account detail with no label, and two details sharing a key are all still refused:
 -- arbitrary is about which methods exist, not about accepting anything at all.
 
-select plan(33);
+select plan(34);
 
 select test_data.reset();
 
@@ -112,7 +112,7 @@ select test_data.pgw_order('guide') as guide_order;
 select test_data.as_user(test_data.customer_of('guide'));
 select is(
   (select gateway_kind::text from api.my_orders() where id = test_data.order_for_customer('guide')),
-  'bkash',
+  (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
   'my_orders reports a kind as text'
 );
 
@@ -120,7 +120,7 @@ select test_data.as_user(test_data.new_staff());
 select is(
   (select kind::text from api.admin_orders(null, null, 100)
      where id = test_data.order_for_customer('guide')),
-  'bkash',
+  (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
   'admin_orders reports a kind as text'
 );
 
@@ -278,7 +278,8 @@ select throws_ok(
 
 select throws_ok(
   $$select api.admin_upsert_gateway(
-      jsonb_build_object('kind', 'bkash', 'provider', 'bkash_pgw',
+      jsonb_build_object('kind', (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
+    'provider', 'bkash_pgw',
         'name_en', 'bKash (instant)',
         'account_fields', jsonb_build_array(
           jsonb_build_object('key', 'account_number', 'label_en', 'Account number',
@@ -306,7 +307,8 @@ select lives_ok(
   $$select api.admin_upsert_gateway(
       jsonb_build_object(
         'id', (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
-        'kind', 'bkash', 'provider', 'bkash_pgw', 'name_en', 'bKash (instant)',
+        'kind', (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
+    'provider', 'bkash_pgw', 'name_en', 'bKash (instant)',
         'is_active', true, 'sort_order', 5,
         'account_fields', '[]'::jsonb, 'evidence_fields', '[]'::jsonb))$$,
   'the automated method can still be edited'
@@ -321,20 +323,24 @@ select is(
   'an arbitrary kind reaches the customer payload'
 );
 
+-- The destination is not on the paywall. Before, the list page carried every account number
+-- and account name the shop had, to anyone who asked, and the customer chose a method from
+-- among accounts belonging to every other customer of the shop. The account is revealed by
+-- the order, once, to the person who placed it.
 select is(
-  (select jsonb_array_length(g -> 'account_fields') from jsonb_array_elements(
+  (select g -> 'account_fields' from jsonb_array_elements(
     (api.get_public_link('guide') -> 'gateways')
   ) g where g ->> 'name_en' = 'Bank transfer'),
-  4,
-  'along with the details the customer needs'
+  null::jsonb,
+  'the paywall carries no destination to send the money to'
 );
 
 select is(
-  (select g -> 'account_fields' -> 2 ->> 'value' from jsonb_array_elements(
+  (select g ? 'account_number' from jsonb_array_elements(
     (api.get_public_link('guide') -> 'gateways')
   ) g where g ->> 'name_en' = 'Bank transfer'),
-  '1102251325',
-  'and the values in them'
+  false,
+  'and no account number either'
 );
 
 select is(
@@ -346,23 +352,35 @@ select is(
 );
 
 select is(
-  (select g -> 'account_fields' from jsonb_array_elements(
+  (select bool_and(not (g ? 'account_fields')) from jsonb_array_elements(
     (api.get_public_link('guide') -> 'gateways')
-  ) g where g ->> 'name_en' = 'bKash (instant)'),
-  '[]'::jsonb,
-  'an automated method advertises no destination'
+  ) g),
+  true,
+  'no gateway of any kind advertises a destination'
 );
 
 -- The view is a second door to the same rows, and it is granted to anon directly, so it
 -- has to agree with the payload rather than quietly serving the pre-migration shape.
+-- Trimming the payload was worth nothing on its own while this view still projected the
+-- destination columns: `select account_fields from payment_gateways_public` was a second
+-- anonymous door onto every account the shop owns. The view now serves the method list, and
+-- the columns are unreachable through it.
 select is(
   (test_data.as_role('anon',
-     'select jsonb_array_length(account_fields) as n
-        from public.payment_gateways_public
+     'select id, kind, provider, name_en from public.payment_gateways_public
        where name_en = ''Bank transfer''')
      ->> 'rows'),
-  '[{"n": 4}]',
-  'the public gateway view serves the same details'
+  format('[{"id": "%s", "kind": "bank", "name_en": "Bank transfer", "provider": null}]',
+         (select id::text from public.payment_gateways
+           where kind = 'bank' and name_en = 'Bank transfer')),
+  'the public gateway view still serves the method list'
+);
+
+select throws_ok(
+  $$select account_fields from public.payment_gateways_public$$,
+  '42703',
+  'column "account_fields" does not exist',
+  'and the destination is no longer readable through the view'
 );
 
 select is(

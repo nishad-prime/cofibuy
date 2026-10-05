@@ -48,13 +48,9 @@ export const COPY_KEYS = {
     'paywall.chooseMethod',
     'paywall.chooseMethodHint',
     'paywall.noMethods',
+    // Still live, but no longer on the paywall: the heading above where a customer sends
+    // their money moved to the order page, which is the only place that knows the account.
     'paywall.sendTo',
-    // Fallback labels for a gateway saved before `account_fields` existed. Only the
-    // default routes can be translated; a method with its own rows uses the admin's
-    // `label_en`/`label_bn` instead.
-    'paywall.accountNumber',
-    'paywall.accountName',
-    'paywall.noDetails',
     'paywall.amount',
     'paywall.amountMin',
     'paywall.amountAny',

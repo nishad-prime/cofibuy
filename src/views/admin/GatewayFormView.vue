@@ -45,6 +45,16 @@
           </label>
 
           <label class="block">
+            <span class="mb-1 block text-sm font-medium text-stone-700">Weight</span>
+            <input v-model.number="form.weight" type="number" min="1" step="1" class="field" />
+            <span class="mt-1 block text-xs text-stone-500">
+              How much of this kind's traffic this account takes, in proportion. 1 is an even share.
+              Only matters when a kind has more than one account, and it is decided by the database
+              at order time - not by the customer.
+            </span>
+          </label>
+
+          <label class="block">
             <span class="mb-1 block text-sm font-medium text-stone-700">Sort order</span>
             <input v-model.number="form.sort_order" type="number" class="field" />
             <span class="mt-1 block text-xs text-stone-500">Lower numbers appear first.</span>
@@ -180,6 +190,7 @@ interface Gateway {
   supports_reference: boolean
   is_active: boolean
   sort_order: number
+  weight: number | null
   evidence_fields: Partial<FieldDraft>[] | null
 }
 
@@ -216,6 +227,7 @@ const form = ref({
   supports_reference: false,
   is_active: true,
   sort_order: 0,
+  weight: 1,
 })
 
 /**
@@ -296,6 +308,7 @@ onMounted(async () => {
     supports_reference: gateway.supports_reference,
     is_active: gateway.is_active,
     sort_order: gateway.sort_order ?? 0,
+    weight: gateway.weight ?? 1,
   }
   fields.value = (gateway.evidence_fields ?? []).map(toDraft)
   accountFields.value = (gateway.account_fields ?? []).map(toAccountDraft)
@@ -340,6 +353,7 @@ const save = async (): Promise<void> => {
         supports_reference: form.value.supports_reference,
         is_active: form.value.is_active,
         sort_order: form.value.sort_order ?? 0,
+        weight: form.value.weight ?? 1,
         evidence_fields: editor.value?.payload ?? [],
         account_fields: accountEditor.value?.payload ?? [],
       },

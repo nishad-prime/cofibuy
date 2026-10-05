@@ -30,6 +30,7 @@
             <tr>
               <th class="th">Name</th>
               <th class="th">How it is paid</th>
+              <th class="th">Traffic</th>
               <th class="th">Send money to</th>
               <th class="th">Evidence fields</th>
               <th class="th">Status</th>
@@ -65,6 +66,19 @@
                     Never settles
                   </span>
                 </p>
+              </td>
+              <td class="td">
+                <span v-if="trafficShare(gw)">
+                  {{ trafficShare(gw) }}
+                  <span class="text-xs font-normal text-stone-500"> of {{ gw.kind }} </span>
+                </span>
+                <span
+                  v-else
+                  class="text-stone-400"
+                  :title="'Only one active account for this kind'"
+                >
+                  —
+                </span>
               </td>
               <td class="td">
                 <span v-if="detailCount(gw) > 0" :title="detailSummary(gw)">
@@ -144,12 +158,37 @@ interface GatewayRow {
    * before the column existed reads back as null and means sandbox, not "unknown".
    */
   environment: 'sandbox' | 'live' | null
+  /** Share of the kind's traffic this account takes. Absent means one share. */
+  weight: number | null
 }
 
 const supabase = getSupabase()
 const gateways = ref<GatewayRow[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+/**
+ * The other accounts competing for this kind's traffic, and what share each one takes.
+ *
+ * A weight decides nothing until there is something to decide between, so a kind with a
+ * single account renders an em dash instead of "100%": a percentage the operator cannot
+ * change is noise, and it would sit in a column that looks like it is asking for input.
+ * Inactive accounts are excluded because the database excludes them from the draw, and a
+ * share computed against them would disagree with the traffic that actually arrives.
+ */
+const rivals = (gw: GatewayRow): GatewayRow[] =>
+  gateways.value.filter((g) => g.kind === gw.kind && g.is_active && g.id !== gw.id)
+
+const trafficShare = (gw: GatewayRow): string | null => {
+  const others = rivals(gw)
+  if (others.length === 0) return null
+
+  const total = [gw, ...others].reduce((sum, g) => sum + (g.weight ?? 1), 0)
+  if (total <= 0) return null
+
+  const pct = Math.round(((gw.weight ?? 1) / total) * 100)
+  return `${pct}%`
+}
 
 const fieldCount = (gw: GatewayRow): number => gw.evidence_fields?.length ?? 0
 

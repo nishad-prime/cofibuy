@@ -120,7 +120,7 @@ interface NavItem {
 const ITEMS: NavItem[] = [
   { to: '/admin/queue', label: 'Order queue', icon: 'queue' },
   { to: '/admin/links', label: 'Links', icon: 'link' },
-  { to: '/admin/gateways', label: 'Payment methods', icon: 'card' },
+  { to: '/admin/gateways', label: 'Gateways', icon: 'card' },
   { to: '/admin/team', label: 'Team', icon: 'team', ownerOnly: true },
   { to: '/admin/settings', label: 'Settings', icon: 'settings', ownerOnly: true },
   { to: '/admin/copy', label: 'Site copy', icon: 'sparkles', ownerOnly: true },

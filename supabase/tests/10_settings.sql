@@ -254,7 +254,7 @@ select api.admin_set_settings('{"maintenance_mode": false}'::jsonb);
 select test_data.as_user(test_data.new_user());
 
 select lives_ok(
-  $$select api.create_order('guide', (select id from public.payment_gateways where is_active order by sort_order limit 1), 500)$$,
+  $$select api.create_order('guide', (select kind from public.payment_gateways where is_active order by sort_order limit 1), 500)$$,
   'orders work again once the shop reopens'
 );
 

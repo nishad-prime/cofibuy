@@ -57,10 +57,15 @@ select throws_ok(
 
 -- Deactivating a gateway takes it off the shelf without deleting it, so a
 -- customer mid-checkout cannot pay into an account the operator has retired.
+--
+-- The customer names a *kind*, not a gateway, so retiring the last account of a kind is
+-- what makes that kind unavailable. That is the intended reading: with no active account
+-- left there is nowhere to send the money, and the shop turning off bKash must not leave
+-- a bKash button on the shelf pointing at nothing.
 update public.payment_gateways set is_active = false;
 
 select throws_ok(
-  $$select api.create_order('guide', (select id from public.payment_gateways where name_en = 'bKash'), 500)$$,
+  $$select api.create_order('guide', 'bkash', 500)$$,
   'P0002',
   'payment method not found',
   'a deactivated payment method is refused'

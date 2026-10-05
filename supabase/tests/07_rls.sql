@@ -12,7 +12,7 @@
 set client_min_messages = warning;
 set application_name = 'test-07-rls';
 
-select plan(48);
+select plan(51);
 
 -- ---------------------------------------------------------------------------
 -- Nothing sensitive is reachable as a table
@@ -102,12 +102,34 @@ select is(
   'the published links are readable by anyone'
 );
 
--- The account number is the whole point of this view: the customer has to know
--- where to send the money.
+-- The account number used to be readable by anyone, which made the paywall's careful
+-- trimming of `account_fields` worth nothing: `select account_number from
+-- payment_gateways_public` handed a visitor every account the shop owns, and the customer
+-- picking a method was picking from accounts belonging to every other customer. The
+-- destination is released by the order instead, to the person who placed it.
 select is(
-  (test_data.as_role('anon', 'select account_number from public.payment_gateways_public') ->> 'ok')::text,
-  'true',
-  'and the payment methods with the numbers to pay them to'
+  test_data.as_role('anon', 'select account_number from public.payment_gateways_public') ->> 'state',
+  '42703',
+  'the destination is not readable through the public gateway view'
+);
+
+select is(
+  test_data.as_role('anon', 'select account_number from public.payment_gateways') ->> 'state',
+  '42501',
+  'nor off the base table behind it'
+);
+
+select is(
+  test_data.as_role('anon', 'select account_fields from public.payment_gateways') ->> 'state',
+  '42501',
+  'and the resolved field values are gone the same way'
+);
+
+-- The method list itself is still public, or the paywall has nothing to render.
+select is(
+  (test_data.as_role('anon', 'select count(*)::int as n from public.payment_gateways_public') ->> 'rows'),
+  format('[{"n": %s}]', (select count(*) from public.payment_gateways where is_active)::int),
+  'while the method list stays public'
 );
 
 -- The base table is granted a column list, and the two columns that decide
@@ -163,13 +185,13 @@ select is(
 );
 
 select is(
-  test_data.can_execute('authenticated', 'api.create_order(text,uuid,numeric)'),
+  test_data.can_execute('authenticated', 'api.create_order(text,text,numeric)'),
   true,
   'and ordering is callable by a customer'
 );
 
 select is(
-  test_data.can_execute('anon', 'api.create_order(text,uuid,numeric)'),
+  test_data.can_execute('anon', 'api.create_order(text,text,numeric)'),
   false,
   'but not by the public, who cannot pay for anything'
 );

@@ -202,7 +202,15 @@ export type Database = {
       create_order: {
         Args: {
           p_slug: string
-          p_gateway_id: string
+          p_kind: string
+          p_amount: number
+        }
+        Returns: Json
+      }
+      create_order_resolved: {
+        Args: {
+          p_slug: string
+          p_kind: string
           p_amount: number
         }
         Returns: Json
@@ -258,12 +266,6 @@ export type Database = {
         Returns: Json
       }
       public_link_payload_v1: {
-        Args: {
-          p_slug: string
-        }
-        Returns: Json
-      }
-      public_link_payload_v2: {
         Args: {
           p_slug: string
         }
@@ -340,6 +342,7 @@ export type Database = {
       gen_reference_code: { Args: Record<PropertyKey, never>; Returns: string }
       grant_on_approval: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_evidence_fields: { Args: Record<PropertyKey, never>; Returns: Json }
+      guard_gateway_kind_uniformity: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_order_status: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_provider_known: { Args: Record<PropertyKey, never>; Returns: Json }
       is_owner: { Args: Record<PropertyKey, never>; Returns: boolean }
@@ -368,6 +371,12 @@ export type Database = {
           p_hash: string
         }
         Returns: boolean
+      }
+      pick_gateway_for_kind: {
+        Args: {
+          p_kind: string
+        }
+        Returns: Json
       }
       provider_field_keys: {
         Args: {
@@ -757,6 +766,7 @@ export type Database = {
           provider: string | null
           account_fields: Json
           environment: string
+          weight: number
         }
         Insert: {
           kind: string
@@ -778,6 +788,7 @@ export type Database = {
           provider?: string | null
           account_fields?: Json
           environment?: string
+          weight?: number
         }
         Update: {
           id?: string
@@ -799,6 +810,7 @@ export type Database = {
           provider?: string | null
           account_fields?: Json
           environment?: string
+          weight?: number
         }
         Relationships: []
       }
@@ -1026,17 +1038,8 @@ export type Database = {
           id: string | null
           kind: string | null
           provider: string | null
-          account_number: string | null
-          account_name: string | null
-          account_fields: Json | null
           name_en: string | null
           name_bn: string | null
-          instructions_md_en: string | null
-          instructions_md_bn: string | null
-          reference_prompt_en: string | null
-          reference_prompt_bn: string | null
-          supports_reference: boolean | null
-          evidence_fields: Json | null
           sort_order: number | null
         }
         Relationships: []

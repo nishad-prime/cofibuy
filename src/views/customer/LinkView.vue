@@ -63,52 +63,31 @@
 
           <GatewaySelector
             v-if="gateways.length > 0"
-            v-model:selected="selectedGatewayId"
+            v-model:selected="selectedKind"
             :gateways="gateways"
           />
           <p v-else class="empty-state">{{ t('customer.paywall.noMethods') }}</p>
         </section>
 
-        <section v-if="selectedGateway" class="card card-pad">
-          <div class="grid gap-5 sm:grid-cols-2">
-            <div>
-              <p class="label">{{ t('customer.paywall.sendTo') }}</p>
-              <GatewayAccountDetails
-                class="rounded-lg bg-stone-50 px-3 py-2.5"
-                :fields="selectedGateway.account_fields"
-                :legacy-number="selectedGateway.account_number"
-                :legacy-name="selectedGateway.account_name"
-              />
-              <p v-if="!hasDetails(selectedGateway)" class="hint">
-                {{ t('customer.paywall.noDetails') }}
-              </p>
-            </div>
-
-            <div>
-              <label class="label" for="amount">{{ t('customer.paywall.amount') }}</label>
-              <input
-                id="amount"
-                v-model.number="amount"
-                type="number"
-                min="0"
-                step="1"
-                inputmode="decimal"
-                class="field ltr-value"
-                :placeholder="t('customer.paywall.amountAny')"
-                :aria-describedby="amountHintId"
-              />
-              <p :id="amountHintId" class="hint" :class="amountError ? 'text-red-600' : ''">
-                {{ amountError || amountHint }}
-              </p>
-            </div>
-          </div>
-
-          <div v-if="selectedGatewayInstructions" class="mt-5 border-t border-stone-100 pt-4">
-            <MarkdownBody :source="selectedGatewayInstructions" />
-          </div>
+        <section v-if="selectedKind" class="card card-pad">
+          <label class="label" for="amount">{{ t('customer.paywall.amount') }}</label>
+          <input
+            id="amount"
+            v-model.number="amount"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="decimal"
+            class="field ltr-value"
+            :placeholder="t('customer.paywall.amountAny')"
+            :aria-describedby="amountHintId"
+          />
+          <p :id="amountHintId" class="hint" :class="amountError ? 'text-red-600' : ''">
+            {{ amountError || amountHint }}
+          </p>
         </section>
 
-        <section v-if="selectedGateway" class="card card-pad">
+        <section v-if="selectedKind" class="card card-pad">
           <h2 class="text-sm font-semibold text-stone-900">{{ t('customer.paywall.summary') }}</h2>
           <dl class="mt-3 space-y-2 text-sm">
             <div class="flex justify-between gap-4">
@@ -165,9 +144,6 @@ import AppIcon from '@/components/AppIcon.vue'
 import CopyText from '@/components/CopyText.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import GatewaySelector from '@/components/customer/GatewaySelector.vue'
-import GatewayAccountDetails, {
-  type AccountField,
-} from '@/components/customer/GatewayAccountDetails.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -182,20 +158,19 @@ const { settings } = useSiteSettings()
 const maintenance = computed(() => settings.value.maintenance_mode)
 const supportContact = computed(() => settings.value.contact)
 
+/**
+ * A gateway as the paywall publishes it: an id, a kind, a name, the provider slug and a
+ * sort order. The account number, instructions, reference prompt and evidence fields that
+ * used to be here are not withheld for lack of translation but because they describe an
+ * order, not a link - they come back from `my_order_status` once there is one.
+ */
 interface Gateway {
   id: string
   kind: string
   name_bn: string | null
   name_en: string | null
-  instructions_md_bn: string | null
-  instructions_md_en: string | null
-  reference_prompt_bn: string | null
-  reference_prompt_en: string | null
-  account_fields: AccountField[] | null
-  account_number: string | null
-  account_name: string | null
-  supports_reference: boolean
-  evidence_fields: unknown
+  provider: string | null
+  sort_order: number | null
 }
 
 interface Link {
@@ -224,7 +199,7 @@ const link = ref<Link | null>(null)
 const gateways = ref<Gateway[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const selectedGatewayId = ref<string | null>(null)
+const selectedKind = ref<string | null>(null)
 const amount = ref<number>(0)
 const creating = ref(false)
 
@@ -249,25 +224,6 @@ const ctaUrl = computed(() => link.value?.unlock_cta_url || '')
 const effectiveMin = computed(() => link.value?.min_amount ?? 0)
 
 const hideMin = computed(() => link.value?.min_hidden === true)
-
-const selectedGateway = computed(
-  () => gateways.value.find((g) => g.id === selectedGatewayId.value) || null,
-)
-
-/** Whether the chosen method has anywhere to send money. Automated ones do not. */
-const hasDetails = (gateway: Gateway): boolean => {
-  if ((gateway.account_fields ?? []).some((field) => field.value?.trim())) return true
-  return !!(gateway.account_number?.trim() || gateway.account_name?.trim())
-}
-
-const selectedGatewayInstructions = computed(() =>
-  selectedGateway.value
-    ? pick({
-        bn: selectedGateway.value.instructions_md_bn,
-        en: selectedGateway.value.instructions_md_en,
-      } as any)
-    : '',
-)
 
 const isAmountValid = computed(() => {
   if (effectiveMin.value > 0) return amount.value >= effectiveMin.value
@@ -332,9 +288,14 @@ onMounted(async () => {
 
     // Preselect when there is only one choice; with several, let the customer
     // choose rather than silently charging them to one.
-    const onlyGateway = gateways.value.length === 1 ? gateways.value[0] : undefined
-    if (onlyGateway) {
-      selectedGatewayId.value = onlyGateway.id
+    //
+    // Keyed on distinct kinds, not gateways: weighted routing means a kind can have
+    // several accounts behind it, and one row per account in the selector would offer a
+    // choice the shop has already reserved the right to make.
+    const kinds = [...new Set(gateways.value.map((g) => g.kind))]
+    const onlyKind = kinds.length === 1 ? kinds[0] : undefined
+    if (onlyKind) {
+      selectedKind.value = onlyKind
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load link'
@@ -344,7 +305,7 @@ onMounted(async () => {
 })
 
 const createOrder = async (): Promise<void> => {
-  if (!link.value || !selectedGatewayId.value || !isAmountValid.value) {
+  if (!link.value || !selectedKind.value || !isAmountValid.value) {
     return
   }
 
@@ -367,11 +328,12 @@ const createOrder = async (): Promise<void> => {
       }
     }
 
-    // Signature is `create_order(p_slug, p_gateway_id, p_amount)`, with the
-    // amount in whole taka.
+    // Signature is `create_order(p_slug, p_kind, p_amount)`, with the amount in whole
+    // taka. A *kind*, not a gateway id: the shop decides which account of that kind the
+    // money goes to, weighted, and the client no longer gets a say in that.
     const { data, error: createError } = await (supabase.rpc as any)('create_order', {
       p_slug: slug.value,
-      p_gateway_id: selectedGatewayId.value,
+      p_kind: selectedKind.value,
       p_amount: amount.value,
     })
 

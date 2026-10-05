@@ -39,7 +39,8 @@ select test_data.as_user(test_data.owner());
 select api.admin_upsert_gateway(
   jsonb_build_object(
     'id', (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
-    'kind', 'bkash', 'provider', 'bkash_pgw', 'name_en', 'bKash (instant)',
+    'kind', (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
+    'provider', 'bkash_pgw', 'name_en', 'bKash (instant)',
     'credential_bundle', jsonb_build_object(
       'app_key', 'fixture-app-key', 'app_secret', 'fixture-app-secret',
       'username', 'fixture-username', 'password', 'fixture-password'))
@@ -62,7 +63,7 @@ select throws_ok(
 select throws_ok(
   $$insert into public.payment_gateways
        (kind, provider, name_en, account_number, account_name, evidence_fields)
-     values ('bkash', 'bkash_pgw', 'Mixed', '1', 'X',
+     values ('bkash_instant', 'bkash_pgw', 'Mixed', '1', 'X',
              '[{"key":"trxid","type":"text","label_en":"TrxID","required":true,"max_len":24}]'::jsonb)$$,
   '23514',
 'new row for relation "payment_gateways" violates check constraint "payment_gateways_automatic_has_no_forms"',
@@ -116,7 +117,8 @@ select throws_ok(
 
 select is(
   (api.admin_upsert_gateway(
-     jsonb_build_object('kind', 'bkash', 'provider', 'bkash_pgw',
+     jsonb_build_object('kind', (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
+    'provider', 'bkash_pgw',
                         'name_en', 'bKash instant', 'account_number', '01700000000',
                         'account_name', 'Cofibuy'))).provider,
   'bkash_pgw',

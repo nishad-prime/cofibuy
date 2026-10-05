@@ -256,8 +256,15 @@ $$;
 -- `test_data.gateway` rather than another flag, because the whole point of the
 -- distinction is that an automated method carries no evidence schema - and a fixture
 -- that could express both would quietly stop testing that.
+-- The automatic method gets its own kind rather than sharing 'bkash' with the manual
+-- fixture. `private.guard_gateway_kind_uniformity` refuses an active kind that is both
+-- manual and automatic, which is the production rule: a customer who picked "bKash" and
+-- was handed a wallet number has been misled. So a test that wants both modes present at
+-- once has to give them two kinds, exactly as a shop running one bKash account and one
+-- Nagad account would.
 create or replace function test_data.pgw_gateway(
-  p_active boolean default true
+  p_active boolean default true,
+  p_kind text default 'bkash_instant'
 )
 returns public.payment_gateways
 language plpgsql
@@ -269,7 +276,7 @@ begin
     kind, provider, name_en, account_number, account_name, evidence_fields, is_active
   )
   values (
-    'bkash',
+    p_kind,
     'bkash_pgw',
     'bKash (instant)',
     '01700000000',
@@ -420,9 +427,13 @@ declare
   v_result jsonb;
 begin
   perform test_data.as_user(test_data.new_user());
+  -- `api.create_order` takes the kind the customer chose, not a gateway id: the shop
+  -- decides which account of that kind the money goes to. The fixture still speaks in
+  -- display names so a test reads as "orders using bKash", and resolves one to its kind
+  -- here so no test has to know the signature changed.
   select api.create_order(
     p_slug,
-    (select id from public.payment_gateways where name_en = p_gateway),
+    (select kind from public.payment_gateways where name_en = p_gateway),
     p_amount
   )
   into v_result;
@@ -447,9 +458,13 @@ declare
   v_result jsonb;
 begin
   perform test_data.as_user(p_user);
+  -- `api.create_order` takes the kind the customer chose, not a gateway id: the shop
+  -- decides which account of that kind the money goes to. The fixture still speaks in
+  -- display names so a test reads as "orders using bKash", and resolves one to its kind
+  -- here so no test has to know the signature changed.
   select api.create_order(
     p_slug,
-    (select id from public.payment_gateways where name_en = p_gateway),
+    (select kind from public.payment_gateways where name_en = p_gateway),
     p_amount
   )
   into v_result;
@@ -655,7 +670,7 @@ begin
   perform test_data.as_user(v_user);
   select (api.create_order(
     p_slug,
-    (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
+    (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
     p_amount
   )) ->> 'order_id' into v_order_id;
   perform test_data.as_anon();
@@ -676,11 +691,37 @@ begin
   perform test_data.as_user(v_user);
   select (api.create_order(
     p_slug,
-    (select id from public.payment_gateways where provider is null and kind = 'bkash' limit 1),
+    (select kind from public.payment_gateways where provider is null and kind = 'bkash' limit 1),
     p_amount
   )) ->> 'order_id' into v_order_id;
   perform test_data.as_anon();
   return v_order_id;
+end
+$$;
+
+-- What fraction of `p_draws` independent draws for `p_kind` land on the account named
+-- `p_name_en`. The weighting is a random draw, so the only honest way to assert it is to
+-- take a sample: this is the measuring instrument for that, kept here so the test reads as
+-- a claim about traffic rather than as a loop.
+create or replace function test_data.draw_share(
+  p_kind text,
+  p_name_en text,
+  p_draws integer default 2000
+)
+returns numeric
+language plpgsql
+volatile
+as $$
+declare
+  v_hits integer := 0;
+  i integer;
+begin
+  for i in 1..p_draws loop
+    if (private.pick_gateway_for_kind(p_kind)).name_en = p_name_en then
+      v_hits := v_hits + 1;
+    end if;
+  end loop;
+  return v_hits::numeric / p_draws::numeric;
 end
 $$;
 

@@ -161,6 +161,16 @@
           </label>
 
           <label class="block">
+            <span class="mb-1 block text-sm font-medium text-stone-700">Weight</span>
+            <input v-model.number="form.weight" type="number" min="1" step="1" class="field" />
+            <span class="mt-1 block text-xs text-stone-500">
+              How much of this kind's traffic this account takes, in proportion. 1 is an even share.
+              Only matters when a kind has more than one account, and it is decided by the database
+              at order time - not by the customer.
+            </span>
+          </label>
+
+          <label class="block">
             <span class="mb-1 block text-sm font-medium text-stone-700">Sort order</span>
             <input v-model.number="form.sort_order" type="number" class="field" />
             <span class="mt-1 block text-xs text-stone-500">Lower numbers appear first.</span>
@@ -228,6 +238,7 @@ interface Gateway {
   environment: 'sandbox' | 'live' | null
   is_active: boolean
   sort_order: number | null
+  weight: number | null
 }
 
 const props = defineProps<{
@@ -258,6 +269,7 @@ const form = ref({
   environment: 'sandbox' as 'sandbox' | 'live',
   is_active: true,
   sort_order: 0,
+  weight: 1,
 })
 
 /**
@@ -330,6 +342,7 @@ onMounted(async () => {
       environment: gateway.environment ?? 'sandbox',
       is_active: gateway.is_active,
       sort_order: gateway.sort_order ?? 0,
+      weight: gateway.weight ?? 1,
     }
     const { data: stored } = await supabase.rpc('admin_gateway_has_credentials', {
       p_gateway_id: props.gatewayId,
@@ -381,6 +394,7 @@ const save = async (): Promise<void> => {
         supports_reference: false,
         is_active: form.value.is_active,
         sort_order: form.value.sort_order ?? 0,
+        weight: form.value.weight ?? 1,
         evidence_fields: [],
         account_fields: [],
         credential_bundle: credentialDraft.value,

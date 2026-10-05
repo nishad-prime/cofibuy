@@ -34,6 +34,134 @@
         </div>
       </div>
 
+      <!--
+        The prose fields, rendered from one list.
+
+        They were in the form's state and in its save payload long before they had inputs, so an
+        operator could load a link, change its title, save, and silently write back every teaser,
+        body and button label exactly as they found it - with no way to see or change any of it.
+        The list is the single place these eight fields are named, and the draft panel below reads
+        the same one, so a field that gains an input here cannot be missing there.
+      -->
+      <fieldset class="space-y-4 border-t border-gray-200 pt-4">
+        <legend class="sr-only">Product copy</legend>
+
+        <div v-for="field in BRIEF_FIELDS" :key="field.form">
+          <label :for="field.form" class="block text-sm font-medium text-gray-700">
+            {{ field.label }}
+          </label>
+          <textarea
+            v-if="field.kind === 'textarea'"
+            :id="field.form"
+            v-model="form[field.form]"
+            rows="3"
+            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          ></textarea>
+          <input
+            v-else
+            :id="field.form"
+            v-model="form[field.form]"
+            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+          />
+        </div>
+
+        <!-- Not part of the brief. A URL is a thing the operator knows and the model cannot
+             know, and inventing one would produce a pay button pointing nowhere. -->
+        <div>
+          <label for="cta_url" class="block text-sm font-medium text-gray-700"
+            >Pay button URL</label
+          >
+          <input
+            id="cta_url"
+            v-model="form.cta_url"
+            placeholder="https://…"
+            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+          />
+        </div>
+      </fieldset>
+
+      <!--
+        Owner-only, and hidden from staff rather than disabled: `admin_upsert_link` is owner-only
+        too, so a staff member who can see this button cannot save the result, and offering a
+        button that cannot lead anywhere is worse than not offering it.
+      -->
+      <fieldset v-if="isOwner" class="space-y-3 border-t border-gray-200 pt-4">
+        <legend class="text-sm font-medium text-gray-700">Draft the copy with AI</legend>
+
+        <p class="text-sm text-gray-600">
+          Describe what the guide is and what is in it. This text is used only as the model's
+          instructions — it is never saved — and the guide itself is never uploaded to it, so
+          anything you leave out cannot appear in the draft.
+        </p>
+
+        <textarea
+          v-model="subject"
+          rows="3"
+          placeholder="A pocket guide to the birds of the Sundarbans, with photographs and a map of the trails."
+          class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        ></textarea>
+
+        <button
+          type="button"
+          :disabled="drafting || subject.trim() === ''"
+          class="rounded-md border border-blue-600 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 disabled:border-gray-300 disabled:text-gray-400"
+          @click="draftCopy"
+        >
+          {{ drafting ? 'Drafting...' : 'Draft copy' }}
+        </button>
+
+        <p v-if="draftError" class="rounded-lg bg-red-50 p-3 text-sm text-red-800">
+          {{ draftError }}
+        </p>
+
+        <!--
+          The proposal stays open after a field is applied, because the operator will usually
+          keep most of it and reject one line, and the alternative - applying a single field
+          closing the panel - would force them to draft again for the rest.
+        -->
+        <div v-if="brief" class="space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-sm font-medium text-blue-900">
+              Suggested copy — apply what you agree with.
+            </p>
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                class="text-xs text-blue-700 underline underline-offset-2"
+                @click="applyAll"
+              >
+                Use all
+              </button>
+              <button
+                type="button"
+                class="text-xs text-gray-500 underline underline-offset-2"
+                @click="discardBrief"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+
+          <div
+            v-for="field in BRIEF_FIELDS"
+            :key="`brief-${field.form}`"
+            class="rounded border border-blue-100 bg-white p-2"
+          >
+            <div class="flex items-baseline justify-between gap-3">
+              <p class="text-xs font-medium text-gray-500">{{ field.label }}</p>
+              <button
+                type="button"
+                class="shrink-0 text-xs text-blue-700 underline underline-offset-2"
+                @click="applyBrief(field.form)"
+              >
+                {{ applied.includes(field.form) ? 'Applied' : 'Use this' }}
+              </button>
+            </div>
+            <p class="mt-1 whitespace-pre-wrap text-sm text-gray-800">{{ brief[field.key] }}</p>
+          </div>
+        </div>
+      </fieldset>
+
       <div class="flex flex-wrap items-center space-x-4">
         <label class="flex items-center">
           <input type="checkbox" v-model="form.is_active" class="rounded border-gray-300" />
@@ -76,6 +204,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
+import { useStaffRole } from '@/composables/useStaffRole'
+import { LINK_BRIEF_FIELDS as BRIEF_FIELDS, linkFormDefaults } from '@/config/linkBriefFields'
 
 const route = useRoute()
 const router = useRouter()
@@ -84,26 +214,94 @@ const supabase = getSupabase()
 const linkId = computed(() => route.params.id as string)
 const isEdit = computed(() => !!route.params.id)
 
-const form = ref<any>({
-  slug: '',
-  title_en: '',
-  title_bn: '',
-  teaser_en: '',
-  teaser_bn: '',
-  body_en: '',
-  body_bn: '',
-  cta_label_en: '',
-  cta_label_bn: '',
-  cta_url: '',
-  is_active: false,
-  is_listed: true,
-  sort_order: 0,
-  min_override: null,
-  hide_min: false,
-})
+const form = ref<any>(linkFormDefaults())
 
 const saving = ref(false)
 const error = ref<string | null>(null)
+
+const { isOwner } = useStaffRole()
+
+/**
+ * AI draft state.
+ *
+ * `subject` is deliberately not part of `form`: it is a prompt, not shop copy, and saving it would
+ * put a sentence the operator only meant for the model into the database.
+ */
+const subject = ref('')
+const brief = ref<Record<string, string> | null>(null)
+const applied = ref<string[]>([])
+const drafting = ref(false)
+const draftError = ref<string | null>(null)
+
+const draftCopy = async (): Promise<void> => {
+  if (drafting.value || subject.value.trim() === '') return
+
+  drafting.value = true
+  draftError.value = null
+
+  try {
+    const { data, error: fnError } = await supabase.functions.invoke('ai-draft-link', {
+      body: {
+        subject: subject.value.trim(),
+        slug: form.value.slug,
+        // The form's current values, sent under their column names so the draft can improve on
+        // them. Only what the operator has typed so far: a field they just cleared is empty on
+        // purpose, and treating that as missing context would quietly draft it back.
+        title_en: form.value.title_en,
+        title_bn: form.value.title_bn,
+        teaser_md_en: form.value.teaser_en,
+        teaser_md_bn: form.value.teaser_bn,
+        unlock_body_md_en: form.value.body_en,
+        unlock_body_md_bn: form.value.body_bn,
+        unlock_cta_label_en: form.value.cta_label_en,
+        unlock_cta_label_bn: form.value.cta_label_bn,
+      },
+    })
+
+    if (fnError) throw fnError
+
+    const payload = data as { brief?: Record<string, unknown> } | null
+    const next = payload?.brief
+
+    // Every field or none. A partial set is the case the preview exists for, but a set missing a
+    // field is a function bug rather than a draft, and applying it would blank the field.
+    if (!next || BRIEF_FIELDS.some((field) => typeof next[field.key] !== 'string')) {
+      throw new Error('The draft came back incomplete, so nothing was applied.')
+    }
+
+    brief.value = next as Record<string, string>
+    applied.value = []
+  } catch (err) {
+    // The function's `detail` names the field or provider at fault; the SDK's own message does not.
+    const detail = (err as { context?: unknown })?.context as { detail?: unknown } | undefined
+    draftError.value =
+      typeof detail?.detail === 'string' && detail.detail !== ''
+        ? detail.detail
+        : err instanceof Error
+          ? err.message
+          : 'The draft did not come back.'
+  } finally {
+    drafting.value = false
+  }
+}
+
+/** Moves one proposed field into the form, where it is an unsaved edit like anything else. */
+const applyBrief = (formField: string): void => {
+  const field = BRIEF_FIELDS.find((f) => f.form === formField)
+  if (!field || !brief.value) return
+
+  form.value[field.form] = brief.value[field.key]
+  if (!applied.value.includes(field.form)) applied.value.push(field.form)
+}
+
+const applyAll = (): void => {
+  for (const field of BRIEF_FIELDS) applyBrief(field.form)
+}
+
+const discardBrief = (): void => {
+  brief.value = null
+  applied.value = []
+}
 
 onMounted(async () => {
   if (isEdit.value) {
@@ -136,6 +334,7 @@ onMounted(async () => {
 const save = async (): Promise<void> => {
   saving.value = true
   error.value = null
+  discardBrief()
   try {
     // `api.admin_upsert_link` takes one jsonb argument; the keys must match the
     // names it reads out of that jsonb exactly.

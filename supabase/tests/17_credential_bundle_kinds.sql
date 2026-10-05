@@ -38,7 +38,7 @@ select test_data.as_service();
 
 insert into private.auto_providers (slug, subject_kind, name_en, fields, sort_order)
 values (
-  'openai_compatible', 'ai_provider', 'OpenAI-compatible model',
+  'test_ai_provider', 'ai_provider', 'Test model provider',
   '[
     {"key":"api_key","label_en":"API key","secret":true},
     {"key":"base_url","label_en":"Base URL","secret":false},
@@ -54,7 +54,7 @@ select is(
 );
 
 select is(
-  (select subject_kind from private.auto_providers where slug = 'openai_compatible'),
+  (select subject_kind from private.auto_providers where slug = 'test_ai_provider'),
   'ai_provider',
   'the new row declares the kind it supplies credentials for'
 );
@@ -78,10 +78,10 @@ select throws_ok(
   $$insert into public.payment_gateways (
       kind, provider, name_en, account_number, account_name, account_fields, evidence_fields
     ) values (
-      'bkash', 'openai_compatible', 'Bogus', '01700000000', 'Cofibuy',
+      'bkash', 'test_ai_provider', 'Bogus', '01700000000', 'Cofibuy',
       '[]'::jsonb, '[]'::jsonb)$$,
   '23514',
-  'unknown payment provider: openai_compatible',
+  'unknown payment provider: test_ai_provider',
   'a registered AI provider is still not a valid payment provider'
 );
 
@@ -90,10 +90,10 @@ select throws_ok(
 select test_data.pgw_gateway(true, 'bkash_instant', 'sandbox') as clash_gateway;
 
 select throws_ok(
-  $$update public.payment_gateways set provider = 'openai_compatible'
+  $$update public.payment_gateways set provider = 'test_ai_provider'
     where provider = 'bkash_pgw'$$,
   '23514',
-  'unknown payment provider: openai_compatible',
+  'unknown payment provider: test_ai_provider',
   'nor can an existing gateway be repointed at one'
 );
 
@@ -104,19 +104,20 @@ select test_data.as_user(test_data.owner());
 select throws_ok(
   $$select api.admin_upsert_gateway(
       jsonb_build_object(
-        'kind', 'bkash', 'provider', 'openai_compatible', 'name_en', 'Bogus',
+        'kind', 'bkash', 'provider', 'test_ai_provider', 'name_en', 'Bogus',
         'account_fields', '[]'::jsonb, 'evidence_fields', '[]'::jsonb))$$,
   '22023',
-  'unknown payment provider: openai_compatible',
+  'unknown payment provider: test_ai_provider',
   'and the admin form cannot do it either'
 );
 
 -- The gateway form reads this, and it must not start offering a way to take money from a
--- language model. The registry holds two rows; the form must still see one.
+-- language model. Two AI providers are registered by now - this file's own and the seeded one -
+-- and the form must still see exactly the gateway.
 select is(
   (select count(*) from api.admin_auto_providers()),
   1::bigint,
-  'the registry now holds two rows and the gateway form still sees one'
+  'the registry holds AI providers and the gateway form still sees one'
 );
 
 select is(
@@ -141,7 +142,7 @@ select test_data.as_service();
 
 select lives_ok(
   $$select private.store_credential_bundle(
-      'ai_provider', '11111111-1111-4111-8111-111111111111'::uuid, 'openai_compatible',
+      'ai_provider', '11111111-1111-4111-8111-111111111111'::uuid, 'test_ai_provider',
       jsonb_build_object(
         'api_key', '  sk-live-abc123  ', 'base_url', 'https://api.example.test/v1',
         'model', 'small-model'))$$,
@@ -191,36 +192,36 @@ select is(
 -- The exact mistake the discriminator exists to catch: the right slug, the wrong kind.
 select throws_ok(
   $$select private.store_credential_bundle(
-      'gateway', '11111111-1111-4111-8111-111111111111'::uuid, 'openai_compatible',
+      'gateway', '11111111-1111-4111-8111-111111111111'::uuid, 'test_ai_provider',
       '{}'::jsonb)$$,
   '22023',
-  'unknown payment provider: openai_compatible',
+  'unknown payment provider: test_ai_provider',
   'a registered AI provider is refused when asked for as a payment provider'
 );
 
 select throws_ok(
   $$select private.store_credential_bundle(
-      'ai_provider', '22222222-2222-4222-8222-222222222222'::uuid, 'openai_compatible',
+      'ai_provider', '22222222-2222-4222-8222-222222222222'::uuid, 'test_ai_provider',
       jsonb_build_object('api_key', 'sk-live-abc123', 'base_url', 'https://x.test'))$$,
   '22023',
-  'credential model is required for openai_compatible',
+  'credential model is required for test_ai_provider',
   'a new bundle must supply every declared key'
 );
 
 select throws_ok(
   $$select private.store_credential_bundle(
-      'ai_provider', '22222222-2222-4222-8222-222222222222'::uuid, 'openai_compatible',
+      'ai_provider', '22222222-2222-4222-8222-222222222222'::uuid, 'test_ai_provider',
       jsonb_build_object(
         'api_key', 'sk-live-abc123', 'base_url', 'https://x.test', 'model', 'm',
         'temperature', '0.7'))$$,
   '22023',
-  'credential temperature is not part of openai_compatible',
+  'credential temperature is not part of test_ai_provider',
   'an undeclared key is refused rather than stored quietly'
 );
 
 select throws_ok(
   $$select private.store_credential_bundle(
-      'ai_provider', '22222222-2222-4222-8222-222222222222'::uuid, 'openai_compatible',
+      'ai_provider', '22222222-2222-4222-8222-222222222222'::uuid, 'test_ai_provider',
       jsonb_build_object(
         'api_key', '   ', 'base_url', 'https://x.test', 'model', 'm'))$$,
   '22023',
@@ -230,7 +231,7 @@ select throws_ok(
 
 select throws_ok(
   $$select private.store_credential_bundle(
-      'ai_provider', '22222222-2222-4222-8222-222222222222'::uuid, 'openai_compatible',
+      'ai_provider', '22222222-2222-4222-8222-222222222222'::uuid, 'test_ai_provider',
       jsonb_build_object(
         'api_key', 42, 'base_url', 'https://x.test', 'model', 'm'))$$,
   '22023',
@@ -240,7 +241,7 @@ select throws_ok(
 
 select throws_ok(
   $$select private.store_credential_bundle(
-      'wallet', '22222222-2222-4222-8222-222222222222'::uuid, 'openai_compatible', '{}'::jsonb)$$,
+      'wallet', '22222222-2222-4222-8222-222222222222'::uuid, 'test_ai_provider', '{}'::jsonb)$$,
   '22023',
   'unknown credential subject kind: wallet',
   'an unknown kind names itself, rather than being reported as an unknown provider'
@@ -250,7 +251,7 @@ select throws_ok(
 -- form depends on, because the form renders a mask and cannot read a secret back.
 select lives_ok(
   $$select private.store_credential_bundle(
-      'ai_provider', '11111111-1111-4111-8111-111111111111'::uuid, 'openai_compatible',
+      'ai_provider', '11111111-1111-4111-8111-111111111111'::uuid, 'test_ai_provider',
       jsonb_build_object('model', 'bigger-model'))$$,
   'a partial save is accepted against an existing bundle'
 );
@@ -343,7 +344,7 @@ select is(
 
 select lives_ok(
   $$select private.store_credential_bundle(
-      'ai_provider', '11111111-1111-4111-8111-111111111111'::uuid, 'openai_compatible',
+      'ai_provider', '11111111-1111-4111-8111-111111111111'::uuid, 'test_ai_provider',
       jsonb_build_object('model', 'third-model'))$$,
   'an AI credential can be rotated afterwards'
 );

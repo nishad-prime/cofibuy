@@ -132,6 +132,15 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/admin/CopyView.vue'),
         meta: { requiresOwner: true },
       },
+      {
+        // The model provider's credential is a secret the shop spends, not one of
+        // its own, so it is owner-only in the same way and for the same reason as
+        // the credential pages under /admin/gateways.
+        path: 'ai',
+        name: 'admin-ai',
+        component: () => import('@/views/admin/AiSettingsView.vue'),
+        meta: { requiresOwner: true },
+      },
     ],
   },
 ]

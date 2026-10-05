@@ -14,6 +14,8 @@ export type Database = {
     Tables: Record<never, never>
     Views: Record<never, never>
     Functions: {
+      admin_ai_providers: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      admin_ai_settings: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_auto_providers: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_copy: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_delete_gateway: {
@@ -113,6 +115,12 @@ export type Database = {
       admin_settings: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_stats: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_team: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      admin_upsert_ai_settings: {
+        Args: {
+          p_settings: Json
+        }
+        Returns: Json
+      }
       admin_upsert_gateway: {
         Args: {
           p_gateway: Json
@@ -125,6 +133,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ai_credential_bundle: { Args: Record<PropertyKey, never>; Returns: Json[] }
       approve_order: {
         Args: {
           p_order_id: string
@@ -361,6 +370,7 @@ export type Database = {
       expire_stale_orders: { Args: Record<PropertyKey, never>; Returns: number }
       gen_reference_code: { Args: Record<PropertyKey, never>; Returns: string }
       grant_on_approval: { Args: Record<PropertyKey, never>; Returns: Json }
+      guard_ai_provider_known: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_evidence_fields: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_gateway_kind_uniformity: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_order_status: { Args: Record<PropertyKey, never>; Returns: Json }

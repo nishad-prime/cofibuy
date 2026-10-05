@@ -24,7 +24,7 @@
 -- therefore ask `has_function_privilege` about the role directly, which is also a more
 -- honest statement of intent than "somebody happened not to call it".
 
-select plan(38);
+select plan(44);
 
 select test_data.reset();
 
@@ -390,6 +390,63 @@ select is(
   1::bigint,
   'a save that changes no credential keeps the cached token'
 );
+
+-- ---------------------------------------------------------------------------
+-- Telling "has credentials" from "leave blank to keep"
+-- ---------------------------------------------------------------------------
+-- The admin form masks credentials with no read-back, so on opening an automatic gateway
+-- it cannot tell a bundle that exists from one that never did. The two states look
+-- identical on screen - four password boxes showing placeholders - yet they mean opposite
+-- things: one keeps working, the other fails at payment time for want of a bundle.
+-- `api.admin_gateway_has_credentials` is the boolean that separates them.
+--
+-- It exists only because `api.gateway_credential_bundle` is service_role only. That
+-- restriction is correct and stays: a bundle id is a pointer to the store holding the
+-- plaintext, and a boolean's not. What is asserted below is that the narrower answer is
+-- exposed to exactly who needs it and no wider.
+
+select is(
+  api.admin_gateway_has_credentials(
+    (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1)),
+  true,
+  'the owner is told an automatic method with a stored bundle has credentials'
+);
+
+select is(
+  api.admin_gateway_has_credentials(gen_random_uuid()),
+  false,
+  'and an id that matches no gateway reads as false rather than raising'
+);
+
+select ok(
+  test_data.can_execute('authenticated', 'api.admin_gateway_has_credentials(uuid)'),
+  'a logged-in role may ask the question'
+);
+
+select ok(
+  not test_data.can_execute('anon', 'api.admin_gateway_has_credentials(uuid)'),
+  'anon may not'
+);
+
+select ok(
+  not test_data.can_execute('public', 'api.admin_gateway_has_credentials(uuid)'),
+  'and it is not left on public'
+);
+
+-- Owner-only, matching `admin_upsert_gateway`. Whether a merchant credential exists is
+-- itself owner-only configuration: a staff account that could enumerate it could probe for
+-- a merchant account being onboarded, and the function returns false rather than raising so
+-- that enumeration cannot be told apart from an absent row.
+select test_data.as_user(test_data.new_staff('staff'));
+
+select is(
+  api.admin_gateway_has_credentials(
+    (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1)),
+  false,
+  'staff asking about an existing bundle is told no'
+);
+
+select test_data.as_user(test_data.owner());
 
 -- ---------------------------------------------------------------------------
 -- Going back to manual

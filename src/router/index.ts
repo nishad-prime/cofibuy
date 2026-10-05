@@ -83,15 +83,24 @@ const routes: RouteRecordRaw[] = [
         name: 'admin-gateways',
         component: () => import('@/views/admin/GatewaysView.vue'),
       },
+      // One component behind three paths: `gateways/new` asks which kind of method this is,
+      // `gateways/new/:mode` is that choice already made, and `gateways/:id/edit` reads the
+      // stored provider off the row. Keeping the decision here means neither form has to
+      // know it can also be reached another way.
+      {
+        path: 'gateways/new/:mode(manual|automatic)',
+        name: 'admin-gateways-new-mode',
+        component: () => import('@/views/admin/GatewayEditView.vue'),
+      },
       {
         path: 'gateways/new',
         name: 'admin-gateways-new',
-        component: () => import('@/views/admin/GatewayFormView.vue'),
+        component: () => import('@/views/admin/GatewayEditView.vue'),
       },
       {
         path: 'gateways/:id/edit',
         name: 'admin-gateways-edit',
-        component: () => import('@/views/admin/GatewayFormView.vue'),
+        component: () => import('@/views/admin/GatewayEditView.vue'),
       },
       {
         path: 'team',

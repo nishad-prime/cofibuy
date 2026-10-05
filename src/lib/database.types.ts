@@ -28,6 +28,12 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_gateway_has_credentials: {
+        Args: {
+          p_gateway_id: string
+        }
+        Returns: boolean
+      }
       admin_gateways: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_links: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_order_detail: {

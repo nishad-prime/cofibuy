@@ -9,8 +9,8 @@
         {{ isEdit ? 'Edit payment method' : 'New payment method' }}
       </h1>
       <p class="mt-1 text-sm text-stone-500">
-        Where customers send money, how they prove it — or whether the payment is taken
-        automatically and there is nothing to send.
+        You give the customer the account details below and they send you proof. A staff member
+        approves each payment by hand.
       </p>
     </header>
 
@@ -73,79 +73,6 @@
       </CollapsibleSection>
 
       <CollapsibleSection
-        panel-id="mode"
-        title="How the money arrives"
-        :open="openSection === 'mode'"
-        @update:open="toggleSection('mode')"
-      >
-        <fieldset class="space-y-3">
-          <legend class="sr-only">How the money arrives</legend>
-
-          <label
-            class="flex cursor-pointer items-start gap-3 rounded-lg border p-4"
-            :class="!form.provider ? 'border-brand-400 bg-brand-50/40' : 'border-stone-200'"
-          >
-            <input
-              v-model="form.provider"
-              type="radio"
-              :value="null"
-              class="mt-1"
-              @change="onProviderChange"
-            />
-            <span>
-              <span class="block text-sm font-medium text-stone-800">
-                The customer sends it, then sends proof
-              </span>
-              <span class="block text-xs text-stone-500">
-                You give them the account details below and ask for a TrxID and a screenshot. A
-                staff member approves each payment. This is the default, and it works with any
-                provider.
-              </span>
-            </span>
-          </label>
-
-          <label
-            class="flex cursor-pointer items-start gap-3 rounded-lg border p-4"
-            :class="
-              form.provider === 'bkash_pgw' ? 'border-brand-400 bg-brand-50/40' : 'border-stone-200'
-            "
-          >
-            <input
-              v-model="form.provider"
-              type="radio"
-              value="bkash_pgw"
-              class="mt-1"
-              @change="onProviderChange"
-            />
-            <span>
-              <span class="block text-sm font-medium text-stone-800">
-                bKash takes it automatically
-              </span>
-              <span class="block text-xs text-stone-500">
-                The customer presses Pay and is handed to bKash. When bKash confirms the payment,
-                the order approves itself — no screenshot, no TrxID, no staff member in the loop.
-                Nothing to configure here beyond turning it on; the API credentials are environment
-                settings, not per-method ones.
-              </span>
-            </span>
-          </label>
-        </fieldset>
-
-        <div
-          v-if="isAutomated"
-          class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
-        >
-          <p class="font-medium">Automatic methods carry no forms.</p>
-          <p class="mt-1 text-xs">
-            bKash collects the money itself, so there is nowhere to send it and nothing to review.
-            The account details and evidence fields below are switched off for this method, and any
-            saved on it are dropped when you save.
-          </p>
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection
-        v-if="!isAutomated"
         panel-id="accounts"
         title="Account details"
         :open="openSection === 'accounts'"
@@ -202,7 +129,6 @@
       </CollapsibleSection>
 
       <CollapsibleSection
-        v-if="!isAutomated"
         panel-id="evidence"
         title="Evidence fields"
         :open="openSection === 'evidence'"
@@ -229,16 +155,21 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import EvidenceFieldEditor, { type FieldDraft } from '@/components/admin/EvidenceFieldEditor.vue'
 import AccountFieldEditor, { type AccountDraft } from '@/components/admin/AccountFieldEditor.vue'
 import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
 
+/**
+ * The row `admin_gateways` returns. Named `Gateway` rather than shared with the automatic
+ * form: the two views read disjoint halves of this row, and a single interface covering
+ * both would let the manual form reach for `environment` and `credential_bundle`, which
+ * are meaningless without a provider.
+ */
 interface Gateway {
   id: string
   kind: string
-  provider: string | null
   name_en: string | null
   name_bn: string | null
   account_fields: Partial<AccountDraft>[] | null
@@ -252,17 +183,20 @@ interface Gateway {
   evidence_fields: Partial<FieldDraft>[] | null
 }
 
+const props = defineProps<{
+  /** Absent when creating. The dispatcher view resolves this from the route. */
+  gatewayId?: string
+}>()
+
 // Suggestions, not a closed list. They exist so the common methods are one keystroke
 // away and so an operator sees the existing naming convention, but the field takes
 // anything - CellFin and Rocket are as valid as bKash.
 const KIND_SUGGESTIONS = ['bkash', 'nagad', 'bank', 'rocket', 'cellfin']
 
-const route = useRoute()
 const router = useRouter()
 const supabase = getSupabase()
 
-const gatewayId = computed(() => route.params.id as string | undefined)
-const isEdit = computed(() => !!gatewayId.value)
+const isEdit = computed(() => !!props.gatewayId)
 
 const fields = ref<FieldDraft[]>([])
 const accountFields = ref<AccountDraft[]>([])
@@ -273,7 +207,6 @@ const error = ref<string | null>(null)
 
 const form = ref({
   kind: 'bkash',
-  provider: null as string | null,
   name_en: '',
   name_bn: '',
   instructions_en: '',
@@ -285,22 +218,18 @@ const form = ref({
   sort_order: 0,
 })
 
-const isAutomated = computed(() => !!form.value.provider)
-
 /**
  * Which panel is open. One id rather than a boolean per panel, because the rule the
  * form needs is "one at a time", and a set of independent booleans cannot express that
  * without every panel agreeing about the others.
  *
- * `accounts` and `evidence` only exist for a manual method, so the id can point at a
- * panel that is not on the page. `onProviderChange` and the mount path both repair
- * that; without it the operator toggles to automatic, switches to manual again, and
- * finds every panel folded with nothing marking why.
+ * Every panel in `MANUAL_SECTIONS` is unconditionally rendered here - the automatic
+ * half of this screen lives in `AutoGatewayFormView`, so there is no longer a mode
+ * switch that can leave the open id naming a panel that is not on the page.
  */
 const openSection = ref<string | null>('basics')
 
-/** The panels a manual method has, in order. `mode` is shared by both kinds. */
-const MANUAL_SECTIONS = ['basics', 'mode', 'accounts', 'instructions', 'evidence'] as const
+const MANUAL_SECTIONS = ['basics', 'accounts', 'instructions', 'evidence'] as const
 
 function toggleSection(id: string): void {
   openSection.value = openSection.value === id ? null : id
@@ -308,10 +237,7 @@ function toggleSection(id: string): void {
 
 /** Keep the open id pointing at a panel that is actually rendered. */
 function ensureOpenSectionExists(): void {
-  const available = isAutomated.value
-    ? MANUAL_SECTIONS.filter((id) => id !== 'accounts' && id !== 'evidence')
-    : MANUAL_SECTIONS
-  if (!openSection.value || !available.includes(openSection.value as never)) {
+  if (!openSection.value || !MANUAL_SECTIONS.includes(openSection.value as never)) {
     openSection.value = 'basics'
   }
 }
@@ -322,24 +248,6 @@ const hasAccountProblems = computed(
 const hasEvidenceProblems = computed(() => (editor.value?.problems ?? []).some(Boolean) || false)
 
 const isValid = computed(() => !hasAccountProblems.value && !hasEvidenceProblems.value)
-
-/**
- * Switching to an automated method has to clear the forms, not just hide them. The
- * database refuses a row that carries both, so leaving them in place would turn the next
- * save into a constraint error with a message about a check constraint rather than
- * anything about the box the operator just ticked.
- *
- * The open panel is repaired here too: two of the five panels stop existing when the
- * method becomes automatic, and the id naming one of them would otherwise survive the
- * switch and reappear collapsed when it comes back.
- */
-const onProviderChange = (): void => {
-  if (isAutomated.value) {
-    fields.value = []
-    accountFields.value = []
-  }
-  ensureOpenSectionExists()
-}
 
 const toDraft = (raw: Partial<FieldDraft>): FieldDraft => ({
   key: raw.key ?? '',
@@ -368,7 +276,7 @@ onMounted(async () => {
 
   const { data } = await (supabase.rpc as any)('admin_gateways')
   const gateway: Gateway | undefined = (data || []).find(
-    (row: { id: string }) => row.id === gatewayId.value,
+    (row: { id: string }) => row.id === props.gatewayId,
   )
   if (!gateway) {
     error.value = 'That payment method no longer exists.'
@@ -379,7 +287,6 @@ onMounted(async () => {
   // instead of merging the row wholesale.
   form.value = {
     kind: gateway.kind,
-    provider: gateway.provider ?? null,
     name_en: gateway.name_en ?? '',
     name_bn: gateway.name_bn ?? '',
     instructions_en: gateway.instructions_md_en ?? '',
@@ -414,14 +321,16 @@ const save = async (): Promise<void> => {
     // match the names the function reads out of it. Dropping any of them resets
     // that column, so the payload is built explicitly rather than by spreading.
     //
-    // Both form lists are sent as empty arrays for an automated method. The
-    // database refuses a row carrying both a provider and a form, and sending
-    // `null` would be read as "unset" rather than "empty".
+    // `provider` is sent as an explicit null rather than omitted: this view edits
+    // manual methods only, and the database rejects a row carrying both a provider
+    // and account or evidence fields. `credential_bundle` is deliberately absent -
+    // a manual gateway has no credentials, and an empty bundle would be a blank
+    // field rather than "unchanged".
     const { error: rpcError } = await (supabase.rpc as any)('admin_upsert_gateway', {
       p_gateway: {
-        id: gatewayId.value ?? '',
+        id: props.gatewayId ?? '',
         kind: form.value.kind.trim(),
-        provider: form.value.provider,
+        provider: null,
         name_en: form.value.name_en,
         name_bn: form.value.name_bn || null,
         instructions_md_en: form.value.instructions_en || null,
@@ -431,8 +340,8 @@ const save = async (): Promise<void> => {
         supports_reference: form.value.supports_reference,
         is_active: form.value.is_active,
         sort_order: form.value.sort_order ?? 0,
-        evidence_fields: isAutomated.value ? [] : (editor.value?.payload ?? []),
-        account_fields: isAutomated.value ? [] : (accountEditor.value?.payload ?? []),
+        evidence_fields: editor.value?.payload ?? [],
+        account_fields: accountEditor.value?.payload ?? [],
       },
     })
 

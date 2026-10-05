@@ -48,6 +48,23 @@
                 <p v-if="gw.provider" class="mt-1 text-xs text-stone-500">
                   Approves itself on confirmation
                 </p>
+                <!-- Which bKash this row's credentials belong to. Shown because a sandbox
+                     method silently never settles, and "it is active but nothing happens" is
+                     the symptom an operator would otherwise have to guess at. -->
+                <p v-if="gw.provider" class="mt-1">
+                  <span
+                    class="badge-muted text-[11px]"
+                    :class="gw.environment === 'live' ? 'text-emerald-700' : 'text-amber-700'"
+                  >
+                    {{ gw.environment === 'live' ? 'Live' : 'Sandbox' }}
+                  </span>
+                  <span
+                    v-if="gw.environment !== 'live'"
+                    class="mt-0.5 block text-[11px] text-amber-700"
+                  >
+                    Never settles
+                  </span>
+                </p>
               </td>
               <td class="td">
                 <span v-if="detailCount(gw) > 0" :title="detailSummary(gw)">
@@ -121,6 +138,12 @@ interface GatewayRow {
   account_name: string | null
   evidence_fields: { key: string }[] | null
   is_active: boolean
+  /**
+   * Present only for an automatic gateway, and deliberately defaulted rather than left
+   * possibly-undefined: `admin_upsert_gateway` coalesces a blank to 'sandbox', so a row saved
+   * before the column existed reads back as null and means sandbox, not "unknown".
+   */
+  environment: 'sandbox' | 'live' | null
 }
 
 const supabase = getSupabase()

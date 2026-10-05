@@ -39,12 +39,40 @@
       </div>
 
       <!--
+          The online method has one button and no fields. The customer leaves this page for
+          bKash and comes back to a different route, so nothing here has to survive the
+          round trip except the order itself.
+        -->
+      <section
+        v-if="currentStatus === 'awaiting_proof' && isOnlineGateway"
+        class="card card-pad mt-6 border-brand-200 bg-brand-50"
+      >
+        <h2 class="flex items-center gap-2 text-sm font-semibold text-brand-900">
+          <AppIcon name="wallet" :size="18" />
+          {{ t('customer.order.payOnline') }}
+        </h2>
+
+        <p v-if="isSandboxGateway" class="mt-2 text-sm text-brand-900/80">
+          {{ t('customer.order.payOnlineSandbox') }}
+        </p>
+
+        <button type="button" class="btn-primary mt-4" :disabled="paying" @click="payOnline">
+          <AppIcon v-if="!paying" name="wallet" :size="16" />
+          {{ paying ? t('customer.order.payOnlinePending') : t('customer.order.payOnline') }}
+        </button>
+      </section>
+
+      <!--
           The payment reminder stays visible until the order leaves
           awaiting_proof, because the customer usually has to leave this page to
           pay and then come back.
+
+          Manual methods only. An automated one has no account to send money to and no
+          evidence for a customer to upload, so this section would be an empty form under a
+          heading that promises something will be submitted.
         -->
       <section
-        v-if="currentStatus === 'awaiting_proof' && gateway"
+        v-if="currentStatus === 'awaiting_proof' && gateway && !isOnlineGateway"
         class="card card-pad mt-6 border-brand-200 bg-brand-50"
       >
         <h2 class="flex items-center gap-2 text-sm font-semibold text-brand-900">
@@ -71,7 +99,10 @@
         </div>
       </section>
 
-      <section v-if="currentStatus === 'awaiting_proof'" class="card card-pad mt-6">
+      <section
+        v-if="currentStatus === 'awaiting_proof' && !isOnlineGateway"
+        class="card card-pad mt-6"
+      >
         <h2 class="text-lg font-semibold text-stone-900">
           {{ t('customer.order.submitEvidence') }}
         </h2>
@@ -149,6 +180,8 @@ const orderId = computed(() => route.params.orderId as string)
 interface OrderGateway {
   id: string
   kind: string
+  provider: string | null
+  environment: string | null
   name_en: string | null
   name_bn: string | null
   account_fields: AccountField[] | null
@@ -173,6 +206,7 @@ const {
 const loading = ref(true)
 const error = ref<string | null>(null)
 const submitting = ref(false)
+const paying = ref(false)
 const copied = ref(false)
 const evidenceFields = ref<EvidenceField[]>([])
 const gateway = ref<OrderGateway | null>(null)
@@ -183,6 +217,26 @@ const gatewayInstructions = computed(() =>
     ? pick({ bn: gateway.value.instructions_md_bn, en: gateway.value.instructions_md_en } as any)
     : '',
 )
+
+/**
+ * Whether bKash takes the payment itself.
+ *
+ * Keyed on `provider` rather than on the method kind. A kind is what the customer picked
+ * and what routing groups by; the provider is what says there is a server-side API behind
+ * it. They happen to line up today, and the day a second provider shares a kind the two
+ * stop being the same question.
+ */
+const isOnlineGateway = computed(() => gateway.value?.provider === 'bkash_pgw')
+
+/**
+ * Whether this method is a test one.
+ *
+ * Only ever true for a gateway an owner configured as a sandbox, so it is used to label the
+ * button and to explain afterwards that no money moved. It is deliberately not used to hide
+ * the payment option: a sandbox method is how the integration gets tested, and the whole
+ * value of running one is that a person can click it.
+ */
+const isSandboxGateway = computed(() => gateway.value?.environment === 'sandbox')
 
 /** Whether this method has anywhere to send money. Automated ones do not. */
 const hasDetails = computed(() => {
@@ -234,6 +288,42 @@ const copyReference = async (): Promise<void> => {
     setTimeout(() => (copied.value = false), 1500)
   } catch {
     // Clipboard access can be refused; the code is still visible to read.
+  }
+}
+
+/**
+ * Starts the payment and hands the customer to bKash.
+ *
+ * The window is left to bKash rather than being opened here. A popup the payment provider
+ * opened itself survives the customer switching to their banking app and back, which a
+ * popup we opened tends not to; and a full-page redirect leaves nothing to go stale if the
+ * customer walks away from it.
+ */
+const payOnline = async (): Promise<void> => {
+  if (!isOnlineGateway.value) return
+  paying.value = true
+  error.value = null
+
+  try {
+    const { data, error: payError } = await supabase.functions.invoke('bkash-create-payment', {
+      body: { orderId: orderId.value },
+    })
+
+    if (payError || data?.error) {
+      // The function's own message. `gateway_not_configured` in particular is the operator
+      // reading this page, not the customer, and hiding it behind a generic failure would
+      // cost them an hour of wondering why the button does nothing.
+      error.value = data?.detail || payError?.message || 'Could not start the payment'
+      return
+    }
+
+    if (typeof data?.redirectUrl === 'string' && data.redirectUrl !== '') {
+      window.location.assign(data.redirectUrl)
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Could not start the payment'
+  } finally {
+    paying.value = false
   }
 }
 

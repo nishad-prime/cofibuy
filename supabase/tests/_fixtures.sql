@@ -262,9 +262,14 @@ $$;
 -- was handed a wallet number has been misled. So a test that wants both modes present at
 -- once has to give them two kinds, exactly as a shop running one bKash account and one
 -- Nagad account would.
+-- `p_environment` defaults to 'live' because that is the only environment in which an
+-- order can settle. A fixture that settled by default would make every sandbox assertion a
+-- test about the *absence* of a refusal, and the one test that genuinely means to run
+-- against a sandbox merchant has to ask for it by name.
 create or replace function test_data.pgw_gateway(
   p_active boolean default true,
-  p_kind text default 'bkash_instant'
+  p_kind text default 'bkash_instant',
+  p_environment text default 'live'
 )
 returns public.payment_gateways
 language plpgsql
@@ -273,7 +278,8 @@ declare
   v_gateway public.payment_gateways;
 begin
   insert into public.payment_gateways (
-    kind, provider, name_en, account_number, account_name, evidence_fields, is_active
+    kind, provider, name_en, account_number, account_name, evidence_fields, is_active,
+    environment
   )
   values (
     p_kind,
@@ -282,7 +288,8 @@ begin
     '01700000000',
     'Cofibuy',
     '[]'::jsonb,
-    p_active
+    p_active,
+    p_environment
   )
   returning * into v_gateway;
   return v_gateway;

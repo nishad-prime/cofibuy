@@ -95,6 +95,18 @@ export const COPY_KEYS = {
     'order.newOrder',
     'order.reminder',
     'order.reminderBody',
+    // The online payment flow. Editable because the wording here is the one an operator
+    // most often has to soften - "no money will be charged" on a sandbox method, or a
+    // payment button they would rather phrase differently - and because every one of these
+    // is shown to a customer at the moment they are most anxious about having paid.
+    'order.payOnline',
+    'order.payOnlinePending',
+    'order.payOnlineSandbox',
+    'order.payOnlineReturnTitle',
+    'order.payOnlineReturnBody',
+    'order.payOnlineTestDone',
+    'order.payOnlineFailed',
+    'order.payOnlineRetry',
   ],
   evidence: [
     'evidence.required',

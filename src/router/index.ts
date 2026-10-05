@@ -13,6 +13,15 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/HomeView.vue'),
       },
       {
+        // Where bKash sends the customer back to. The path is fixed in the merchant
+        // dashboard and carries only a `paymentID`, so it has to be a route that can find
+        // the order for itself. Declared before `:slug` because a link called `payment`
+        // would otherwise shadow it.
+        path: 'payment/return',
+        name: 'payment-return',
+        component: () => import('@/views/customer/PaymentReturnView.vue'),
+      },
+      {
         path: ':slug',
         name: 'link',
         component: () => import('@/views/customer/LinkView.vue'),

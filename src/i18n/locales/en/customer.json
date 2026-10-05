@@ -76,7 +76,15 @@
     "locked": "This order is locked. Please try again later or create a new one.",
     "newOrder": "Create a new order",
     "reminder": "Payment reminder",
-    "reminderBody": "Finish this order by sending the payment to the account below."
+    "reminderBody": "Finish this order by sending the payment to the account below.",
+    "payOnline": "Pay with bKash",
+    "payOnlinePending": "Taking you to bKash…",
+    "payOnlineSandbox": "This is a test payment. No money will be charged.",
+    "payOnlineReturnTitle": "Finishing your payment",
+    "payOnlineReturnBody": "Checking with bKash whether the payment went through.",
+    "payOnlineTestDone": "That was a test payment, so nothing was charged and the order stays unpaid.",
+    "payOnlineFailed": "The payment did not go through.",
+    "payOnlineRetry": "Try the payment again"
   },
   "evidence": {
     "required": "required",

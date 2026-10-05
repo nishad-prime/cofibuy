@@ -19,7 +19,7 @@
 --      that stops the shop taking payments, so the refresh lease is tested for granting
 --      exactly one winner.
 
-select plan(76);
+select plan(77);
 
 select test_data.reset();
 
@@ -41,6 +41,13 @@ select api.admin_upsert_gateway(
     'id', (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
     'kind', (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
     'provider', 'bkash_pgw', 'name_en', 'bKash (instant)',
+    -- Spelled out rather than left to the default. `admin_upsert_gateway` defaults an
+    -- absent environment to sandbox, which is the right direction - a merchant is never
+    -- promoted to live by an edit that forgot to mention it - but this file settles real
+    -- money paths, so the gateway has to be live by name rather than by omission. The
+    -- production form always sends the field, so this is a fixture's habit and not a
+    -- behaviour anyone relies on.
+    'environment', 'live',
     'credential_bundle', jsonb_build_object(
       'app_key', 'fixture-app-key', 'app_secret', 'fixture-app-secret',
       'username', 'fixture-username', 'password', 'fixture-password'))
@@ -115,14 +122,29 @@ select throws_ok(
   'the owner cannot register an unknown provider either'
 );
 
+--
+-- Its own kind, and that is the point rather than a detail. Sharing `bkash_instant` with the
+-- fixture gateway put a second active method of the same kind into the routing pool, so
+-- which one an order got was down to a weighted coin flip. That was survivable while both
+-- behaved identically; the moment one is sandbox and the other is live, "survivable" is a
+-- test that passes or fails depending on the run.
 select is(
   (api.admin_upsert_gateway(
-     jsonb_build_object('kind', (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
-    'provider', 'bkash_pgw',
+     jsonb_build_object('kind', 'bkash_instant_second', 'provider', 'bkash_pgw',
                         'name_en', 'bKash instant', 'account_number', '01700000000',
                         'account_name', 'Cofibuy'))).provider,
   'bkash_pgw',
   'the owner can register an automated method'
+);
+
+-- Which is the fail-safe worth pinning: a method nobody has configured is sandbox. It is
+-- why an edit that forgets the environment cannot promote a shop to live by accident.
+select is(
+  (api.admin_upsert_gateway(
+     jsonb_build_object('kind', 'bkash_instant_third', 'provider', 'bkash_pgw',
+                        'name_en', 'bKash instant three'))).environment,
+  'sandbox',
+  'and a newly registered method defaults to sandbox'
 );
 
 -- ---------------------------------------------------------------------------
@@ -511,11 +533,19 @@ select throws_ok(
 );
 
 -- The other half of double-crediting: one bKash transaction, two orders.
-select test_data.pgw_order('other') as other_order;
-select api.bkash_record_session(test_data.order_for_customer('other'), 'TR001PAY0003', 500);
+--
+-- Its own link rather than the `other` slug already used above. That slug carries two
+-- orders by now - one manual, one automated - and `order_for_customer` returns whichever
+-- the planner reaches first, so naming the slug alone does not identify the order this
+-- assertion is about. It happened to be harmless while every gateway behaved the same
+-- way; once the automated one was given an environment of its own, the ambiguity turned
+-- into a test that could be asserting against the wrong row.
+select test_data.link('otherpgw', 500, false);
+select test_data.pgw_order('otherpgw') as other_order;
+select api.bkash_record_session(test_data.order_for_customer('otherpgw'), 'TR001PAY0003', 500);
 select throws_ok(
   $$select api.bkash_settle_order(
-      test_data.order_for_customer('other'), 'TR001PAY0003', 'TRXAAA111', '01712345678', 500)$$,
+      test_data.order_for_customer('otherpgw'), 'TR001PAY0003', 'TRXAAA111', '01712345678', 500)$$,
   '23505',
   'duplicate key value violates unique constraint "payment_sessions_trx_unique"',
   'the same TrxID cannot settle a second order'

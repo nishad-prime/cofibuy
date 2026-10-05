@@ -146,6 +146,19 @@ export type Database = {
         }
         Returns: Json
       }
+      bkash_payment_claim: {
+        Args: {
+          p_order_id: string
+          p_payment_id: string
+        }
+        Returns: Json
+      }
+      bkash_payment_lookup: {
+        Args: {
+          p_payment_id: string
+        }
+        Returns: Json
+      }
       bkash_payment_start: {
         Args: {
           p_order_id: string
@@ -159,6 +172,13 @@ export type Database = {
           p_amount: number
         }
         Returns: string
+      }
+      bkash_release_refresh: {
+        Args: {
+          p_bundle_id: string
+          p_environment: string
+        }
+        Returns: Json
       }
       bkash_settle_order: {
         Args: {

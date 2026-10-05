@@ -78,3 +78,30 @@ enable_confirmations = false
 # enabled = true
 # provider = "turnstile"
 # secret = "env(TURNSTILE_SECRET_KEY)"
+
+# ---------------------------------------------------------------------------
+# Edge Functions
+# ---------------------------------------------------------------------------
+#
+# `verify_jwt = false` on both bKash functions, deliberately.
+#
+# These authenticate the *customer*: the Authorization header carries the signed-in
+# user's Supabase JWT, forwarded unchanged to the Data API as that user. With the
+# gateway check left on, an expired or unsigned token is rejected by the gateway with
+# a bare 401 that has no body, and the frontend has to special-case a second error
+# shape. Turning it off means every failure - including "sign in first" - arrives as
+# the same `{ error, detail }` the payment UI already renders.
+#
+# Authorization does not rest on this. `api.bkash_payment_start` and
+# `api.bkash_payment_claim` both compare `auth.uid()` against the order, so a caller
+# who is not the customer gets `order not found` whichever way they call, and every
+# secret read happens on a service-role client *after* that check has passed.
+#
+# The service-role key is read from the environment and never from a header. If it
+# were accepted from the caller, anyone could supply their own and this whole file
+# would be a way to read a shop's merchant password.
+[functions.bkash-create-payment]
+verify_jwt = false
+
+[functions.bkash-execute]
+verify_jwt = false

@@ -82,14 +82,25 @@
               <!-- The raw key is admin chrome for the person debugging a missing string,
                    and noise on the page most operators ever see. -->
               <span v-if="showAll" class="font-mono text-[11px] text-stone-400">{{ key }}</span>
-              <button
-                v-if="differs(key)"
-                type="button"
-                class="text-xs text-stone-500 underline underline-offset-2"
-                @click="resetField(key)"
-              >
-                {{ t('admin.copy.resetField') }}
-              </button>
+              <div class="flex items-center gap-3">
+                <button
+                  v-if="draftable(key)"
+                  type="button"
+                  class="text-xs text-brand-700 underline underline-offset-2 disabled:text-stone-300"
+                  :disabled="drafting !== null"
+                  @click="requestDraft(key)"
+                >
+                  {{ drafting === key ? t('admin.copy.drafting') : t('admin.copy.draft') }}
+                </button>
+                <button
+                  v-if="differs(key)"
+                  type="button"
+                  class="text-xs text-stone-500 underline underline-offset-2"
+                  @click="resetField(key)"
+                >
+                  {{ t('admin.copy.resetField') }}
+                </button>
+              </div>
             </div>
 
             <textarea
@@ -115,6 +126,53 @@
             <p v-if="placeholderWarning(key)" class="mt-1 text-xs text-amber-700">
               {{ placeholderWarning(key) }}
             </p>
+
+            <!-- A failed request has no proposal to show, so the error cannot live inside
+                 the proposal panel. It is scoped to the key it was requested for. -->
+            <p v-if="draftError && proposalKey === key" class="mt-2 text-xs text-red-700">
+              {{ draftError }}
+            </p>
+
+            <!-- A draft is not an override. It lands here, is read, and only replaces the
+                 boxes above when the operator says so - a model can propose copy, and only a
+                 person publishes it. Nothing is written to the database by this panel. -->
+            <div
+              v-if="proposal && proposalKey === key"
+              class="mt-3 rounded-lg border border-brand-200 bg-brand-50/60 p-3"
+            >
+              <p class="text-xs font-medium text-brand-900">
+                {{ t('admin.copy.draftTitle') }}
+              </p>
+
+              <div
+                v-for="locale in PREVIEW_LOCALES"
+                :key="locale"
+                class="mt-2 rounded border border-brand-100 bg-white p-2"
+              >
+                <p class="font-mono text-[11px] text-stone-400">
+                  {{ locale === 'bn' ? 'বাংলা' : 'EN' }}
+                </p>
+                <MarkdownBody v-if="allowsMarkdown(key)" :source="proposal[locale]" />
+                <p v-else class="text-sm text-stone-700">{{ proposal[locale] }}</p>
+              </div>
+
+              <div class="mt-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  class="btn-primary !px-3 !py-1.5 text-xs"
+                  @click="acceptDraft(key)"
+                >
+                  {{ t('admin.copy.draftAccept') }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary !px-3 !py-1.5 text-xs"
+                  @click="discardDraft"
+                >
+                  {{ t('admin.copy.draftDiscard') }}
+                </button>
+              </div>
+            </div>
 
             <div class="mt-2 flex flex-wrap items-center gap-4">
               <label v-if="allowsMarkdown(key)" class="flex items-center text-xs text-stone-600">
@@ -164,6 +222,7 @@ import {
   missingPlaceholders,
   placeholdersIn,
 } from '@/config/copyKeys'
+import { canDraft } from '@/config/aiCopyKeys'
 import { bundled, buildCopySections, fieldLabel } from '@/config/copySections'
 
 const supabase = getSupabase()
@@ -311,6 +370,92 @@ function placeholderWarning(key: string): string {
   return missing.length > 0 ? `${t('admin.copy.missingPlaceholder')} ${missing.join(', ')}` : ''
 }
 
+/**
+ * AI drafting state.
+ *
+ * One proposal at a time and one request at a time, both on purpose. Two open proposals would
+ * mean two drafts sitting in unsaved boxes with no record of which key each belongs to, and the
+ * accept button would be ambiguous. Concurrent requests would let a slow answer overwrite a fast
+ * one that arrived after it.
+ */
+const drafting = ref<string | null>(null)
+const proposalKey = ref<string | null>(null)
+const proposal = ref<{ bn: string; en: string } | null>(null)
+const draftError = ref<string | null>(null)
+
+/**
+ * True when the key may be drafted: on the list, and carrying no placeholder a draft could drop.
+ * The button is hidden rather than disabled when this is false, because a disabled control next
+ * to every other string in the namespace invites the question, and "why is this one different"
+ * is a question about configuration that belongs on the AI settings page instead.
+ */
+function draftable(key: string): boolean {
+  return canDraft(key, bundled(key, 'en'), bundled(key, 'bn'))
+}
+
+const requestDraft = async (key: string): Promise<void> => {
+  if (drafting.value) return
+
+  drafting.value = key
+  draftError.value = null
+  proposal.value = null
+  proposalKey.value = key
+
+  try {
+    const { data, error } = await supabase.functions.invoke('ai-draft-copy', {
+      body: { key, label: fieldLabel(key), where: fieldLabel(key) },
+    })
+
+    if (error) throw error
+
+    const payload = data as { draft?: { value_bn?: unknown; value_en?: unknown } } | null
+    const bn = payload?.draft?.value_bn
+    const en = payload?.draft?.value_en
+
+    // The function validates before answering, so a missing language here means something
+    // upstream changed. Refusing is right: half a draft would leave one language on the model's
+    // words and the other on the shipped text, which is the split-language state this editor
+    // spends its placeholder guard on preventing.
+    if (typeof bn !== 'string' || typeof en !== 'string' || bn === '' || en === '') {
+      throw new Error(t('admin.copy.draftIncomplete'))
+    }
+
+    proposal.value = { bn, en }
+  } catch (err) {
+    // The function's own `detail` is written for a person and names the field or provider at
+    // fault, so it is preferred over the generic message the SDK invents.
+    const detail = (err as { context?: unknown })?.context as
+      { error?: unknown; detail?: unknown } | undefined
+    draftError.value =
+      typeof detail?.detail === 'string' && detail.detail !== ''
+        ? detail.detail
+        : err instanceof Error
+          ? err.message
+          : t('admin.copy.draftFailed')
+  } finally {
+    drafting.value = null
+  }
+}
+
+/**
+ * Moves a proposal into the boxes, where it becomes an unsaved edit like anything else the
+ * operator types: still reviewed, still subject to the placeholder guard, and not persisted
+ * until the page's own save runs.
+ */
+function acceptDraft(key: string): void {
+  if (!proposal.value || proposalKey.value !== key) return
+
+  draft.bn[key] = proposal.value.bn
+  draft.en[key] = proposal.value.en
+  discardDraft()
+}
+
+function discardDraft(): void {
+  proposal.value = null
+  proposalKey.value = null
+  draftError.value = null
+}
+
 function resetDraft(): void {
   draft.bn = {}
   draft.en = {}
@@ -348,6 +493,7 @@ onMounted(async () => {
 
 function revert(): void {
   resetDraft()
+  discardDraft()
   success.value = false
   errors.value = []
 }

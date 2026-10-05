@@ -4,6 +4,7 @@
   "//how": "`npm run functions:check` runs `deno check` here and `npm run functions:test` runs `deno test` here. Run both after touching anything under this directory; they are the only gates that see the Deno half of the codebase, which `npm run typecheck` does not touch at all.",
   "imports": {
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@^2.117.2",
+    "@std/assert": "jsr:@std/assert@^1.0.19",
     "@std/expect": "jsr:@std/expect@^1.0.14"
   },
   "tasks": {

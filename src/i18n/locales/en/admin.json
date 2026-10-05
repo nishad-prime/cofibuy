@@ -170,7 +170,14 @@
     "allHint": "Every editable string, including shared labels and error messages.",
     "search": "Search copy",
     "noMatches": "Nothing matches that search.",
-    "resetField": "Undo this field"
+    "resetField": "Undo this field",
+    "draft": "Draft with AI",
+    "drafting": "Drafting...",
+    "draftTitle": "Suggested wording - read it, edit it if you disagree, then accept or discard. Nothing is saved until you save.",
+    "draftAccept": "Use this wording",
+    "draftDiscard": "Discard",
+    "draftFailed": "The draft did not come back. Check the AI settings and try again.",
+    "draftIncomplete": "The draft came back missing a language, so it was not applied."
   },
   "common": {
     "close": "Close"

@@ -113,11 +113,16 @@ grant select on storage.buckets, storage.objects to anon;
 -- Anything that writes a secret must be signed against a live project before it is trusted.
 create schema if not exists vault;
 
+-- `secret` is text, and that is load-bearing. Supabase Vault treats the value as an opaque
+-- blob and never parses it, so a harness that declares it jsonb lets jsonb-shaped code pass
+-- locally and then fail on the real project with "return type mismatch ... Actual return type
+-- is text". The first version of this file did exactly that, and the cost was a migration
+-- that read, wrote and returned jsonb against a column that only ever holds text.
 create table if not exists vault.secrets (
   id uuid primary key default gen_random_uuid(),
   name text,
   description text default '',
-  secret jsonb not null,
+  secret text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -130,7 +135,7 @@ create or replace view vault.decrypted_secrets as
   from vault.secrets;
 
 create or replace function vault.create_secret(
-  new_secret jsonb,
+  new_secret text,
   new_name text default null,
   new_description text default ''
 )
@@ -145,9 +150,9 @@ $$;
 
 create or replace function vault.update_secret(
   secret_id uuid,
-  new_secret jsonb default null,
+  new_secret text default null,
   new_name text default null,
-  new_description text default null
+  new_description text default ''
 )
 returns void
 language sql

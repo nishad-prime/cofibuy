@@ -240,7 +240,11 @@ begin
 
     v_merged := p_bundle;
   else
-    select d.secret into v_existing
+    -- ::jsonb on the way out of Vault. Vault stores an opaque text blob and never parses it,
+    -- so the whole merge below works in jsonb and every value written back is `jsonb::text`.
+    -- Casting here rather than making v_existing text keeps `||`, `?` and `is distinct from`
+    -- as jsonb operations, which is the only reason they type-check.
+    select d.secret::jsonb into v_existing
     from vault.decrypted_secrets d
     where d.id = v_row.vault_secret_id;
 
@@ -255,7 +259,7 @@ begin
       end loop;
 
       v_merged := p_bundle;
-      perform vault.update_secret(v_row.vault_secret_id, v_merged);
+      perform vault.update_secret(v_row.vault_secret_id, v_merged::text);
       return v_row.id;
     end if;
 
@@ -268,14 +272,14 @@ begin
       'gateway',
       p_subject_id,
       vault.create_secret(
-        v_merged,
+        v_merged::text,
         'gateway:' || p_subject_id::text,
         'Payment gateway credentials for gateway ' || p_subject_id::text
       )
     )
     returning * into v_row;
   else
-    perform vault.update_secret(v_row.vault_secret_id, v_merged);
+    perform vault.update_secret(v_row.vault_secret_id, v_merged::text);
 
     -- Rotation is not only a vault update. The cached id_token was minted from the
     -- app_secret being replaced, so leaving it in place means the next request
@@ -333,7 +337,10 @@ volatile
 security definer
 set search_path = ''
 as $$
-  select d.secret
+  -- Vault's `secret` is text. Without ::jsonb this function declares jsonb and returns text,
+  -- which Postgres rejects at create time (42P13) — and only on a project with the real Vault.
+  -- Callers cast the result to a typed shape, so it has to arrive as jsonb, not a JSON string.
+  select d.secret::jsonb
   from private.secret_bundles b
   join vault.decrypted_secrets d on d.id = b.vault_secret_id
   where b.id = p_bundle_id

@@ -187,7 +187,7 @@ begin
 
     v_source := v_trimmed;
   else
-    select d.secret into v_existing
+    select d.secret::jsonb into v_existing
     from vault.decrypted_secrets d
     where d.id = v_row.vault_secret_id;
 
@@ -228,14 +228,14 @@ begin
       p_subject_kind,
       p_subject_id,
       vault.create_secret(
-        v_merged,
+        v_merged::text,
         p_subject_kind || ':' || p_subject_id::text,
         'Credentials for ' || p_subject_kind || ' ' || p_subject_id::text || ' (' || p_provider || ')'
       )
     )
     returning * into v_row;
   else
-    perform vault.update_secret(v_row.vault_secret_id, v_merged);
+    perform vault.update_secret(v_row.vault_secret_id, v_merged::text);
 
     -- Rotation is not only a vault update. A cached token was minted from the secret being
     -- replaced, so leaving it in place means the next request authenticates with a token

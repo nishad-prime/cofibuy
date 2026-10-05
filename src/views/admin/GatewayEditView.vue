@@ -8,10 +8,17 @@
   </p>
 
   <!-- The child forms bring their own page shell, so they are rendered bare rather than
-       inside the chooser's container. -->
-  <GatewayFormView v-else-if="isManual" />
+       inside the chooser's container. `gateway-id` is the whole point of this view and
+       is not optional: without it both forms read as "creating", send an empty `id`,
+       and `admin_upsert_gateway` inserts a second row instead of updating the one being
+       edited. -->
+  <GatewayFormView v-else-if="isManual" :gateway-id="gatewayId" />
 
-  <AutoGatewayFormView v-else-if="isAutomatic" :preset-provider="presetProvider" />
+  <AutoGatewayFormView
+    v-else-if="isAutomatic"
+    :gateway-id="gatewayId"
+    :preset-provider="presetProvider"
+  />
 
   <!-- Creating with no mode chosen: the choice itself is two cards. The two forms are
        genuinely different screens - one collects account details and evidence, the other

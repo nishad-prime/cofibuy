@@ -2,6 +2,7 @@
   "//": "Pins the dependencies of the Edge Functions so `deno check` is reproducible.",
   "//why": "Supabase deploys each function directory on its own, with no lock file of its own unless one sits next to the source. Without this, the `jsr:@supabase/supabase-js@2` range resolves to whatever is newest on the day someone runs a check, and a deploy can pick up a different client than the one the code was verified against.",
   "//how": "`npm run functions:check` runs `deno check` here and `npm run functions:test` runs `deno test` here. Run both after touching anything under this directory; they are the only gates that see the Deno half of the codebase, which `npm run typecheck` does not touch at all.",
+  "//deploy": "Deploy with `npm run functions:deploy`, which passes `--import-map supabase/functions/deno.json`. Without the flag the deploy-time bundler does not pick this file up, resolves the bare `@supabase/supabase-js` specifier as a relative path, and fails the bundle with `Relative import path \"@supabase/supabase-js\" not prefixed with / or ./ or ../`. `deno check` and `deno test` both pass in that state, because they are pointed at this config explicitly, so only a real deploy tells you. `npm run functions:deploy -- ai-draft-copy` deploys one function.",
   "imports": {
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@^2.117.2",
     "@std/assert": "jsr:@std/assert@^1.0.19",

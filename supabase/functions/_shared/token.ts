@@ -16,7 +16,7 @@
  * environment here would hand merchant A's token to merchant B.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { ApiClient } from './supabase.ts'
 import { grantToken, refreshToken_, type BkashCredentials, type BkashEnvironment } from './bkash.ts'
 
 type TokenState = {
@@ -40,7 +40,7 @@ export class TokenUnavailableError extends Error {
  *   authenticated on purpose, so this is the only way to reach them.
  */
 export async function bkashIdToken(
-  admin: SupabaseClient,
+  admin: ApiClient,
   bundleId: string,
   environment: BkashEnvironment,
   credentials: BkashCredentials,
@@ -109,7 +109,7 @@ export async function bkashIdToken(
 }
 
 async function readState(
-  admin: SupabaseClient,
+  admin: ApiClient,
   bundleId: string,
   environment: BkashEnvironment,
 ): Promise<TokenState> {
@@ -129,7 +129,7 @@ async function readState(
  * being left waiting on a request that may never arrive.
  */
 async function waitForToken(
-  admin: SupabaseClient,
+  admin: ApiClient,
   bundleId: string,
   environment: BkashEnvironment,
 ): Promise<string | null> {
@@ -153,7 +153,7 @@ async function waitForToken(
  * function whose entire job is to make an authenticated HTTP call.
  */
 export async function readCredentials(
-  admin: SupabaseClient,
+  admin: ApiClient,
   gatewayId: string,
 ): Promise<{ bundleId: string; credentials: BkashCredentials }> {
   const bundle = await admin.rpc('gateway_credential_bundle', { p_gateway_id: gatewayId })

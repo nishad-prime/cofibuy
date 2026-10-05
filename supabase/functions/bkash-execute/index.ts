@@ -20,7 +20,7 @@
  * happened.
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { serviceClient, userClientFor } from '../_shared/supabase.ts'
 import { asEnvironment, BkashError, BkashTransportError, executePayment } from '../_shared/bkash.ts'
 import {
   bkashIdToken,
@@ -48,17 +48,9 @@ Deno.serve(async (request) => {
     return errorResponse('authentication_required', 'sign in first', 401)
   }
 
-  const userClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    authorization.replace(/^Bearer\s+/i, ''),
-    { auth: { persistSession: false } },
-  )
+  const userClient = userClientFor(authorization.replace(/^Bearer\s+/i, ''))
 
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    { auth: { persistSession: false } },
-  )
+  const admin = serviceClient()
 
   try {
     const body = await readJson<ExecuteBody>(request)

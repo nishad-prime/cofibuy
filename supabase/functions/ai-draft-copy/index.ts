@@ -16,7 +16,7 @@
  * service-role client, turned into a provider config, and dropped.
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { type ApiClient, serviceClient, userClientFor } from '../_shared/supabase.ts'
 import { generateStructured } from '../_shared/ai/generate.ts'
 import {
   DRAFT_SCHEMA,
@@ -75,17 +75,9 @@ Deno.serve(async (request) => {
 
   // The caller's own JWT, forwarded unchanged. This client can read nothing of theirs: the only
   // thing it calls is owner-guarded, and every read of the credential happens on the other one.
-  const userClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    authorization.replace(/^Bearer\s+/i, ''),
-    { auth: { persistSession: false } },
-  )
+  const userClient = userClientFor(authorization.replace(/^Bearer\s+/i, ''))
 
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    { auth: { persistSession: false } },
-  )
+  const admin = serviceClient()
 
   try {
     const body = await readJson<DraftBody>(request)
@@ -143,7 +135,7 @@ Deno.serve(async (request) => {
  * which the editor renders as "set one up first" rather than as a failure - it is the expected
  * state for every shop that has not been through /admin/ai yet.
  */
-async function readProviderConfig(admin: SupabaseClient): Promise<AiProviderConfig> {
+async function readProviderConfig(admin: ApiClient): Promise<AiProviderConfig> {
   const { data, error } = await admin.rpc('ai_credential_bundle')
   if (error) {
     throw new AiError('not_configured', error.message)

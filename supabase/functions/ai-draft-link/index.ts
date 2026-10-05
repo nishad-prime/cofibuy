@@ -15,7 +15,7 @@
  * is no new SQL for this: the guard this needs already exists and is already proven by tests.
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { type ApiClient, serviceClient, userClientFor } from '../_shared/supabase.ts'
 import { generateStructured } from '../_shared/ai/generate.ts'
 import { providerConfigFrom } from '../_shared/ai/draft.ts'
 import {
@@ -70,16 +70,8 @@ Deno.serve(async (request) => {
     return errorResponse('authentication_required', 'sign in first', 401)
   }
 
-  const userClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    authorization.replace(/^Bearer\s+/i, ''),
-    { auth: { persistSession: false } },
-  )
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    { auth: { persistSession: false } },
-  )
+  const userClient = userClientFor(authorization.replace(/^Bearer\s+/i, ''))
+  const admin = serviceClient()
 
   try {
     const body = await readJson<DraftBody>(request)
@@ -146,7 +138,7 @@ function text(value: unknown): string {
  * only `secret_bundle_open` can produce. Two calls, no fallback path, and the handle never leaves
  * this function.
  */
-async function readProviderConfig(admin: SupabaseClient): Promise<AiProviderConfig> {
+async function readProviderConfig(admin: ApiClient): Promise<AiProviderConfig> {
   const { data, error } = await admin.rpc('ai_credential_bundle')
   if (error) {
     throw new AiError('not_configured', error.message)

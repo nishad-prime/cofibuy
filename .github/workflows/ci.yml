@@ -29,6 +29,21 @@ jobs:
       - name: Format
         run: npm run format:check
 
+      # The Edge Functions are a separate TypeScript program that `npm run typecheck` never
+      # sees, and until now nothing in CI saw it either - a signature change under
+      # `supabase/functions/` would break a deploy and still go green here. Ahead of Lint on
+      # purpose: lint sits at its known 162-error baseline, and a step placed after a failing
+      # step is a step that never runs.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.8.0
+
+      - name: Edge functions typecheck
+        run: npm run functions:check
+
+      - name: Edge function tests
+        run: npm run functions:test
+
       - name: Lint
         run: npm run lint
 

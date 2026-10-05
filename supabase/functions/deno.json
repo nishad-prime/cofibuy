@@ -1,8 +1,13 @@
 {
   "//": "Pins the dependencies of the Edge Functions so `deno check` is reproducible.",
   "//why": "Supabase deploys each function directory on its own, with no lock file of its own unless one sits next to the source. Without this, the `jsr:@supabase/supabase-js@2` range resolves to whatever is newest on the day someone runs a check, and a deploy can pick up a different client than the one the code was verified against.",
-  "//how": "`npm run functions:check` runs `deno check` here. Run it after touching anything under this directory; it is the only gate that type-checks the Deno half of the codebase, which `npm run typecheck` does not see at all.",
+  "//how": "`npm run functions:check` runs `deno check` here and `npm run functions:test` runs `deno test` here. Run both after touching anything under this directory; they are the only gates that see the Deno half of the codebase, which `npm run typecheck` does not touch at all.",
   "imports": {
-    "@supabase/supabase-js": "jsr:@supabase/supabase-js@^2.117.2"
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@^2.117.2",
+    "@std/expect": "jsr:@std/expect@^1.0.14"
+  },
+  "tasks": {
+    "check": "deno check",
+    "test": "deno test --allow-env"
   }
 }

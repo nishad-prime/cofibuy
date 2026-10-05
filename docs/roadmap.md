@@ -214,6 +214,139 @@ Deliberately not done:
   records that a bad merge once made the form write back nothing at all, in exchange
   for a cosmetic gain.
 
+## Phase 7 — One prompt in, one pasteable answer out
+
+**Status: done.** `supabase/functions/_shared/ai/` is the whole of the AI client, and it is not
+tied to copy.
+
+Delivered:
+
+- `provider.ts` — one OpenAI-compatible chat-completions call. The model is **forced** to call a
+  named tool with a JSON schema, so a reply is read from the tool call rather than scraped out of
+  prose. `AiProviderConfig.url` is the complete endpoint; nothing upstream guesses it.
+- `schema.ts` — the array-shaped JSON Schema subset actually expressible in `tools`, with the
+  non-expressible parts (`maxLength`, enums rendered faithfully) dropped rather than approximated.
+- `generate.ts` — validation with **one** retry, and only after a validation or domain-check
+  failure. A timeout, a 429, or a `finish_reason` of `length` is not retried: those are the
+  provider saying something about capacity or prompt size, and asking again wastes the answer.
+- Per-attempt `max_tokens` and a timeout, both stated at the call site rather than defaulted,
+  because a shared default is a number nobody chose.
+
+Verified by `schema_test.ts` (10 cases) and `generate_test.ts` (12 cases). The latter drives
+`provider.ts` through a fake `fetch` that counts calls, so every case there is really about _how
+many times the provider was called_. That is what makes the _absence_ of a retry testable: a
+mutation that retries a timeout has to fail a test, not merely look untidy. `provider.ts` has no
+test file of its own by design — it is exercised only as the thing under a stubbed `fetch`, and a
+separate file for it would assert the same requests twice.
+
+## Phase 8 — One credential writer for every subject that has credentials
+
+**Status: done.** bKash gateways, and now AI providers, are stored the same way.
+
+Delivered:
+
+- `private.store_credential_bundle(p_kind, p_subject, p_kind_name, p_payload)` — one writer.
+  `auto_providers` gained an `ai_provider` kind, so a new subject type is a registry row and not a
+  second Vault policy.
+- `private.secret_bundles` carries `subject_kind` / `subject_id`, so a bundle cannot be resolved
+  without knowing both. That is what makes `api.gateway_credential_bundle(id)` and its AI
+  equivalent answerable without a second lookup table.
+- Subject-named lookup RPCs return a **bundle id**. Nothing on the request path returns plaintext;
+  `api.secret_bundle_open(p_bundle_id)` is the single path from id to plaintext, and it is
+  service-role only.
+- Grant Token may be called at most twice an hour, so `_shared/token.ts` takes a **lease**
+  (`bkash_claim_refresh` / `bkash_store_token` / `bkash_release_refresh`) instead of caching in an
+  isolate. A traffic spike otherwise spends the whole allowance and then refuses to take money.
+
+Verified by `supabase/tests/17_credential_bundle_kinds.sql` (31 assertions).
+
+## Phase 9 — Point the shop at a model without printing its key
+
+**Status: done.** `/admin/ai` is a settings page, not a credential vault.
+
+Delivered:
+
+- `private.ai_settings` is a singleton with a CHECK, so a second provider cannot exist by
+  accident. `guard_ai_provider_known` refuses a provider the registry does not define — the
+  settings row cannot name a credential kind that no writer understands.
+- The credential is written through the Phase 8 writer, so rotating an AI key and rotating a
+  bKash key are the same operation with the same guarantees.
+- **Switching providers requires every declared field of the incoming provider in the same save**
+  (SQLSTATE `22023`). A partial switch would leave a live `base_url` paired with the previous
+  provider's key, which fails as a `401` that reads like a wrong key rather than a half-completed
+  form. Same-provider partial saves are still allowed, because that is how a key is rotated. Blank
+  counts as missing.
+- `api.admin_ai_settings()` returns the provider and whether a credential exists — never the
+  credential. The page therefore has nothing to leak, rather than promising not to print it.
+- Clearing the provider deletes the bundle. An orphaned credential is a secret nobody will rotate.
+- `api.ai_credential_bundle()` is service-role only and returns `(provider, bundle)`, zero rows
+  when unconfigured. An Edge Function gets a bundle id and asks `secret_bundle_open` for the
+  plaintext itself.
+
+Verified by `supabase/tests/18_ai_credentials.sql` (33 assertions), which pins the switch guard,
+the rotation path, the retirement path, and that a staff member sees neither the provider list nor
+the settings.
+
+## Phase 10 — A person takes a model's draft and decides
+
+**Status: done.** `/admin/copy` gained a Draft button per string, owner-only.
+
+Delivered:
+
+- `src/config/aiCopyKeys.ts` — a **positive** list of 22 keys, written out rather than derived,
+  with the reasons it excludes things. `evidence.*` is excluded wholesale: those strings state hard
+  limits, and "Up to 5 MB" rewritten as something vaguer is a functional change wearing a copy
+  change's clothes. `common.*` and `lang.*` are labels and status tokens, where a rewrite is churn.
+- Placeholder-bearing keys are refused at render time by `canDraft`. Which keys carry `{amount}` is
+  a property of the shipped translations, not of the key name, so the rule reads the actual bundled
+  wording rather than guessing from the key.
+- A draft lands in a preview panel, **not** in the textareas, until the operator accepts it. It
+  becomes an ordinary unsaved edit at that point — still subject to the placeholder guard, still
+  waiting on the page's own save. The function writes nothing and returns no credential.
+- `supabase/functions/_shared/ai/draft.ts` holds everything decidable without a network call, so
+  the credential join, the prompts and the shape of the answer are tested without a provider or a
+  database.
+- `chatCompletionsUrl` is idempotent: an operator who pastes the full endpoint into a box labelled
+  "Base URL" gets working copy instead of a 404 that reads like a bad key.
+- Authorisation is `api.admin_copy()` called with the caller's own JWT — owner-guarded, so the
+  check is the database's and never the function's.
+
+Verified by `src/config/aiCopyKeys.test.ts` (17 tests) and `draft_test.ts` (19 cases).
+
+## Phase 11 — A product's copy, drafted in one call
+
+**Status: done.** The link form drafts all eight prose fields at once, owner-only.
+
+Delivered:
+
+- One call, not eight. A title, a teaser and an unlock body that each read well but disagree with
+  each other is worse than no draft, because reconciling them by hand is the work the button was
+  meant to save. `readLinkBrief` refuses a partial set for the same reason.
+- **The model never sees the guide.** It is a PDF in an upload bucket and this function does not
+  open it. The operator's description is the only account of what is inside, and the first rule of
+  the system prompt is that any specific detail the model adds is invented — because a customer
+  pays on the strength of what it writes. The description is required rather than optional for the
+  same reason: with only a slug to go on, invention is all that is available.
+- `src/config/linkBriefFields.ts` — the eight columns, the form field each fills, and which need a
+  textarea. Outside the SFC for the reason `buildCopySections` is: logic inside a `.vue` file
+  cannot be tested.
+- **The link form had no inputs for `teaser_md_*`, `unlock_body_md_*` or `unlock_cta_label_*`.** It
+  loaded them, re-saved them verbatim and never showed them, so an operator editing a link could
+  not see or change the prose customers read. Those fields have textareas now, rendered from the
+  same list the draft panel reads, so a field cannot gain an input in one place and be missing from
+  the other.
+- Excluded on purpose: `slug`, `unlock_cta_url`, `min_amount_override`, `sort_order`, `is_active`,
+  `is_listed`. A slug is half of a URL a customer may have bookmarked, and the rest are facts the
+  operator owns.
+- Owner-only via `api.admin_links()`, which is already owner-guarded and already raises for staff,
+  so there is no new SQL. It is called for the raise, not for its rows: the form's current values
+  travel in the request, because they are the more recent copy.
+- The proposal stays open after a field is applied. The usual outcome is keeping most of a draft and
+  rejecting one line, and closing the panel would mean drafting again for the rest.
+
+Verified by `src/config/linkBriefFields.test.ts` (9 tests) and `linkBrief_test.ts` (15 cases). The
+field-mapping assertions were checked by renaming one form field and watching them fail.
+
 ## Known loose ends
 
 - `supabase/migrations/20260101000006_cron.sql` still carries two `-- cron skipped`
@@ -226,3 +359,16 @@ Deliberately not done:
 - The typed `SupabaseClient<Database, 'api'>` return on `getSupabase()` is still
   `any`, which is why `supabase.rpc` is cast at each call site and why the lint
   baseline exists.
+- `LinkFormView.vue` still has no input for `sort_order` or `min_amount_override`.
+  Both are loaded and re-saved verbatim, and `hide_min` is checkable without any
+  value to hide, so a link can be marked "hide the minimum" and keep the shop-wide
+  one. Left alone in Phase 11 deliberately: they are numeric controls rather than
+  copy, and fixing them is not the same change as drafting copy.
+
+## Further reading
+
+- `docs/payment-flow.md` — the bKash return leg, why `status` is never read, and why a
+  sandbox payment cannot settle an order. Read it before touching
+  `bkash-execute`, `PaymentReturnView.vue` or either settlement RPC.
+- `supabase/migrations/20261005040000_ai_credentials.sql` — the AI provider registry, the
+  settings singleton, and the guard that refuses a partial provider switch.

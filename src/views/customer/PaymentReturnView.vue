@@ -56,6 +56,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getSupabase } from '@/lib/supabase'
+import { describeEdgeFailure } from '@/lib/edgeError'
 
 /**
  * The bKash return leg.
@@ -150,7 +151,7 @@ onMounted(async () => {
       // A network failure, a cold start, or a non-JSON error from the gateway. The detail
       // is empty in that case, which is why the message above stands on its own.
       failed.value = true
-      detail.value = readError(settled)
+      detail.value = readError(settled) || (await describeEdgeFailure(settleError, '')).message
       working.value = false
       return
     }
@@ -172,8 +173,14 @@ onMounted(async () => {
     if (settled?.status === 'approved') {
       await router.replace(`/${slug.value}/order/${orderId.value}`)
     }
-  } catch {
+  } catch (err) {
+    // Thrown rather than returned: an aborted request, or `readError`/`router.replace`
+    // failing. Silent here it used to be, which left the customer on a spinner with no
+    // idea whether their money had moved.
+    const failure = await describeEdgeFailure(err, '')
+    if (failure.cause !== '') console.warn('[bkash-execute]', failure)
     failed.value = true
+    if (failure.message !== '') detail.value = failure.message
     working.value = false
   }
 })

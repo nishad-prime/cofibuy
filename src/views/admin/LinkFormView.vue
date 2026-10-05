@@ -204,6 +204,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
+import { describeEdgeFailure } from '@/lib/edgeError'
 import { useStaffRole } from '@/composables/useStaffRole'
 import { LINK_BRIEF_FIELDS as BRIEF_FIELDS, linkFormDefaults } from '@/config/linkBriefFields'
 
@@ -272,14 +273,13 @@ const draftCopy = async (): Promise<void> => {
     brief.value = next as Record<string, string>
     applied.value = []
   } catch (err) {
-    // The function's `detail` names the field or provider at fault; the SDK's own message does not.
-    const detail = (err as { context?: unknown })?.context as { detail?: unknown } | undefined
-    draftError.value =
-      typeof detail?.detail === 'string' && detail.detail !== ''
-        ? detail.detail
-        : err instanceof Error
-          ? err.message
-          : 'The draft did not come back.'
+    // The function's `detail` names the field or provider at fault; the SDK's own message does
+    // not. `describeEdgeFailure` reads it out of the error's `context` and, when the request
+    // never reached the function, reports the transport fault rather than the SDK's generic
+    // `Failed to send a request to the Edge Function`, which reads the same for every cause.
+    const failure = await describeEdgeFailure(err, 'The draft did not come back.')
+    if (failure.cause !== '') console.warn('[ai-draft-link]', failure)
+    draftError.value = failure.message
   } finally {
     drafting.value = false
   }

@@ -167,6 +167,7 @@ import GatewayAccountDetails, {
   type AccountField,
 } from '@/components/customer/GatewayAccountDetails.vue'
 import { buildEvidencePayload } from '@/lib/evidencePayload'
+import { describeEdgeFailure } from '@/lib/edgeError'
 
 const route = useRoute()
 const supabase = getSupabase()
@@ -313,7 +314,17 @@ const payOnline = async (): Promise<void> => {
       // The function's own message. `gateway_not_configured` in particular is the operator
       // reading this page, not the customer, and hiding it behind a generic failure would
       // cost them an hour of wondering why the button does nothing.
-      error.value = data?.detail || payError?.message || 'Could not start the payment'
+      //
+      // `describeEdgeFailure` rather than `payError.message`, because for a request that
+      // never reached the function that message is the SDK's generic
+      // `Failed to send a request to the Edge Function` - true, but identical whether the
+      // customer is offline, behind a VPN, or being blocked, so it tells nobody anything.
+      const failure = await describeEdgeFailure(
+        payError ?? data,
+        t('customer.checkout.payOnlineFailed'),
+      )
+      if (failure.cause !== '') console.warn('[bkash-create-payment]', failure)
+      error.value = failure.message
       return
     }
 
@@ -321,7 +332,9 @@ const payOnline = async (): Promise<void> => {
       window.location.assign(data.redirectUrl)
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Could not start the payment'
+    const failure = await describeEdgeFailure(err, t('customer.checkout.payOnlineFailed'))
+    if (failure.cause !== '') console.warn('[bkash-create-payment]', failure)
+    error.value = failure.message
   } finally {
     paying.value = false
   }

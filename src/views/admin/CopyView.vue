@@ -211,6 +211,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getSupabase } from '@/lib/supabase'
+import { describeEdgeFailure } from '@/lib/edgeError'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
 import { useAdminI18n } from '@/i18n/admin'
@@ -423,15 +424,13 @@ const requestDraft = async (key: string): Promise<void> => {
     proposal.value = { bn, en }
   } catch (err) {
     // The function's own `detail` is written for a person and names the field or provider at
-    // fault, so it is preferred over the generic message the SDK invents.
-    const detail = (err as { context?: unknown })?.context as
-      { error?: unknown; detail?: unknown } | undefined
-    draftError.value =
-      typeof detail?.detail === 'string' && detail.detail !== ''
-        ? detail.detail
-        : err instanceof Error
-          ? err.message
-          : t('admin.copy.draftFailed')
+    // fault, so it is preferred over the generic message the SDK invents. `describeEdgeFailure`
+    // picks that detail out of the error's `context` and, when the request never arrived, says
+    // so instead of repeating `Failed to send a request to the Edge Function` back at the
+    // operator - that string is identical for a blocked request and an offline machine.
+    const failure = await describeEdgeFailure(err, t('admin.copy.draftFailed'))
+    if (failure.cause !== '') console.warn('[ai-draft-copy]', failure)
+    draftError.value = failure.message
   } finally {
     drafting.value = null
   }

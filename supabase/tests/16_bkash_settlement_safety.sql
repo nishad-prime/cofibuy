@@ -287,6 +287,10 @@ select is(
 -- ---------------------------------------------------------------------------
 -- Credentials are stored trimmed
 -- ---------------------------------------------------------------------------
+--
+-- The writer is called directly, with its kind named, rather than through
+-- `admin_upsert_gateway`. It is a private function and no RPC wraps it yet, and going
+-- through the gateway form would not exercise the trimming on its own.
 
 select test_data.reset();
 select test_data.link('auto', 500, false);
@@ -295,6 +299,7 @@ select test_data.as_user(test_data.owner());
 
 select lives_ok(
   $$select private.store_credential_bundle(
+      'gateway',
       (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
       'bkash_pgw',
       jsonb_build_object(
@@ -327,6 +332,7 @@ select is(
 -- secret of `'   '` passes as present and fails later as an opaque 401.
 select throws_ok(
   $$select private.store_credential_bundle(
+      'gateway',
       (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
       'bkash_pgw', jsonb_build_object('username', '   ', 'password', 'p',
         'app_key', 'k', 'app_secret', 's'))$$,
@@ -337,6 +343,7 @@ select throws_ok(
 
 select throws_ok(
   $$select private.store_credential_bundle(
+      'gateway',
       (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
       'bkash_pgw', jsonb_build_object('username', 42, 'password', 'p',
         'app_key', 'k', 'app_secret', 's'))$$,
@@ -350,6 +357,7 @@ select throws_ok(
 -- must survive.
 select lives_ok(
   $$select private.store_credential_bundle(
+      'gateway',
       (select id from public.payment_gateways where provider = 'bkash_pgw' limit 1),
       'bkash_pgw', jsonb_build_object('app_secret', 'rotated-secret'))$$,
   'a partial save is a rotation'

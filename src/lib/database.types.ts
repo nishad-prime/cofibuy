@@ -401,6 +401,7 @@ export type Database = {
       provider_field_keys: {
         Args: {
           p_provider: string
+          p_subject_kind: string
         }
         Returns: string[][]
       }
@@ -408,6 +409,7 @@ export type Database = {
       reap_stale_claims: { Args: Record<PropertyKey, never>; Returns: number }
       store_credential_bundle: {
         Args: {
+          p_subject_kind: string
           p_subject_id: string
           p_provider: string
           p_bundle: Json

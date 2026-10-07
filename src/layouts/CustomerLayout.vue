@@ -3,8 +3,10 @@ import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LanguageToggle from '@/components/LanguageToggle.vue'
 import { loadSiteSettings } from '@/composables/useSiteSettings'
+import { usePageStandalone } from '@/composables/usePageStandalone'
 
 const { t } = useI18n()
+const { isStandalone } = usePageStandalone()
 
 // Fired, not awaited. The bundled wording and the default settings are already
 // rendering and stay correct if either never returns, so neither fetch may gate first
@@ -30,7 +32,16 @@ onMounted(() => {
       <div
         class="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-4 py-3 sm:px-6"
       >
-        <RouterLink to="/" class="flex items-center gap-2.5">
+        <!-- A standalone page is reached by URL alone and shows no way back to
+             the index, header included; the mark stays, as a wordmark. -->
+        <RouterLink
+          :to="isStandalone ? '' : '/'"
+          :class="
+            isStandalone
+              ? 'pointer-events-none flex items-center gap-2.5'
+              : 'flex items-center gap-2.5'
+          "
+        >
           <span
             class="grid h-8 w-8 place-items-center rounded-lg bg-brand-700 text-sm font-bold text-white"
           >

@@ -275,6 +275,46 @@ describe('the page as the whole checkout', () => {
     expect(wrapper.text()).not.toContain('kind_mismatch')
   })
 
+  it('a hidden page drops the way back to the index', async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page')
+        return Promise.resolve({
+          data: { ...publicLink(null), is_listed: false },
+          error: null,
+        })
+      if (name === 'my_orders') return Promise.resolve({ data: [], error: null })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    // No back link on the page, and the layout's brand link is inert. The
+    // router-link stub renders without an href, so the back label is the signal.
+    expect(wrapper.text()).not.toContain(i18n.global.t('customer.paywall.back') as string)
+  })
+
+  it('a listed page keeps the way back to the index', async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page')
+        return Promise.resolve({
+          data: { ...publicLink(null), is_listed: true },
+          error: null,
+        })
+      if (name === 'my_orders') return Promise.resolve({ data: [], error: null })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(i18n.global.t('customer.paywall.back') as string)
+  })
+
   it('degrades to the new-order form when the order lookup fails', async () => {
     void 0
     rpc.mockImplementation((name: string) => {

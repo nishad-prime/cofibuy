@@ -1,6 +1,9 @@
 <template>
   <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <!-- A hidden page is standalone: it is sold by its URL alone, so it shows
+         no way back to the index, from the page or the layout header. -->
     <router-link
+      v-if="!isStandalone"
       to="/"
       class="mb-6 inline-flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900"
     >
@@ -371,7 +374,7 @@ const amount = ref<number>(0)
 const creating = ref(false)
 
 const slug = computed(() => route.params.slug as string)
-const { setStandalone } = usePageStandalone()
+const { setStandalone, isStandalone } = usePageStandalone()
 
 /**
  * The template the page renders with, resolved from the registry. Everything

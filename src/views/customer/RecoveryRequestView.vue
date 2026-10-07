@@ -41,14 +41,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getSupabase } from '@/lib/supabase'
 import { normalizeBdPhone } from '@/lib/phone'
 import { useSiteSettings } from '@/composables/useSiteSettings'
 import AppIcon from '@/components/AppIcon.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
+import { rpc } from '@/lib/rpc'
 
 const { t } = useI18n()
-const supabase = getSupabase()
 const { settings, loaded, load } = useSiteSettings()
 
 const phone = ref('')
@@ -81,7 +80,7 @@ const submitRequest = async (): Promise<void> => {
       return
     }
 
-    const { error: rpcError } = await (supabase.rpc as any)('request_recovery', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('request_recovery', {
       p_phone: normalized,
     })
 

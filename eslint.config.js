@@ -5,7 +5,17 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'node_modules', 'supabase/.temp', '.tmp'],
+    ignores: [
+      'dist',
+      'coverage',
+      'node_modules',
+      'supabase/.temp',
+      '.tmp',
+      // Python venv: third-party site-packages, checked by nothing we run.
+      'selenium_tests/**',
+      // Deno code with its own globals and its own checker (`functions:check`).
+      'supabase/functions/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

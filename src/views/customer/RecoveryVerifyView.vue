@@ -70,13 +70,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getSupabase } from '@/lib/supabase'
 import { normalizeBdPhone } from '@/lib/phone'
 import { useContent } from '@/composables/useContent'
 import AppIcon from '@/components/AppIcon.vue'
+import { rpc } from '@/lib/rpc'
 
 const { t } = useI18n()
-const supabase = getSupabase()
 const { pick } = useContent()
 
 const phone = ref('')
@@ -99,7 +98,7 @@ const submitVerify = async (): Promise<void> => {
       return
     }
 
-    const { data, error: rpcError } = await (supabase.rpc as any)('recover_access', {
+    const { data, error: rpcError } = await rpc<Record<string, unknown>>('recover_access', {
       p_phone: normalized,
       p_code: code.value.trim(),
     })
@@ -109,9 +108,10 @@ const submitVerify = async (): Promise<void> => {
       return
     }
 
-    if (data && (data as any).ok) {
+    const payload = data as unknown as { ok?: boolean; links?: unknown[] } | null
+    if (data && payload?.ok) {
       verified.value = true
-      grantedLinks.value = (data as any).links || []
+      grantedLinks.value = (payload.links ?? []) as typeof grantedLinks.value
     } else {
       error.value = 'Invalid code'
     }

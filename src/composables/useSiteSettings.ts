@@ -110,9 +110,7 @@ export async function loadSiteSettings(): Promise<void> {
   started = (async () => {
     try {
       const supabase = getSupabase()
-      const { data, error } = await (
-        supabase.rpc as (name: string) => Promise<{ data: unknown; error: unknown }>
-      )('get_public_settings')
+      const { data, error } = await supabase.rpc('get_public_settings')
       if (error) throw error
       settings.value = coerce(data)
       // Only replaces the hardcoded fallback; see `applySiteDefaultLocale`.

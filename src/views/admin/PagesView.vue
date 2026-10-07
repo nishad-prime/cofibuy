@@ -94,27 +94,38 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
 import { useAdminCurrency } from '@/composables/useAdminCurrency'
 import AppIcon from '@/components/AppIcon.vue'
+import { rpc } from '@/lib/rpc'
 
-const supabase = getSupabase()
 const { currency, load: loadCurrency } = useAdminCurrency()
 
-const links = ref<any[]>([])
+interface AdminPageRow {
+  id: string
+  slug: string
+  title_en: string | null
+  title_bn: string | null
+  is_active: boolean
+  is_listed: boolean
+  sort_order: number
+  min_amount_override: number | null
+  hide_min_override: boolean | null
+}
+
+const links = ref<AdminPageRow[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
 const loadLinks = async (): Promise<void> => {
   error.value = null
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('admin_pages')
+    const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_pages')
     if (rpcError) {
       error.value = rpcError.message
       return
     }
-    links.value = data || []
+    links.value = (data ?? []) as unknown as typeof links.value
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load links'
   } finally {
@@ -127,7 +138,7 @@ const deleteLink = async (id: string): Promise<void> => {
   try {
     // `p_page_id`, not `p_id`. PostgREST matches on the exact argument name, so
     // the wrong one is a 404 rather than an error message anyone would read.
-    const { error: rpcError } = await (supabase.rpc as any)('admin_delete_page', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('admin_delete_page', {
       p_page_id: id,
     })
     if (rpcError) {

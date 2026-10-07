@@ -67,14 +67,14 @@
           <textarea
             v-if="field.kind === 'textarea'"
             :id="field.form"
-            v-model="form[field.form]"
+            v-model="form[field.form] as string"
             rows="3"
             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           ></textarea>
           <input
             v-else
             :id="field.form"
-            v-model="form[field.form]"
+            v-model="form[field.form] as string"
             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
           />
         </div>
@@ -187,6 +187,7 @@ import { describeEdgeFailure } from '@/lib/edgeError'
 import { useStaffRole } from '@/composables/useStaffRole'
 import { LINK_BRIEF_FIELDS as BRIEF_FIELDS, linkFormDefaults } from '@/config/linkBriefFields'
 import { normalizeConfig, PAGE_TEMPLATES, templateFor } from '@/pages/templates/registry'
+import { rpc, rpcList } from '@/lib/rpc'
 
 const route = useRoute()
 const router = useRouter()
@@ -195,7 +196,11 @@ const supabase = getSupabase()
 const linkId = computed(() => route.params.id as string)
 const isEdit = computed(() => !!route.params.id)
 
-const form = ref<any>(linkFormDefaults())
+type PageForm = Record<string, string | boolean | number | null | Record<string, unknown>> & {
+  template: string
+}
+
+const form = ref<PageForm>(linkFormDefaults() as PageForm)
 
 /** The template whose options panel is on screen right now. */
 const template = computed(() => templateFor(form.value.template))
@@ -299,8 +304,8 @@ const fillForm = async (): Promise<void> => {
 
 onMounted(async () => {
   if (isEdit.value) {
-    const { data } = await (supabase.rpc as any)('admin_pages')
-    const link = (data || []).find((l: any) => l.id === linkId.value)
+    const { data } = await rpcList<Record<string, unknown>>('admin_pages')
+    const link = (data ?? []).find((l) => l.id === linkId.value)
     if (link) {
       // The row columns and the form fields have different names, so assigning
       // the row wholesale would silently blank every markdown field on save.
@@ -321,7 +326,7 @@ onMounted(async () => {
         min_override: link.min_amount_override ?? null,
         hide_min: link.hide_min_override ?? false,
         template: link.template ?? 'standard',
-        template_config: normalizeConfig(link.template, link.template_config),
+        template_config: normalizeConfig(link.template as string, link.template_config),
       })
     }
   }
@@ -333,7 +338,7 @@ const save = async (): Promise<void> => {
   try {
     // `api.admin_upsert_page` takes one jsonb argument; the keys must match the
     // names it reads out of that jsonb exactly.
-    const { error: rpcError } = await (supabase.rpc as any)('admin_upsert_page', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('admin_upsert_page', {
       p_page: {
         id: isEdit.value ? linkId.value : '',
         slug: form.value.slug,

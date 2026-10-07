@@ -37,9 +37,9 @@ const props = defineProps<{
 
 const { pick } = useContent()
 
-const title = computed(() => pick({ bn: props.titleBn, en: props.titleEn } as any) || '')
-const teaser = computed(() => pick({ bn: props.teaserMdBn, en: props.teaserMdEn } as any) || '')
-const ctaLabel = computed(() => pick({ bn: props.ctaLabelBn, en: props.ctaLabelEn } as any) || '')
+const title = computed(() => pick({ bn: props.titleBn, en: props.titleEn }) || '')
+const teaser = computed(() => pick({ bn: props.teaserMdBn, en: props.teaserMdEn }) || '')
+const ctaLabel = computed(() => pick({ bn: props.ctaLabelBn, en: props.ctaLabelEn }) || '')
 
 const isBlockTeaser = computed(() => /(^|\n)\s*(#{1,6}\s|[-*]\s|>\s|\|)/.test(teaser.value))
 

@@ -144,6 +144,8 @@ import { useSiteSettings } from '@/composables/useSiteSettings'
 import AppIcon from '@/components/AppIcon.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import GatewaySelector from '@/components/customer/GatewaySelector.vue'
+import type { OrderResult, PublicPageDetail } from '@/lib/rpc'
+import { rpc } from '@/lib/rpc'
 
 const route = useRoute()
 const router = useRouter()
@@ -225,11 +227,11 @@ const templateConfig = computed(() =>
 const renderPage = computed(() => link.value as Page)
 
 const linkTitle = computed(() =>
-  link.value ? pick({ bn: link.value.title_bn, en: link.value.title_en } as any) : '',
+  link.value ? pick({ bn: link.value.title_bn, en: link.value.title_en }) : '',
 )
 const linkCta = computed(() =>
   link.value
-    ? pick({ bn: link.value.unlock_cta_label_bn, en: link.value.unlock_cta_label_en } as any)
+    ? pick({ bn: link.value.unlock_cta_label_bn, en: link.value.unlock_cta_label_en })
     : '',
 )
 
@@ -285,7 +287,7 @@ const describeRefusal = (code?: string): string => {
 
 onMounted(async () => {
   try {
-    const { data: linkData, error: linkError } = await (supabase.rpc as any)('get_public_page', {
+    const { data: linkData, error: linkError } = await rpc<PublicPageDetail>('get_public_page', {
       p_slug: slug.value,
     })
 
@@ -294,13 +296,12 @@ onMounted(async () => {
       return
     }
 
-    link.value = linkData as Page
+    link.value = linkData as unknown as Page
 
     // `get_public_page` already returns the active payment methods nested in the
     // same payload, filtered to `is_active` server side.
-    gateways.value = Array.isArray((linkData as any)?.gateways)
-      ? ((linkData as any).gateways as Gateway[])
-      : []
+    const raw = linkData as unknown as { gateways?: unknown }
+    gateways.value = Array.isArray(raw?.gateways) ? (raw.gateways as Gateway[]) : []
 
     // Preselect when there is only one choice; with several, let the customer
     // choose rather than silently charging them to one.
@@ -427,7 +428,7 @@ const createOrder = async (): Promise<void> => {
     // Signature is `create_order(p_slug, p_kind, p_amount)`, with the amount in whole
     // taka. A *kind*, not a gateway id: the shop decides which account of that kind the
     // money goes to, weighted, and the client no longer gets a say in that.
-    const { data, error: createError } = await (supabase.rpc as any)('create_order', {
+    const { data, error: createError } = await rpc<OrderResult>('create_order', {
       p_slug: slug.value,
       p_kind: selectedKind.value,
       p_amount: amount.value,

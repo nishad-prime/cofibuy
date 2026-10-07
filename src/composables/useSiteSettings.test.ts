@@ -11,8 +11,6 @@ vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({ rpc: (name: string) => rpc(name) }),
 }))
 
-type SettingsModule = typeof import('@/composables/useSiteSettings')
-
 /**
  * A fresh composable and i18n per test.
  *
@@ -21,7 +19,10 @@ type SettingsModule = typeof import('@/composables/useSiteSettings')
  * would assert against its data. A fresh `@/i18n` also resets the active locale,
  * which the `default_lang` tests depend on.
  */
-async function load(): Promise<{ settings: SettingsModule; locale: () => string }> {
+async function load(): Promise<{
+  settings: typeof import('@/composables/useSiteSettings')
+  locale: () => string
+}> {
   vi.resetModules()
   const [settings, i18n] = await Promise.all([
     import('@/composables/useSiteSettings'),

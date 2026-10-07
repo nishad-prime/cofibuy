@@ -17,7 +17,7 @@ function getFileExtension(filename: string, mimeType?: string): string {
   const parts = filename.split('.')
   if (parts.length > 1) {
     const ext = (parts[parts.length - 1] || '').toLowerCase()
-    if (DEFAULT_ALLOWED_EXT.includes(ext as any)) {
+    if (DEFAULT_ALLOWED_EXT.includes(ext)) {
       return ext
     }
   }
@@ -73,14 +73,15 @@ export function useFileUpload() {
       throw new Error('Authentication required')
     }
 
-    const maybeId = (user as any).id
-    if (!maybeId || !isValidUuid(maybeId)) {
+    const maybeId = (user as { id?: unknown }).id
+    const id = typeof maybeId === 'string' ? maybeId : ''
+    if (!id || !isValidUuid(id)) {
       throw new Error('Invalid user ID')
     }
-    const uid = maybeId as string
+    const uid = id
 
     const fileUuid = crypto.randomUUID()
-    const ext = getFileExtension(file.name, file.type) || ('jpg' as any)
+    const ext = getFileExtension(file.name, file.type) || 'jpg'
     const storagePath = `${uid}/${orderId}/${fieldKey}/${fileUuid}.${ext}`
 
     const { error } = await supabase.storage.from('proofs').upload(storagePath, file, {

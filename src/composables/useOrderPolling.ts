@@ -1,6 +1,7 @@
 import { ref, watch, onUnmounted, type Ref } from 'vue'
-import { getSupabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
+import { rpc } from '@/lib/rpc'
+import type { MyOrderStatus } from '@/lib/rpc'
 
 type OrderStatus = Database['public']['Enums']['order_status']
 
@@ -27,7 +28,6 @@ export interface OrderPollingState {
 const TERMINAL_STATUSES: OrderStatus[] = ['approved', 'rejected', 'expired', 'locked']
 
 export function useOrderPolling(orderId: string): OrderPollingState {
-  const supabase = getSupabase()
   const status = ref<OrderStatus | null>(null)
   const order = ref<OrderStatusResponse | null>(null)
   const error = ref<string | null>(null)
@@ -37,7 +37,7 @@ export function useOrderPolling(orderId: string): OrderPollingState {
 
   const refresh = async (): Promise<void> => {
     try {
-      const { data, error: rpcError } = await (supabase.rpc as any)('my_order_status', {
+      const { data, error: rpcError } = await rpc<MyOrderStatus>('my_order_status', {
         p_order_id: orderId,
       })
 

@@ -166,10 +166,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSupabase } from '@/lib/supabase'
 import EvidenceFieldEditor, { type FieldDraft } from '@/components/admin/EvidenceFieldEditor.vue'
 import AccountFieldEditor, { type AccountDraft } from '@/components/admin/AccountFieldEditor.vue'
 import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
+import { rpc, rpcList } from '@/lib/rpc'
 
 /**
  * The row `admin_gateways` returns. Named `Gateway` rather than shared with the automatic
@@ -205,7 +205,6 @@ const props = defineProps<{
 const KIND_SUGGESTIONS = ['bkash', 'nagad', 'bank', 'rocket', 'cellfin']
 
 const router = useRouter()
-const supabase = getSupabase()
 
 const isEdit = computed(() => !!props.gatewayId)
 
@@ -286,10 +285,8 @@ const toAccountDraft = (raw: Partial<AccountDraft>): AccountDraft => ({
 onMounted(async () => {
   if (!isEdit.value) return
 
-  const { data } = await (supabase.rpc as any)('admin_gateways')
-  const gateway: Gateway | undefined = (data || []).find(
-    (row: { id: string }) => row.id === props.gatewayId,
-  )
+  const { data } = await rpcList<Gateway>('admin_gateways')
+  const gateway: Gateway | undefined = (data ?? []).find((row) => row.id === props.gatewayId)
   if (!gateway) {
     error.value = 'That payment method no longer exists.'
     return
@@ -339,7 +336,7 @@ const save = async (): Promise<void> => {
     // and account or evidence fields. `credential_bundle` is deliberately absent -
     // a manual gateway has no credentials, and an empty bundle would be a blank
     // field rather than "unchanged".
-    const { error: rpcError } = await (supabase.rpc as any)('admin_upsert_gateway', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('admin_upsert_gateway', {
       p_gateway: {
         id: props.gatewayId ?? '',
         kind: form.value.kind.trim(),

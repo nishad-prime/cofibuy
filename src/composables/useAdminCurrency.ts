@@ -20,9 +20,7 @@ export function loadAdminCurrency(): Promise<void> {
   started ??= (async () => {
     try {
       const supabase = getSupabase()
-      const { data, error } = await (
-        supabase.rpc as (name: string) => Promise<{ data: unknown; error: unknown }>
-      )('admin_settings')
+      const { data, error } = await supabase.rpc('admin_settings')
       if (error) return
       const value = (data as { currency?: unknown } | null)?.currency
       if (isSupportedCurrency(value)) currency.value = value

@@ -41,7 +41,7 @@
             <div class="flex justify-between gap-4">
               <dt class="text-stone-500">{{ t('admin.queue.amount') }}</dt>
               <dd class="ltr-value font-medium text-stone-900">
-                {{ formatMoney(order.amount, 'en', currency) }}
+                {{ formatMoney(order.amount ?? 0, 'en', currency) }}
               </dd>
             </div>
             <div class="flex justify-between gap-4">
@@ -155,23 +155,40 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
 import { useAdminCurrency } from '@/composables/useAdminCurrency'
 import { useStaffRole } from '@/composables/useStaffRole'
 import { useAdminI18n } from '@/i18n/admin'
 import AppIcon from '@/components/AppIcon.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
+import { rpc } from '@/lib/rpc'
 
 const route = useRoute()
-const supabase = getSupabase()
 const { isStaff } = useStaffRole()
 const { t } = useAdminI18n()
 const { currency, load: loadCurrency } = useAdminCurrency()
 
 const orderId = computed(() => route.params.id as string)
 
-const order = ref<any>(null)
+interface AdminOrderRow {
+  id: string
+  status: string
+  amount: number | null
+  reference_code: string | null
+  created_at: string
+  submitted_at: string | null
+  phone_e: string | null
+  phone_e164: string | null
+  has_duplicate_trxid: boolean | null
+  reject_reason_en: string | null
+  reject_reason_bn: string | null
+  gateway: { name_en: string | null; name_bn: string | null } | null
+  link: { slug: string; title_en: string | null; title_bn: string | null } | null
+  evidence: Record<string, unknown>[]
+  duplicates: Record<string, unknown>[]
+}
+
+const order = ref<AdminOrderRow | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const actionLoading = ref(false)
@@ -193,8 +210,26 @@ const statusLabel = (status: string): string => t(`admin.status.${status}`)
  * `admin_order_detail` returns evidence as an array of rows (one per field per
  * attempt), not a keyed object, and embeds `duplicates` alongside it.
  */
-const evidenceRows = computed<any[]>(() => order.value?.evidence ?? [])
-const duplicates = computed<any[]>(() => order.value?.duplicates ?? [])
+interface EvidenceRow {
+  id: string
+  field_key: string
+  attempt: number
+  file_path: string | null
+  value_text_raw: string | null
+}
+
+interface DuplicateRow {
+  id: string
+  reference_code: string | null
+  status: string
+}
+
+const evidenceRows = computed<EvidenceRow[]>(
+  () => (order.value?.evidence ?? []) as unknown as EvidenceRow[],
+)
+const duplicates = computed<DuplicateRow[]>(
+  () => (order.value?.duplicates ?? []) as unknown as DuplicateRow[],
+)
 
 // The RPC stores the reason per language; the panel is English-only.
 const displayedRejectReason = computed(
@@ -207,7 +242,7 @@ const formatDate = (date: string): string => {
 
 const loadOrder = async (): Promise<void> => {
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('admin_order_detail', {
+    const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_order_detail', {
       p_order_id: orderId.value,
     })
 
@@ -216,7 +251,7 @@ const loadOrder = async (): Promise<void> => {
       return
     }
 
-    order.value = data
+    order.value = data as unknown as AdminOrderRow
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load order'
   } finally {
@@ -228,7 +263,7 @@ const approve = async (): Promise<void> => {
   actionError.value = null
   actionLoading.value = true
   try {
-    const { error: rpcError } = await (supabase.rpc as any)('approve_order', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('approve_order', {
       p_order_id: orderId.value,
     })
     if (rpcError) {
@@ -247,7 +282,7 @@ const reject = async (): Promise<void> => {
   actionError.value = null
   actionLoading.value = true
   try {
-    const { error: rpcError } = await (supabase.rpc as any)('reject_order', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('reject_order', {
       p_order_id: orderId.value,
       p_reason: rejectReason.value.trim(),
     })
@@ -268,7 +303,7 @@ const resetProbes = async (): Promise<void> => {
   actionError.value = null
   actionLoading.value = true
   try {
-    const { error: rpcError } = await (supabase.rpc as any)('admin_reset_probes', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('admin_reset_probes', {
       p_order_id: orderId.value,
     })
     if (rpcError) {

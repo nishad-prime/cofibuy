@@ -111,8 +111,7 @@ onMounted(async () => {
     return
   }
 
-  const row = (data ?? []).find((r: { id: string }) => r.id === gatewayId.value) as
-    Gateway | undefined
+  const row = ((data ?? []) as unknown as Gateway[]).find((r) => r.id === gatewayId.value)
   if (!row) {
     loadError.value = 'That payment method no longer exists.'
     loading.value = false

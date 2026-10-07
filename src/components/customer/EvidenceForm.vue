@@ -11,7 +11,7 @@
       <input
         v-if="field.type === 'text' || field.type === 'number'"
         :id="field.key"
-        v-model="formData[field.key]"
+        v-model="formData[field.key] as string"
         :type="field.type"
         :required="field.required"
         :maxlength="field.max_len"
@@ -23,7 +23,7 @@
       <textarea
         v-else-if="field.type === 'textarea'"
         :id="field.key"
-        v-model="formData[field.key]"
+        v-model="formData[field.key] as string"
         :required="field.required"
         :maxlength="field.max_len"
         rows="3"
@@ -94,19 +94,19 @@ const props = defineProps<{
   submitting: boolean
 }>()
 
-const emit = defineEmits<{ (e: 'submit', evidence: Record<string, any>): void }>()
+const emit = defineEmits<{ (e: 'submit', evidence: Record<string, string | File>): void }>()
 
 const { pick } = useContent()
 const { t } = useI18n()
 
-const formData = ref<Record<string, any>>({})
-const errors = ref<Record<string, string>>({})
-const fileNames = ref<Record<string, string>>({})
+const formData = ref<Record<string, string | File>>({})
+const errors = ref<Record<string, string | File>>({})
+const fileNames = ref<Record<string, string | File>>({})
 
 const hasErrors = computed(() => Object.keys(errors.value).length > 0)
 
 const getFieldLabel = (field: EvidenceField): string => {
-  return pick({ bn: field.label_bn, en: field.label_en } as any) || field.key
+  return pick({ bn: field.label_bn, en: field.label_en }) || field.key
 }
 
 const validateBdPhone = (value: string): boolean => {

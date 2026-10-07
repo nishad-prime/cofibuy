@@ -328,8 +328,7 @@ onMounted(async () => {
 
   if (isEdit.value) {
     const { data: rows } = await supabase.rpc('admin_gateways')
-    const gateway = (rows ?? []).find((row: { id: string }) => row.id === props.gatewayId) as
-      Gateway | undefined
+    const gateway = ((rows ?? []) as unknown as Gateway[]).find((row) => row.id === props.gatewayId)
     if (!gateway) {
       error.value = 'That payment method no longer exists.'
       return
@@ -345,7 +344,8 @@ onMounted(async () => {
       weight: gateway.weight ?? 1,
     }
     const { data: stored } = await supabase.rpc('admin_gateway_has_credentials', {
-      p_gateway_id: props.gatewayId,
+      //  above is exactly the presence of this id.
+      p_gateway_id: props.gatewayId as string,
     })
     hasStoredCredentials.value = !!stored
     ensureOpenSectionExists()

@@ -2,7 +2,9 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { requireSupabaseConfig } from './env'
 import type { Database } from './database.types'
 
-let client: any = null
+export type ApiClient = SupabaseClient<Database, 'api'>
+
+let client: ApiClient | null = null
 
 /**
  * Lazily creates the Supabase client.
@@ -11,7 +13,7 @@ let client: any = null
  * without a configured project, and so the anon key is never read into a
  * module that a tooling pass might evaluate.
  */
-export function getSupabase(): any {
+export function getSupabase(): ApiClient {
   if (client) return client
 
   const { url, anonKey } = requireSupabaseConfig()
@@ -39,6 +41,6 @@ export function getSupabase(): any {
 }
 
 /** Test seam: replaces the memoised client. */
-export function __setSupabaseClientForTests(next: SupabaseClient<Database> | null): void {
+export function __setSupabaseClientForTests(next: ApiClient | null): void {
   client = next
 }

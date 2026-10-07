@@ -37,16 +37,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getSupabase } from '@/lib/supabase'
 import AppIcon from '@/components/AppIcon.vue'
 import PageCard from '@/components/customer/PageCard.vue'
 import { useContent } from '@/composables/useContent'
 import { useSiteSettings } from '@/composables/useSiteSettings'
+import type { PublicPage } from '@/lib/rpc'
+import { rpcList } from '@/lib/rpc'
 
 const { t } = useI18n()
 const { pick } = useContent()
 const { settings } = useSiteSettings()
-const supabase = getSupabase()
 
 // The operator's index words, falling back to the shipped copy when unset.
 const heading = computed(
@@ -83,7 +83,7 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('list_public_pages')
+    const { data, error: rpcError } = await rpcList<PublicPage>('list_public_pages')
 
     if (rpcError) {
       error.value = rpcError.message

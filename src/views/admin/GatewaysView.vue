@@ -131,8 +131,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getSupabase } from '@/lib/supabase'
 import AppIcon from '@/components/AppIcon.vue'
+import { rpc } from '@/lib/rpc'
 
 /**
  * The row `admin_gateways` returns. Typed because this view now reasons about two
@@ -162,7 +162,6 @@ interface GatewayRow {
   weight: number | null
 }
 
-const supabase = getSupabase()
 const gateways = ref<GatewayRow[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -227,12 +226,12 @@ const detailSummary = (gw: GatewayRow): string =>
 const loadGateways = async (): Promise<void> => {
   error.value = null
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('admin_gateways')
+    const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_gateways')
     if (rpcError) {
       error.value = rpcError.message
       return
     }
-    gateways.value = data || []
+    gateways.value = (data ?? []) as unknown as typeof gateways.value
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load gateways'
   } finally {
@@ -245,7 +244,7 @@ const deleteGateway = async (id: string): Promise<void> => {
     return
   try {
     // `p_gateway_id`, not `p_id`, to match `api.admin_delete_gateway(uuid)`.
-    const { error: rpcError } = await (supabase.rpc as any)('admin_delete_gateway', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('admin_delete_gateway', {
       p_gateway_id: id,
     })
     if (rpcError) {

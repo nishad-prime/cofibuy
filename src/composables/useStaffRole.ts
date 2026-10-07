@@ -1,6 +1,6 @@
 import { ref, computed, getCurrentInstance, onUnmounted, type Ref, type ComputedRef } from 'vue'
-import { getSupabase } from '@/lib/supabase'
 import { useAuthSession, whenAuthReady } from './useAuthSession'
+import { rpc } from '@/lib/rpc'
 
 export type StaffRole = 'owner' | 'staff' | 'none'
 
@@ -26,11 +26,9 @@ const isStaff = computed(() => role.value === 'staff' || role.value === 'owner')
 const isOwner = computed(() => role.value === 'owner')
 
 async function runProbes(): Promise<void> {
-  const supabase = getSupabase()
-
   // `admin_stats` is gated on staff, so succeeding proves the capability
   // without a dedicated role RPC.
-  const { error: statsError } = await (supabase.rpc as any)('admin_stats')
+  const { error: statsError } = await rpc<Record<string, unknown>>('admin_stats')
 
   if (statsError) {
     role.value = 'none'
@@ -40,7 +38,7 @@ async function runProbes(): Promise<void> {
 
   // `admin_team` is owner-only, so success is the only positive signal
   // available for the owner tier.
-  const { error: teamError } = await (supabase.rpc as any)('admin_team')
+  const { error: teamError } = await rpc<Record<string, unknown>>('admin_team')
 
   role.value = teamError ? 'staff' : 'owner'
 }

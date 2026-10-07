@@ -43,7 +43,7 @@
                 <OrderStatusBadge :status="order.status" :label="statusLabel(order.status)" />
               </td>
               <td class="td">
-                <span class="ltr-value">{{ formatMoney(order.amount, 'en', currency) }}</span>
+                <span class="ltr-value">{{ formatMoney(order.amount ?? 0, 'en', currency) }}</span>
               </td>
               <td class="td">{{ gatewayLabel(order.kind) }}</td>
               <td class="td whitespace-nowrap text-stone-500">
@@ -60,19 +60,27 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
 import { useAdminCurrency } from '@/composables/useAdminCurrency'
 import { useAdminI18n } from '@/i18n/admin'
 import AppIcon from '@/components/AppIcon.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
+import { rpc } from '@/lib/rpc'
 
 const router = useRouter()
-const supabase = getSupabase()
 const { t } = useAdminI18n()
 const { currency, load: loadCurrency } = useAdminCurrency()
 
-const orders = ref<any[]>([])
+interface QueueOrder {
+  id: string
+  reference_code: string | null
+  status: string
+  amount: number | null
+  kind: string
+  created_at: string
+}
+
+const orders = ref<QueueOrder[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
@@ -98,14 +106,14 @@ const viewOrder = (orderId: string): void => {
 onMounted(async () => {
   void loadCurrency()
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('admin_orders')
+    const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_orders')
 
     if (rpcError) {
       error.value = rpcError.message
       return
     }
 
-    orders.value = data || []
+    orders.value = (data ?? []) as unknown as typeof orders.value
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load orders'
   } finally {

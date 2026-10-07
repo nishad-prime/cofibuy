@@ -92,8 +92,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getSupabase } from '@/lib/supabase'
 import AppIcon from '@/components/AppIcon.vue'
+import { rpc } from '@/lib/rpc'
 
 interface TeamMember {
   user_id: string
@@ -101,8 +101,6 @@ interface TeamMember {
   role: 'staff' | 'owner'
   created_at: string
 }
-
-const supabase = getSupabase()
 
 const team = ref<TeamMember[]>([])
 const loading = ref(true)
@@ -118,7 +116,7 @@ const formatDate = (value: string): string => {
 }
 
 const loadTeam = async (): Promise<void> => {
-  const { data, error: rpcError } = await (supabase.rpc as any)('admin_team')
+  const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_team')
 
   if (rpcError) {
     error.value = rpcError.message
@@ -126,7 +124,7 @@ const loadTeam = async (): Promise<void> => {
   }
 
   error.value = null
-  team.value = data ?? []
+  team.value = (data ?? []) as unknown as typeof team.value
 }
 
 const addMember = async (): Promise<void> => {
@@ -134,7 +132,7 @@ const addMember = async (): Promise<void> => {
   error.value = null
 
   try {
-    const { error: rpcError } = await (supabase.rpc as any)('admin_set_staff', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('admin_set_staff', {
       p_email: email.value,
       p_role: role.value,
     })
@@ -158,7 +156,7 @@ const removeMember = async (member: TeamMember): Promise<void> => {
   error.value = null
 
   try {
-    const { error: rpcError } = await (supabase.rpc as any)('admin_remove_staff', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('admin_remove_staff', {
       p_user_id: member.user_id,
     })
 

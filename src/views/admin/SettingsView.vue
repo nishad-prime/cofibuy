@@ -178,6 +178,7 @@ import { CURRENCIES, isSupportedCurrency } from '@/lib/currency'
 import { describeEdgeFailure } from '@/lib/edgeError'
 import { applyAdminCurrency } from '@/composables/useAdminCurrency'
 import { useAdminI18n } from '@/i18n/admin'
+import { rpc } from '@/lib/rpc'
 
 const supabase = getSupabase()
 const { t } = useAdminI18n()
@@ -276,7 +277,9 @@ const fillIndex = async (): Promise<void> => {
 
     for (const field of FILL_FIELDS) {
       const value = values[field.key]
-      if (typeof value === 'string' && value !== '') (form.value as any)[field.key] = value
+      if (typeof value === 'string' && value !== '') {
+        ;(form.value as Record<string, unknown>)[field.key] = value
+      }
     }
   } catch (err) {
     const failure = await describeEdgeFailure(err, 'The fill did not come back.')
@@ -291,7 +294,7 @@ const success = ref(false)
 
 onMounted(async () => {
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('admin_settings')
+    const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_settings')
     if (rpcError) {
       error.value = rpcError.message
       return
@@ -331,7 +334,7 @@ const save = async (): Promise<void> => {
     // error rather than a null, so the value is normalised before it is sent.
     const amount = Number(form.value.min_amount)
 
-    const { error: rpcError } = await (supabase.rpc as any)('admin_set_settings', {
+    const { error: rpcError } = await rpc<Record<string, unknown>>('admin_set_settings', {
       p_settings: {
         min_amount: Number.isFinite(amount) ? amount : 0,
         hide_min_amount: form.value.hide_min_amount,

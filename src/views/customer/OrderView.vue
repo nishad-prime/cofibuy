@@ -156,6 +156,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getSupabase } from '@/lib/supabase'
 import { useContent } from '@/composables/useContent'
+import type { LocalizedPair } from '@/lib/content'
 import { useOrderPolling } from '@/composables/useOrderPolling'
 import { useFileUpload } from '@/composables/useFileUpload'
 import AppIcon from '@/components/AppIcon.vue'
@@ -167,6 +168,8 @@ import GatewayAccountDetails, {
 } from '@/components/customer/GatewayAccountDetails.vue'
 import { buildEvidencePayload } from '@/lib/evidencePayload'
 import { describeEdgeFailure } from '@/lib/edgeError'
+import { rpc } from '@/lib/rpc'
+import type { MyOrderStatus } from '@/lib/rpc'
 
 const route = useRoute()
 const supabase = getSupabase()
@@ -201,7 +204,7 @@ const {
   isPolling,
   startPolling,
   refresh,
-} = useOrderPolling(orderId.value) as any
+} = useOrderPolling(orderId.value)
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -214,7 +217,7 @@ const unlockedContent = ref<string | null>(null)
 
 const gatewayInstructions = computed(() =>
   gateway.value
-    ? pick({ bn: gateway.value.instructions_md_bn, en: gateway.value.instructions_md_en } as any)
+    ? pick({ bn: gateway.value.instructions_md_bn, en: gateway.value.instructions_md_en })
     : '',
 )
 
@@ -262,7 +265,7 @@ watch(currentStatus, async (newStatus) => {
 
 const fetchUnlockedContent = async (): Promise<void> => {
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('get_unlocked_page', {
+    const { data, error: rpcError } = await rpc<Record<string, unknown>>('get_unlocked_page', {
       p_slug: slug.value,
     })
 
@@ -272,7 +275,7 @@ const fetchUnlockedContent = async (): Promise<void> => {
       unlockedContent.value = pick({
         bn: data.unlock_body_md_bn,
         en: data.unlock_body_md_en,
-      } as any)
+      } as unknown as LocalizedPair)
     }
   } catch {
     // The status is already correct; a missing body is not worth an error banner.
@@ -280,7 +283,7 @@ const fetchUnlockedContent = async (): Promise<void> => {
 }
 
 const copyReference = async (): Promise<void> => {
-  const code = (order.value as any)?.reference_code
+  const code = order.value?.reference_code
   if (!code) return
   try {
     await navigator.clipboard.writeText(code)
@@ -347,7 +350,7 @@ onMounted(async () => {
     // The gateway instructions and evidence schema come from the same RPC.
     // Reading `orders` and `payment_gateways` directly cannot work: neither
     // table is selectable by a customer, so the evidence form came up empty.
-    const { data: status } = await (supabase.rpc as any)('my_order_status', {
+    const { data: status } = await rpc<MyOrderStatus>('my_order_status', {
       p_order_id: orderId.value,
     })
 

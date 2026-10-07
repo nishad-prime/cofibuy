@@ -66,6 +66,8 @@ insert into private.copy_registry (key, markdown_allowed) values
   ('paywall.closedTitle', false),
   ('paywall.closedBody', false),
   ('paywall.closedContact', false),
+  ('paywall.openOrderExists', false),
+  ('paywall.openOrderExpired', false),
   ('order.title', false),
   ('order.reference', false),
   ('order.rejectReason', false),

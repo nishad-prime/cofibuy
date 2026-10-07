@@ -304,6 +304,37 @@ onMounted(async () => {
   }
 })
 
+/**
+ * `kind_mismatch` means an open order already exists for this report and this customer.
+ *
+ * The order is pinned to its gateway on purpose, so it cannot be re-pointed at the method
+ * they just picked; the only useful response is to show them the order that is already
+ * waiting. Every branch below says or shows something the customer can act on, because a
+ * raised exception with nothing behind it is a dead end.
+ */
+const handOffToOpenOrder = async (): Promise<void> => {
+  const { data, error: ordersError } = await supabase.rpc('my_orders')
+
+  if (ordersError || !Array.isArray(data)) {
+    error.value = t('customer.paywall.openOrderExists')
+    return
+  }
+
+  const openStatuses = new Set(['draft', 'awaiting_proof', 'rejected', 'locked'])
+  const existing = (data as Array<{ id: string; slug: string; status: string }>).find(
+    (order) => order.slug === slug.value && openStatuses.has(order.status),
+  )
+
+  if (!existing) {
+    // The order expired in the gap. Nothing is in the way any more, so the customer can
+    // simply try again - but they must be told to, or they read a dead end as a refusal.
+    error.value = t('customer.paywall.openOrderExpired')
+    return
+  }
+
+  await router.push(`/${slug.value}/order/${existing.id}`)
+}
+
 const createOrder = async (): Promise<void> => {
   if (!link.value || !selectedKind.value || !isAmountValid.value) {
     return
@@ -338,6 +369,21 @@ const createOrder = async (): Promise<void> => {
     })
 
     if (createError) {
+      // `kind_mismatch` is raised, not returned as a refusal code, and the migration's own
+      // comment says what the client owes here: change state, not show a message. The
+      // customer already has an open order for this report, pinned to one gateway so a
+      // transfer receipt cannot end up aimed at an account nobody watches. Telling them
+      // "kind_mismatch: open order already uses payment kind bkash Payment" answers a
+      // question they did not ask and cannot act on - they do not know what a "kind" is or
+      // which order is in the way. Taking them to it is the only thing that helps.
+      if (
+        typeof createError.message === 'string' &&
+        createError.message.startsWith('kind_mismatch:')
+      ) {
+        await handOffToOpenOrder()
+        return
+      }
+
       error.value = createError.message
       return
     }

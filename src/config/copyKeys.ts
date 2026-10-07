@@ -68,6 +68,11 @@ export const COPY_KEYS = {
     'paywall.closedTitle',
     'paywall.closedBody',
     'paywall.closedContact',
+    // Raised as a Postgres exception rather than a refusal code, so the client hands the
+    // customer to the order that already exists instead of quoting it. Both sentences are
+    // the fallback for that hand-off, which is why they are ordinary editable copy.
+    'paywall.openOrderExists',
+    'paywall.openOrderExpired',
   ],
   order: [
     'order.title',

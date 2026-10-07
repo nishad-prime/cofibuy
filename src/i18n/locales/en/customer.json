@@ -50,7 +50,9 @@
     "deliverable": "What you get after payment",
     "closedTitle": "Payments are temporarily paused",
     "closedBody": "We have the shop closed for maintenance. The report is still here, but it cannot be paid for right now. Please check back a little later.",
-    "closedContact": "Get in touch if urgent"
+    "closedContact": "Get in touch if urgent",
+    "openOrderExists": "Your order for this report is already open, but it could not be loaded. Please try again.",
+    "openOrderExpired": "Your previous order for this report has expired. You can start a new one now."
   },
   "order": {
     "title": "Order status",

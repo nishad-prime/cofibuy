@@ -23,6 +23,9 @@ import { corsHeaders, errorResponse, jsonResponse, readJson } from '../_shared/h
 
 interface CreatePaymentBody {
   orderId?: unknown
+  slug?: unknown
+  kind?: unknown
+  amount?: unknown
 }
 
 Deno.serve(async (request) => {
@@ -46,18 +49,59 @@ Deno.serve(async (request) => {
 
   try {
     const body = await readJson<CreatePaymentBody>(request)
-    if (typeof body?.orderId !== 'string' || body.orderId === '') {
-      return errorResponse('invalid_request', 'orderId is required', 400)
-    }
 
-    const { data: start, error: startError } = await userClient.rpc('bkash_payment_start', {
-      p_order_id: body.orderId,
-    })
-    if (startError) {
-      // `bkash_payment_start` raises P0002 for an order that is not the caller's, which is
-      // the same answer as an order that does not exist. Deliberately not distinguishing
-      // them here: telling a stranger that an id exists is itself a leak.
-      return errorResponse('cannot_start_payment', startError.message, 400)
+    // Two ways in. The pay button on the page sends what the customer chose
+    // (slug, kind, amount) and `pay_online_start` creates the order and opens
+    // the payment session in one SQL call. The order page's retry button sends
+    // an existing orderId, which skips order creation entirely - an order that
+    // already exists has nothing left to decide.
+    const oneStep = typeof body?.orderId !== 'string' || body.orderId === ''
+
+    let start: Record<string, unknown>
+    let orderId: string
+
+    if (oneStep) {
+      if (typeof body?.slug !== 'string' || body.slug === '') {
+        return errorResponse('invalid_request', 'slug is required', 400)
+      }
+      if (typeof body?.kind !== 'string' || body.kind === '') {
+        return errorResponse('invalid_request', 'kind is required', 400)
+      }
+      const amount = Number(body?.amount)
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return errorResponse('invalid_request', 'amount must be a positive number', 400)
+      }
+
+      const { data: started, error: startError } = await userClient.rpc('pay_online_start', {
+        p_slug: body.slug,
+        p_kind: body.kind,
+        p_amount: amount,
+      })
+      if (startError) {
+        // `kind_mismatch` is a stable prefix by contract (see the routing
+        // migration): the customer already has an open order and the page
+        // navigates them to it. Everything else is reported as-is.
+        return errorResponse('cannot_start_payment', startError.message, 400)
+      }
+      if (!started || started.ok !== true) {
+        // A refusal envelope (below_minimum, locked): an answer, not an error,
+        // so it goes back with the payload the page already knows how to show.
+        return jsonResponse({ ok: false, refusal: started })
+      }
+      start = started as Record<string, unknown>
+      orderId = String(start.order_id)
+    } else {
+      const { data: existing, error: startError } = await userClient.rpc('bkash_payment_start', {
+        p_order_id: body.orderId,
+      })
+      if (startError) {
+        // `bkash_payment_start` raises P0002 for an order that is not the caller's, which is
+        // the same answer as an order that does not exist. Deliberately not distinguishing
+        // them here: telling a stranger that an id exists is itself a leak.
+        return errorResponse('cannot_start_payment', startError.message, 400)
+      }
+      start = existing as Record<string, unknown>
+      orderId = body.orderId as string
     }
 
     const environment = asEnvironment(start.environment)
@@ -84,7 +128,7 @@ Deno.serve(async (request) => {
     // session row for an order without re-checking that the caller owns it. The ownership
     // check already happened in `bkash_payment_start`, above, against the same order id.
     const { error: recordError } = await admin.rpc('bkash_record_session', {
-      p_order_id: body.orderId,
+      p_order_id: orderId,
       p_payment_id: created.paymentId,
       p_amount: Number(start.amount),
     })
@@ -98,7 +142,7 @@ Deno.serve(async (request) => {
 
     return jsonResponse({
       ok: true,
-      orderId: start.order_id,
+      orderId,
       paymentId: created.paymentId,
       redirectUrl: created.redirectUrl,
       // Surfaced so the frontend can say "this is a test payment, no money will move"

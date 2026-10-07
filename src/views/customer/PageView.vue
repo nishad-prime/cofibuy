@@ -140,6 +140,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
 import { useContent } from '@/composables/useContent'
+import { describeEdgeFailure } from '@/lib/edgeError'
 import { normalizeConfig, templateFor } from '@/pages/templates/registry'
 import { useSiteSettings } from '@/composables/useSiteSettings'
 import AppIcon from '@/components/AppIcon.vue'
@@ -352,6 +353,17 @@ const handOffToOpenOrder = async (): Promise<void> => {
   await router.push(`/${slug.value}/order/${existing.id}`)
 }
 
+/**
+ * Whether the chosen kind pays online.
+ *
+ * The shop decides which account of a kind takes the money, so the client asks
+ * "is any account of this kind automatic?" rather than picking one itself. A
+ * manual kind answers false and takes the evidence path instead.
+ */
+const kindPaysOnline = computed(() =>
+  gateways.value.some((g) => g.kind === selectedKind.value && g.provider !== null),
+)
+
 const createOrder = async (): Promise<void> => {
   if (!link.value || !selectedKind.value || !isAmountValid.value) {
     return
@@ -374,6 +386,44 @@ const createOrder = async (): Promise<void> => {
           : anonError.message
         return
       }
+    }
+
+    // The online kinds skip the order page entirely: the function creates the
+    // order and opens the bKash session in one SQL call, and the customer's
+    // next screen is bKash's. `creating` stays true through the redirect so a
+    // slow function cannot be double-submitted into two sessions.
+    if (kindPaysOnline.value) {
+      const { data, error: fnError } = await supabase.functions.invoke('bkash-create-payment', {
+        body: { slug: slug.value, kind: selectedKind.value, amount: amount.value },
+      })
+
+      if (fnError) {
+        const failure = await describeEdgeFailure(fnError, 'The payment could not start.')
+        if (failure.cause !== '') console.warn('[bkash-create-payment]', failure)
+        // `kind_mismatch` needs a state change, not a sentence: take the
+        // customer to the order that is already waiting.
+        if (failure.message.startsWith('kind_mismatch:')) {
+          await handOffToOpenOrder()
+          return
+        }
+        error.value = failure.message
+        return
+      }
+
+      const payload = data as
+        { ok: true; redirectUrl: string } | { ok: false; refusal: { code?: string } } | null
+
+      if (payload && payload.ok === false) {
+        error.value = describeRefusal(payload.refusal?.code)
+        return
+      }
+      if (!payload || payload.ok !== true || !payload.redirectUrl) {
+        error.value = t('customer.paywall.refused')
+        return
+      }
+
+      window.location.assign(payload.redirectUrl)
+      return
     }
 
     // Signature is `create_order(p_slug, p_kind, p_amount)`, with the amount in whole

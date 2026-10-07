@@ -353,17 +353,14 @@ field-mapping assertions were checked by renaming one form field and watching th
   placeholders (it is applied history and cannot be edited), but
   `20261004150000_install_cron_schedules.sql` installs the real schedules on any
   database that applied the stub. Both are now applied to the hosted project.
-- `npm run check` fails on a large pre-existing lint baseline, which makes
-  `check:all` unusable as a single command. Worth a dedicated pass, or an
-  explicit decision to grandfather it.
-- The typed `SupabaseClient<Database, 'api'>` return on `getSupabase()` is still
-  `any`, which is why `supabase.rpc` is cast at each call site and why the lint
-  baseline exists.
-- `LinkFormView.vue` still has no input for `sort_order` or `min_amount_override`.
+- Resolved in the pages refactor: `getSupabase()` now returns the typed
+  `SupabaseClient<Database, 'api'>`, payloads are typed in `src/lib/rpc.ts`, and
+  the lint baseline is gone — `npm run check` passes clean.
+- `PageFormView.vue` still has no input for `sort_order` or `min_amount_override`.
   Both are loaded and re-saved verbatim, and `hide_min` is checkable without any
-  value to hide, so a link can be marked "hide the minimum" and keep the shop-wide
-  one. Left alone in Phase 11 deliberately: they are numeric controls rather than
-  copy, and fixing them is not the same change as drafting copy.
+  value to hide, so a page can be marked "hide the minimum" and keep the shop-wide
+  one. Left deliberately: they are numeric controls rather than copy, and fixing
+  them is not the same change as anything shipped here.
 
 ## Further reading
 

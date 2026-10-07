@@ -114,5 +114,10 @@
   "page": {
     "whatYouGet": "What you get",
     "faq": "Questions and answers"
+  },
+  "errors": {
+    "transport": "Could not reach the payment service. Check your connection, then try again. If you are on a VPN or a strict network, that can block the request.",
+    "httpStatus": "The payment service responded with an error (HTTP {status}).",
+    "httpGeneric": "The payment service responded with an error."
   }
 }

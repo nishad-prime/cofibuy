@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js'
 import { describeEdgeFailure } from './edgeError'
+import { i18n } from '@/i18n'
+
+/**
+ * The transport and HTTP wordings are resolved through the bundle, so the
+ * assertions read the bundle rather than assuming a locale — the Bangla text
+ * says the same thing and must pass the same guards.
+ */
+const bundled = (key: string, args?: Record<string, unknown>): string =>
+  i18n.global.t(key, args ?? {}) as string
 
 /**
  * The regression these guard: the generic SDK string
@@ -30,7 +39,7 @@ describe('describeEdgeFailure', () => {
     expect(failure.kind).toBe('FunctionsFetchError')
     expect(failure.status).toBeNull()
     expect(failure.message).not.toBe('Failed to send a request to the Edge Function')
-    expect(failure.message).toMatch(/connection|VPN/i)
+    expect(failure.message).toBe(bundled('customer.errors.transport'))
   })
 
   it('keeps the transport cause out of the message but on the record', async () => {

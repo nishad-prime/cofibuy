@@ -1,3 +1,5 @@
+import { i18n } from '@/i18n'
+
 /**
  * Naming the failure from a `supabase.functions.invoke` error.
  *
@@ -109,9 +111,7 @@ export async function describeEdgeFailure(err: unknown, fallback: string): Promi
 
     return {
       kind: name,
-      message:
-        'Could not reach the payment service. Check your connection, then try again. ' +
-        'If you are on a VPN or a strict network, that can block the request.',
+      message: i18n.global.t('customer.errors.transport'),
       cause,
       status: null,
     }

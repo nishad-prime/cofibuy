@@ -1,11 +1,11 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { defineComponent, h } from 'vue'
-import LinkView from '@/views/customer/LinkView.vue'
+import PageView from '@/views/customer/PageView.vue'
 import { i18n } from '@/i18n'
 
 /**
- * A regression test for the hand-off LinkView owes a `kind_mismatch` raise.
+ * A regression test for the hand-off PageView owes a `kind_mismatch` raise.
  *
  * `api.create_order` raises `kind_mismatch` rather than returning an `ok: false` payload,
  * and its own migration comment spells out why the client cannot answer it with a message:
@@ -84,7 +84,7 @@ beforeEach(() => {
 describe('kind_mismatch hand-off', () => {
   it('takes the customer to the open order that is in the way', async () => {
     rpc.mockImplementation((name: string) => {
-      if (name === 'get_public_link') return Promise.resolve({ data: publicLink(), error: null })
+      if (name === 'get_public_page') return Promise.resolve({ data: publicLink(), error: null })
       if (name === 'create_order')
         return Promise.resolve({
           data: null,
@@ -102,7 +102,7 @@ describe('kind_mismatch hand-off', () => {
       return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
     })
 
-    const wrapper = mount(LinkView, {
+    const wrapper = mount(PageView, {
       global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
     })
     await flushPromises()
@@ -118,7 +118,7 @@ describe('kind_mismatch hand-off', () => {
 
   it('ignores an order whose status is already closed', async () => {
     rpc.mockImplementation((name: string) => {
-      if (name === 'get_public_link') return Promise.resolve({ data: publicLink(), error: null })
+      if (name === 'get_public_page') return Promise.resolve({ data: publicLink(), error: null })
       if (name === 'create_order')
         return Promise.resolve({
           data: null,
@@ -135,7 +135,7 @@ describe('kind_mismatch hand-off', () => {
       return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
     })
 
-    const wrapper = mount(LinkView, {
+    const wrapper = mount(PageView, {
       global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
     })
     await flushPromises()
@@ -153,7 +153,7 @@ describe('kind_mismatch hand-off', () => {
 
   it('says an order is in progress when the lookup itself fails', async () => {
     rpc.mockImplementation((name: string) => {
-      if (name === 'get_public_link') return Promise.resolve({ data: publicLink(), error: null })
+      if (name === 'get_public_page') return Promise.resolve({ data: publicLink(), error: null })
       if (name === 'create_order')
         return Promise.resolve({
           data: null,
@@ -164,7 +164,7 @@ describe('kind_mismatch hand-off', () => {
       return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
     })
 
-    const wrapper = mount(LinkView, {
+    const wrapper = mount(PageView, {
       global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
     })
     await flushPromises()

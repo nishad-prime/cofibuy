@@ -23,8 +23,8 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: ':slug',
-        name: 'link',
-        component: () => import('@/views/customer/LinkView.vue'),
+        name: 'page',
+        component: () => import('@/views/customer/PageView.vue'),
       },
       {
         path: ':slug/order/:orderId',
@@ -74,18 +74,18 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'links',
-        name: 'admin-links',
-        component: () => import('@/views/admin/LinksView.vue'),
+        name: 'admin-pages',
+        component: () => import('@/views/admin/PagesView.vue'),
       },
       {
         path: 'links/new',
-        name: 'admin-links-new',
-        component: () => import('@/views/admin/LinkFormView.vue'),
+        name: 'admin-pages-new',
+        component: () => import('@/views/admin/PageFormView.vue'),
       },
       {
         path: 'links/:id/edit',
-        name: 'admin-links-edit',
-        component: () => import('@/views/admin/LinkFormView.vue'),
+        name: 'admin-pages-edit',
+        component: () => import('@/views/admin/PageFormView.vue'),
       },
       {
         path: 'gateways',

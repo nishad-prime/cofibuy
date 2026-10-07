@@ -154,7 +154,7 @@ select is(
 select test_data.as_anon();
 select is(
   (select g ->> 'provider' from jsonb_array_elements(
-    (api.get_public_link('auto') -> 'gateways')
+    (api.get_public_page('auto') -> 'gateways')
   ) g where g ->> 'name_en' = 'bKash (instant)'),
   'bkash_pgw',
   'the customer can see which methods take an online payment'
@@ -165,15 +165,15 @@ select is(
 -- the key, not how many methods happen to exist.
 select is(
   (select count(*)::int from jsonb_array_elements(
-    (api.get_public_link('auto') -> 'gateways')
+    (api.get_public_page('auto') -> 'gateways')
   ) g where g ? 'provider'),
-  (select jsonb_array_length(api.get_public_link('auto') -> 'gateways'))::int,
+  (select jsonb_array_length(api.get_public_page('auto') -> 'gateways'))::int,
   'every gateway in the payload carries provider, manual ones included'
 );
 
 select is(
   (select g ->> 'provider' from jsonb_array_elements(
-    (api.get_public_link('auto') -> 'gateways')
+    (api.get_public_page('auto') -> 'gateways')
   ) g where g ->> 'name_en' = 'bKash'),
   null,
   'a manual method reports no provider rather than a made-up one'
@@ -184,27 +184,27 @@ select is(
 -- and it is reached through the moved-aside function. If the join in the wrapper dropped
 -- the rest of the document this is what would notice.
 select is(
-  (api.get_public_link('auto') ->> 'min_amount')::numeric,
+  (api.get_public_page('auto') ->> 'min_amount')::numeric,
   500,
   'the wrapper preserved the rest of the payload'
 );
 
 select is(
-  (api.get_public_link('auto') ->> 'maintenance_mode'),
+  (api.get_public_page('auto') ->> 'maintenance_mode'),
   'false',
   'and the outer wrapper still adds maintenance_mode'
 );
 
 select test_data.as_user(test_data.new_user());
 select is(
-  (api.get_public_link('auto') ->> 'min_amount')::numeric,
+  (api.get_public_page('auto') ->> 'min_amount')::numeric,
   500,
   'the minimum is still readable when it is not hidden'
 );
 
 select test_data.as_anon();
 select is(
-  test_data.can_execute('anon', 'api.public_link_payload(text)'),
+  test_data.can_execute('anon', 'api.public_page_payload(text)'),
   false,
   'the wrapper does not become a second anon entry point'
 );
@@ -294,7 +294,7 @@ select is(
 select is(
   (select api.bkash_payment_start(test_data.order_for_customer('auto')) ->> 'invoice'),
   (select o.reference_code from public.orders o
-    join public.paywall_links l on l.id = o.link_id where l.slug = 'auto'),
+    join public.pages l on l.id = o.link_id where l.slug = 'auto'),
   'the invoice is the order reference code, which is what makes a bKash statement reconcilable'
 );
 
@@ -431,7 +431,7 @@ select is(
 
 select is(
   (select o.status::text from public.orders o
-    join public.paywall_links l on l.id = o.link_id where l.slug = 'auto'),
+    join public.pages l on l.id = o.link_id where l.slug = 'auto'),
   'approved',
   'the order is approved'
 );
@@ -445,14 +445,14 @@ select is(
 
 select is(
   (select o.reviewed_by from public.orders o
-    join public.paywall_links l on l.id = o.link_id where l.slug = 'auto'),
+    join public.pages l on l.id = o.link_id where l.slug = 'auto'),
   null,
   'reviewed_by stays null: nobody in this shop clicked approve'
 );
 
 select is(
   (select o.reviewed_at is not null from public.orders o
-    join public.paywall_links l on l.id = o.link_id where l.slug = 'auto'),
+    join public.pages l on l.id = o.link_id where l.slug = 'auto'),
   true,
   'reviewed_at is set, which is what the constraint requires and what is true'
 );

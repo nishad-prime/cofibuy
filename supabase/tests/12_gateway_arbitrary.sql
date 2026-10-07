@@ -317,7 +317,7 @@ select lives_ok(
 select test_data.as_anon();
 select is(
   (select g ->> 'kind' from jsonb_array_elements(
-    (api.get_public_link('guide') -> 'gateways')
+    (api.get_public_page('guide') -> 'gateways')
   ) g where g ->> 'name_en' = 'Bank transfer'),
   'bank',
   'an arbitrary kind reaches the customer payload'
@@ -329,7 +329,7 @@ select is(
 -- the order, once, to the person who placed it.
 select is(
   (select g -> 'account_fields' from jsonb_array_elements(
-    (api.get_public_link('guide') -> 'gateways')
+    (api.get_public_page('guide') -> 'gateways')
   ) g where g ->> 'name_en' = 'Bank transfer'),
   null::jsonb,
   'the paywall carries no destination to send the money to'
@@ -337,7 +337,7 @@ select is(
 
 select is(
   (select g ? 'account_number' from jsonb_array_elements(
-    (api.get_public_link('guide') -> 'gateways')
+    (api.get_public_page('guide') -> 'gateways')
   ) g where g ->> 'name_en' = 'Bank transfer'),
   false,
   'and no account number either'
@@ -345,7 +345,7 @@ select is(
 
 select is(
   (select g ->> 'provider' from jsonb_array_elements(
-    (api.get_public_link('guide') -> 'gateways')
+    (api.get_public_page('guide') -> 'gateways')
   ) g where g ->> 'name_en' = 'bKash (instant)'),
   'bkash_pgw',
   'and the customer still learns which methods are automated'
@@ -353,7 +353,7 @@ select is(
 
 select is(
   (select bool_and(not (g ? 'account_fields')) from jsonb_array_elements(
-    (api.get_public_link('guide') -> 'gateways')
+    (api.get_public_page('guide') -> 'gateways')
   ) g),
   true,
   'no gateway of any kind advertises a destination'

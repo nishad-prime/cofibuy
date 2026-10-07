@@ -110,5 +110,9 @@
     "sent": "Check your phone for the code.",
     "back": "Use a different number",
     "disabled": "Account recovery is temporarily unavailable. Please contact support."
+  },
+  "page": {
+    "whatYouGet": "What you get",
+    "faq": "Questions and answers"
   }
 }

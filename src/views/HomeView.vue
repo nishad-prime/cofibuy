@@ -17,7 +17,7 @@
     </div>
 
     <div v-else class="mt-10 grid gap-5 sm:grid-cols-2">
-      <LinkCard
+      <PageCard
         v-for="link in links"
         :key="link.id"
         :slug="link.slug"
@@ -37,12 +37,12 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getSupabase } from '@/lib/supabase'
 import AppIcon from '@/components/AppIcon.vue'
-import LinkCard from '@/components/customer/LinkCard.vue'
+import PageCard from '@/components/customer/PageCard.vue'
 
 const { t } = useI18n()
 const supabase = getSupabase()
 
-// `list_public_links` returns the `paywall_links_public` view, so the teaser and
+// `list_public_pages` returns the `paywall_links_public` view, so the teaser and
 // CTA columns are the `*_md_*` variants.
 interface PublicLink {
   id: string
@@ -61,7 +61,7 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('list_public_links')
+    const { data, error: rpcError } = await (supabase.rpc as any)('list_public_pages')
 
     if (rpcError) {
       error.value = rpcError.message

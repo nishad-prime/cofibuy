@@ -97,7 +97,7 @@ select is(
 -- ---------------------------------------------------------------------------
 
 select is(
-  test_data.as_role('anon', 'select slug from public.paywall_links_public') ->> 'ok',
+  test_data.as_role('anon', 'select slug from public.pages_public') ->> 'ok',
   'true',
   'the published links are readable by anyone'
 );
@@ -136,19 +136,19 @@ select is(
 -- whether a minimum is hidden are not on it. Reading the table therefore
 -- cannot reveal the threshold the API is at such lengths to withhold.
 select is(
-  test_data.as_role('authenticated', 'select min_amount_override from public.paywall_links') ->> 'state',
+  test_data.as_role('authenticated', 'select min_amount_override from public.pages') ->> 'state',
   '42501',
   'a private minimum override is not a readable column'
 );
 
 select is(
-  test_data.as_role('authenticated', 'select hide_min_override from public.paywall_links') ->> 'state',
+  test_data.as_role('authenticated', 'select hide_min_override from public.pages') ->> 'state',
   '42501',
   'and neither is the flag that hides it'
 );
 
 select is(
-  test_data.as_role('authenticated', 'select unlock_body_md_en from public.paywall_links') ->> 'state',
+  test_data.as_role('authenticated', 'select unlock_body_md_en from public.pages') ->> 'state',
   '42501',
   'nor the paid body, which is what the grant is for'
 );
@@ -162,13 +162,13 @@ select test_data.link('draft', 500, false, false);
 select test_data.as_anon();
 
 select is(
-  (test_data.as_role('anon', 'select slug from public.paywall_links_public order by slug') ->> 'rows')::text,
+  (test_data.as_role('anon', 'select slug from public.pages_public order by slug') ->> 'rows')::text,
   '[{"slug": "published"}]',
   'a draft link is readable in the base table but not in the published list'
 );
 
 select is(
-  (test_data.as_role('anon', 'select count(*)::int as n from public.paywall_links') ->> 'rows')::text,
+  (test_data.as_role('anon', 'select count(*)::int as n from public.pages') ->> 'rows')::text,
   '[{"n": 1}]',
   'and the row itself is filtered, not just omitted from the view'
 );
@@ -179,7 +179,7 @@ select is(
 
 -- Everything a customer needs, and nothing that reads another customer.
 select is(
-  test_data.can_execute('anon', 'api.list_public_links()'),
+  test_data.can_execute('anon', 'api.list_public_pages()'),
   true,
   'the catalogue is callable by the public'
 );
@@ -197,13 +197,13 @@ select is(
 );
 
 select is(
-  test_data.can_execute('authenticated', 'api.get_unlocked_link(text)'),
+  test_data.can_execute('authenticated', 'api.get_unlocked_page(text)'),
   true,
   'a customer can read what they have paid for'
 );
 
 select is(
-  test_data.can_execute('anon', 'api.get_unlocked_link(text)'),
+  test_data.can_execute('anon', 'api.get_unlocked_page(text)'),
   false,
   'and the public cannot try'
 );

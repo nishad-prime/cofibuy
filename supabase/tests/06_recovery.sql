@@ -270,7 +270,7 @@ select is(
 -- ---------------------------------------------------------------------------
 
 select is(
-  (api.get_unlocked_link('guide') ->> 'slug'),
+  (api.get_unlocked_page('guide') ->> 'slug'),
   'guide',
   'the recovered session opens the paid body'
 );

@@ -222,7 +222,7 @@ select is(
 -- deleting the account would take the thing they paid for with it.
 select test_data.new_subject('granted');
 insert into public.access_grants (user_id, link_id)
-select test_data.subject_id('granted'), id from public.paywall_links limit 1;
+select test_data.subject_id('granted'), id from public.pages limit 1;
 
 update auth.users set created_at = now() - interval '8 days'
 where id in (test_data.subject_id('a'), test_data.subject_id('granted'));

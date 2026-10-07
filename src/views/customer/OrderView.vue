@@ -263,12 +263,12 @@ watch(currentStatus, async (newStatus) => {
 
 const fetchUnlockedContent = async (): Promise<void> => {
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('get_unlocked_link', {
+    const { data, error: rpcError } = await (supabase.rpc as any)('get_unlocked_page', {
       p_slug: slug.value,
     })
 
     if (!rpcError && data) {
-      // `get_unlocked_link` names the fields `unlock_body_md_*`, and resolves them
+      // `get_unlocked_page` names the fields `unlock_body_md_*`, and resolves them
       // per locale rather than always preferring Bangla.
       unlockedContent.value = pick({
         bn: data.unlock_body_md_bn,

@@ -124,7 +124,7 @@ interface SettingsForm {
  * The row and the form do not share column names in every case, so the row is copied
  * field by field rather than assigned wholesale. `Object.assign` used to leave the old
  * `min_amount_minor` / `hide_min` keys in place and write back nothing at all. The
- * same trap is documented at the top of `LinkFormView`.
+ * same trap is documented at the top of `PageFormView`.
  *
  * `contact` is sent even when blank: `admin_set_settings` treats present-but-blank as
  * "clear it", which is how an operator removes stale contact details. It is loaded on

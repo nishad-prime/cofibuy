@@ -191,13 +191,13 @@ create or replace function test_data.link(
   p_hide_min boolean default null,
   p_active boolean default true
 )
-returns public.paywall_links
+returns public.pages
 language plpgsql
 as $$
 declare
-  v_link public.paywall_links;
+  v_link public.pages;
 begin
-  insert into public.paywall_links (
+  insert into public.pages (
     slug, title_en, title_bn, teaser_md_en, teaser_md_bn,
     unlock_body_md_en, unlock_body_md_bn, min_amount_override, hide_min_override, is_active
   )
@@ -330,7 +330,7 @@ begin
     public.access_grants,
     public.order_evidence,
     public.orders,
-    public.paywall_links,
+    public.pages,
     public.payment_gateways,
     public.staff,
     public.site_settings
@@ -739,7 +739,7 @@ stable
 as $$
   select o.user_id
   from public.orders o
-  join public.paywall_links l on l.id = o.link_id
+  join public.pages l on l.id = o.link_id
   where l.slug = p_slug
 $$;
 
@@ -761,6 +761,6 @@ stable
 as $$
   select o.id
   from public.orders o
-  join public.paywall_links l on l.id = o.link_id
+  join public.pages l on l.id = o.link_id
   where l.slug = p_slug
 $$;

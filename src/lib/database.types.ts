@@ -24,7 +24,7 @@ export type Database = {
         }
         Returns: Json
       }
-      admin_delete_link: {
+      admin_delete_page: {
         Args: {
           p_link_id: string
         }
@@ -37,7 +37,6 @@ export type Database = {
         Returns: boolean
       }
       admin_gateways: { Args: Record<PropertyKey, never>; Returns: Json[] }
-      admin_links: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_order_detail: {
         Args: {
           p_order_id: string
@@ -81,6 +80,7 @@ export type Database = {
         }
         Returns: Json[]
       }
+      admin_pages: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_remove_staff: {
         Args: {
           p_user_id: string
@@ -127,9 +127,9 @@ export type Database = {
         }
         Returns: Json
       }
-      admin_upsert_link: {
+      admin_upsert_page: {
         Args: {
-          p_link: Json
+          p_page: Json
         }
         Returns: Json
       }
@@ -259,20 +259,20 @@ export type Database = {
         Returns: string
       }
       get_public_copy: { Args: Record<PropertyKey, never>; Returns: Json[] }
-      get_public_link: {
+      get_public_page: {
         Args: {
           p_slug: string
         }
         Returns: Json
       }
       get_public_settings: { Args: Record<PropertyKey, never>; Returns: Json }
-      get_unlocked_link: {
+      get_unlocked_page: {
         Args: {
           p_slug: string
         }
         Returns: Json
       }
-      list_public_links: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      list_public_pages: { Args: Record<PropertyKey, never>; Returns: Json[] }
       mark_undeliverable: {
         Args: {
           p_request_id: string
@@ -288,13 +288,13 @@ export type Database = {
         Returns: Json
       }
       my_orders: { Args: Record<PropertyKey, never>; Returns: Json[] }
-      public_link_payload: {
+      public_page_payload: {
         Args: {
           p_slug: string
         }
         Returns: Json
       }
-      public_link_payload_v1: {
+      public_page_payload_v1: {
         Args: {
           p_slug: string
         }
@@ -374,6 +374,7 @@ export type Database = {
       guard_evidence_fields: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_gateway_kind_uniformity: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_order_status: { Args: Record<PropertyKey, never>; Returns: Json }
+      guard_page_template: { Args: Record<PropertyKey, never>; Returns: Json }
       guard_provider_known: { Args: Record<PropertyKey, never>; Returns: Json }
       is_owner: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
@@ -487,7 +488,7 @@ export type Database = {
             foreignKeyName: 'access_grants_link_id_fkey'
             columns: ['link_id']
             isOneToOne: true
-            referencedRelation: 'paywall_links'
+            referencedRelation: 'pages'
             referencedColumns: ['id']
           },
           {
@@ -721,7 +722,7 @@ export type Database = {
             foreignKeyName: 'orders_link_id_fkey'
             columns: ['link_id']
             isOneToOne: true
-            referencedRelation: 'paywall_links'
+            referencedRelation: 'pages'
             referencedColumns: ['id']
           },
           {
@@ -776,6 +777,75 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      pages: {
+        Row: {
+          id: string
+          slug: string
+          title_en: string | null
+          title_bn: string | null
+          teaser_md_en: string | null
+          teaser_md_bn: string | null
+          unlock_body_md_en: string | null
+          unlock_body_md_bn: string | null
+          unlock_cta_label_en: string | null
+          unlock_cta_label_bn: string | null
+          unlock_cta_url: string | null
+          min_amount_override: number | null
+          hide_min_override: boolean | null
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+          is_listed: boolean
+          template: string
+          template_config: Json
+        }
+        Insert: {
+          slug: string
+          id?: string
+          title_en?: string | null
+          title_bn?: string | null
+          teaser_md_en?: string | null
+          teaser_md_bn?: string | null
+          unlock_body_md_en?: string | null
+          unlock_body_md_bn?: string | null
+          unlock_cta_label_en?: string | null
+          unlock_cta_label_bn?: string | null
+          unlock_cta_url?: string | null
+          min_amount_override?: number | null
+          hide_min_override?: boolean | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+          is_listed?: boolean
+          template?: string
+          template_config?: Json
+        }
+        Update: {
+          id?: string
+          slug?: string
+          title_en?: string | null
+          title_bn?: string | null
+          teaser_md_en?: string | null
+          teaser_md_bn?: string | null
+          unlock_body_md_en?: string | null
+          unlock_body_md_bn?: string | null
+          unlock_cta_label_en?: string | null
+          unlock_cta_label_bn?: string | null
+          unlock_cta_url?: string | null
+          min_amount_override?: number | null
+          hide_min_override?: boolean | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+          is_listed?: boolean
+          template?: string
+          template_config?: Json
+        }
+        Relationships: []
       }
       payment_gateways: {
         Row: {
@@ -896,69 +966,6 @@ export type Database = {
           },
         ]
       }
-      paywall_links: {
-        Row: {
-          id: string
-          slug: string
-          title_en: string | null
-          title_bn: string | null
-          teaser_md_en: string | null
-          teaser_md_bn: string | null
-          unlock_body_md_en: string | null
-          unlock_body_md_bn: string | null
-          unlock_cta_label_en: string | null
-          unlock_cta_label_bn: string | null
-          unlock_cta_url: string | null
-          min_amount_override: number | null
-          hide_min_override: boolean | null
-          is_active: boolean
-          sort_order: number
-          created_at: string
-          updated_at: string
-          is_listed: boolean
-        }
-        Insert: {
-          slug: string
-          id?: string
-          title_en?: string | null
-          title_bn?: string | null
-          teaser_md_en?: string | null
-          teaser_md_bn?: string | null
-          unlock_body_md_en?: string | null
-          unlock_body_md_bn?: string | null
-          unlock_cta_label_en?: string | null
-          unlock_cta_label_bn?: string | null
-          unlock_cta_url?: string | null
-          min_amount_override?: number | null
-          hide_min_override?: boolean | null
-          is_active?: boolean
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-          is_listed?: boolean
-        }
-        Update: {
-          id?: string
-          slug?: string
-          title_en?: string | null
-          title_bn?: string | null
-          teaser_md_en?: string | null
-          teaser_md_bn?: string | null
-          unlock_body_md_en?: string | null
-          unlock_body_md_bn?: string | null
-          unlock_cta_label_en?: string | null
-          unlock_cta_label_bn?: string | null
-          unlock_cta_url?: string | null
-          min_amount_override?: number | null
-          hide_min_override?: boolean | null
-          is_active?: boolean
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-          is_listed?: boolean
-        }
-        Relationships: []
-      }
       recovery_requests: {
         Row: {
           id: string
@@ -1065,18 +1072,7 @@ export type Database = {
       }
     }
     Views: {
-      payment_gateways_public: {
-        Row: {
-          id: string | null
-          kind: string | null
-          provider: string | null
-          name_en: string | null
-          name_bn: string | null
-          sort_order: number | null
-        }
-        Relationships: []
-      }
-      paywall_links_public: {
+      pages_public: {
         Row: {
           id: string | null
           slug: string | null
@@ -1087,6 +1083,19 @@ export type Database = {
           unlock_cta_label_en: string | null
           unlock_cta_label_bn: string | null
           unlock_cta_url: string | null
+          template: string | null
+          template_config: Json | null
+          sort_order: number | null
+        }
+        Relationships: []
+      }
+      payment_gateways_public: {
+        Row: {
+          id: string | null
+          kind: string | null
+          provider: string | null
+          name_en: string | null
+          name_bn: string | null
           sort_order: number | null
         }
         Relationships: []

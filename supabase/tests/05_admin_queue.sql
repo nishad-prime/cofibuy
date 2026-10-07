@@ -48,7 +48,7 @@ select throws_ok(
   'a customer cannot reset a probe lock'
 );
 select throws_ok($$select api.admin_stats()$$, '42501', 'forbidden', 'a customer cannot read the counts');
-select throws_ok($$select * from api.admin_links()$$, '42501', 'forbidden', 'a customer cannot list links');
+select throws_ok($$select * from api.admin_pages()$$, '42501', 'forbidden', 'a customer cannot list links');
 select throws_ok($$select * from api.admin_gateways()$$, '42501', 'forbidden', 'a customer cannot list gateways');
 select throws_ok($$select * from api.admin_settings()$$, '42501', 'forbidden', 'a customer cannot read the settings');
 select throws_ok($$select * from api.admin_team()$$, '42501', 'forbidden', 'a customer cannot list the team');
@@ -72,11 +72,11 @@ select is(
   'staff can list the queue'
 );
 
-select throws_ok($$select * from api.admin_links()$$, '42501', 'forbidden', 'staff cannot list links');
+select throws_ok($$select * from api.admin_pages()$$, '42501', 'forbidden', 'staff cannot list links');
 select throws_ok($$select * from api.admin_settings()$$, '42501', 'forbidden', 'staff cannot read the settings');
 select throws_ok($$select * from api.admin_team()$$, '42501', 'forbidden', 'staff cannot list the team');
 select throws_ok(
-  $$select api.admin_upsert_link('{"slug": "x", "title_en": "x", "title_bn": "x"}'::jsonb)$$,
+  $$select api.admin_upsert_page('{"slug": "x", "title_en": "x", "title_bn": "x"}'::jsonb)$$,
   '42501',
   'forbidden',
   'staff cannot create a link'
@@ -90,7 +90,7 @@ select throws_ok(
 
 select test_data.as_user(test_data.new_staff('owner'));
 select is(
-  (select count(*) from api.admin_links()),
+  (select count(*) from api.admin_pages()),
   0::bigint,
   'an owner can list links'
 );
@@ -307,7 +307,7 @@ select is(
   'approval grants access, with nothing else having to remember to'
 );
 select is(
-  (api.get_unlocked_link('guide') ->> 'slug'),
+  (api.get_unlocked_page('guide') ->> 'slug'),
   'guide',
   'and the paid body opens for that customer'
 );
@@ -371,7 +371,7 @@ select is(
   'and the customer is told why in Bangla'
 );
 select is(
-  api.get_unlocked_link('guide') is null,
+  api.get_unlocked_page('guide') is null,
   true,
   'and a rejection leaves the body closed'
 );

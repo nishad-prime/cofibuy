@@ -75,7 +75,7 @@ on conflict do nothing;
 --
 -- `slug` is unique, so this one conflicts on its own.
 --
--- The `paywall_links_publishable` check refuses an active link with no title and
+-- The `pages_publishable` check refuses an active link with no title and
 -- no unlocked body, so all four of those are set. This is what `/:slug` renders
 -- once the customer views land.
 --
@@ -85,7 +85,7 @@ on conflict do nothing;
 -- details an operator may have edited, so it stays `do nothing`.
 -- ---------------------------------------------------------------------------
 
-insert into public.paywall_links (
+insert into public.pages (
   slug, title_en, title_bn, teaser_md_en, teaser_md_bn,
   unlock_body_md_en, unlock_body_md_bn,
   unlock_cta_label_en, unlock_cta_label_bn, unlock_cta_url,

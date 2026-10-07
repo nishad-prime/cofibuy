@@ -34,7 +34,7 @@ select is(
 
 -- Hiding the global minimum must remove the number from this payload too, not just
 -- from the label. The schema's rule is that a hidden minimum has no read path at all,
--- so a settings projection that still carried it would quietly undo `get_public_link`.
+-- so a settings projection that still carried it would quietly undo `get_public_page`.
 update public.site_settings set hide_min_amount = true;
 
 select is(
@@ -190,32 +190,32 @@ select is(
 select test_data.as_anon();
 
 select is(
-  (select api.get_public_link('guide') ->> 'maintenance_mode'),
+  (select api.get_public_page('guide') ->> 'maintenance_mode'),
   'true',
   'the storefront is told the shop is closed'
 );
 
 select is(
-  (select api.get_public_link('guide') ->> 'slug'),
+  (select api.get_public_page('guide') ->> 'slug'),
   'guide',
   'and the link still resolves'
 );
 
 select ok(
-  (select jsonb_typeof(api.get_public_link('guide') -> 'gateways') = 'array'),
+  (select jsonb_typeof(api.get_public_page('guide') -> 'gateways') = 'array'),
   'with its gateways intact'
 );
 
 -- The hidden-minimum rule lives in the moved-aside projection. If the wrapper had
 -- replaced rather than extended it, this would start publishing the amount.
 select is(
-  api.get_public_link('hidden-price') ->> 'min_amount',
+  api.get_public_page('hidden-price') ->> 'min_amount',
   null,
   'the hidden minimum is still hidden through the wrapper'
 );
 
 select is(
-  (api.get_public_link('hidden-price') ->> 'min_hidden')::boolean,
+  (api.get_public_page('hidden-price') ->> 'min_hidden')::boolean,
   true,
   'and the hiding is still reported'
 );
@@ -263,7 +263,7 @@ select lives_ok(
 -- ---------------------------------------------------------------------------
 
 select is(
-  test_data.can_execute('anon', 'api.public_link_payload(text)'),
+  test_data.can_execute('anon', 'api.public_page_payload(text)'),
   false,
   'anon cannot bypass the wrapper'
 );

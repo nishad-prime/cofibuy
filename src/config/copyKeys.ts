@@ -22,6 +22,7 @@
 export const COPY_NAMESPACES = [
   'app',
   'home',
+  'page',
   'paywall',
   'order',
   'evidence',
@@ -43,6 +44,9 @@ export type CopyNamespace = (typeof COPY_NAMESPACES)[number]
 export const COPY_KEYS = {
   app: ['app.name', 'app.tagline'],
   home: ['home.heading', 'home.subheading', 'home.empty', 'home.browse'],
+  // Headings the landing template draws. The rest of a template's prose lives
+  // in the page's own config, so only these two are shared chrome.
+  page: ['page.whatYouGet', 'page.faq'],
   paywall: [
     'paywall.back',
     'paywall.chooseMethod',

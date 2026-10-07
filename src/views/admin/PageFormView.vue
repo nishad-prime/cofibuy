@@ -1,10 +1,10 @@
 <template>
   <div>
     <router-link to="/admin/links" class="mb-4 inline-block text-blue-600 hover:underline">
-      ← Back to links
+      ← Back to pages
     </router-link>
 
-    <h1 class="mb-6 text-2xl font-bold text-gray-900">{{ isEdit ? 'Edit Link' : 'New Link' }}</h1>
+    <h1 class="mb-6 text-2xl font-bold text-gray-900">{{ isEdit ? 'Edit Page' : 'New Page' }}</h1>
 
     <form @submit.prevent="save" class="max-w-2xl space-y-6">
       <div>
@@ -15,6 +15,20 @@
           required
           class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
         />
+      </div>
+
+      <!-- The template decides which layout draws the page and which options
+           appear below. Switching it re-renders the options panel; the stored
+           config is kept until save, so an accidental switch is not lossy. -->
+      <div>
+        <label for="template" class="block text-sm font-medium text-gray-700">Template</label>
+        <select
+          id="template"
+          v-model="form.template"
+          class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 md:w-64"
+        >
+          <option v-for="t in PAGE_TEMPLATES" :key="t.id" :value="t.id">{{ t.label }}</option>
+        </select>
       </div>
 
       <div class="grid gap-6 md:grid-cols-2">
@@ -81,7 +95,18 @@
       </fieldset>
 
       <!--
-        Owner-only, and hidden from staff rather than disabled: `admin_upsert_link` is owner-only
+        The selected template's own options. Rendered through the registry so a
+        template that adds options tomorrow needs no change here.
+      -->
+      <fieldset class="space-y-3 border-t border-gray-200 pt-4">
+        <legend class="text-sm font-medium text-gray-700">
+          {{ template.label }} template options
+        </legend>
+        <component :is="template.adminForm" v-model="form.template_config" />
+      </fieldset>
+
+      <!--
+        Owner-only, and hidden from staff rather than disabled: `admin_upsert_page` is owner-only
         too, so a staff member who can see this button cannot save the result, and offering a
         button that cannot lead anywhere is worse than not offering it.
       -->
@@ -181,7 +206,7 @@
            obvious wrong move: treating it as an access control and expecting
            the slug to stop working. -->
       <p v-if="form.is_active && !form.is_listed" class="text-sm text-amber-700">
-        This link is live and buyable by its URL, but it will not appear in the public index. Anyone
+        This page is live and buyable by its URL, but it will not appear in the public index. Anyone
         with the link can still open and pay for it.
       </p>
 
@@ -207,6 +232,7 @@ import { getSupabase } from '@/lib/supabase'
 import { describeEdgeFailure } from '@/lib/edgeError'
 import { useStaffRole } from '@/composables/useStaffRole'
 import { LINK_BRIEF_FIELDS as BRIEF_FIELDS, linkFormDefaults } from '@/config/linkBriefFields'
+import { normalizeConfig, PAGE_TEMPLATES, templateFor } from '@/pages/templates/registry'
 
 const route = useRoute()
 const router = useRouter()
@@ -216,6 +242,9 @@ const linkId = computed(() => route.params.id as string)
 const isEdit = computed(() => !!route.params.id)
 
 const form = ref<any>(linkFormDefaults())
+
+/** The template whose options panel is on screen right now. */
+const template = computed(() => templateFor(form.value.template))
 
 const saving = ref(false)
 const error = ref<string | null>(null)
@@ -305,7 +334,7 @@ const discardBrief = (): void => {
 
 onMounted(async () => {
   if (isEdit.value) {
-    const { data } = await (supabase.rpc as any)('admin_links')
+    const { data } = await (supabase.rpc as any)('admin_pages')
     const link = (data || []).find((l: any) => l.id === linkId.value)
     if (link) {
       // The row columns and the form fields have different names, so assigning
@@ -326,6 +355,8 @@ onMounted(async () => {
         sort_order: link.sort_order ?? 0,
         min_override: link.min_amount_override ?? null,
         hide_min: link.hide_min_override ?? false,
+        template: link.template ?? 'standard',
+        template_config: normalizeConfig(link.template, link.template_config),
       })
     }
   }
@@ -336,10 +367,10 @@ const save = async (): Promise<void> => {
   error.value = null
   discardBrief()
   try {
-    // `api.admin_upsert_link` takes one jsonb argument; the keys must match the
+    // `api.admin_upsert_page` takes one jsonb argument; the keys must match the
     // names it reads out of that jsonb exactly.
-    const { error: rpcError } = await (supabase.rpc as any)('admin_upsert_link', {
-      p_link: {
+    const { error: rpcError } = await (supabase.rpc as any)('admin_upsert_page', {
+      p_page: {
         id: isEdit.value ? linkId.value : '',
         slug: form.value.slug,
         title_en: form.value.title_en,
@@ -358,13 +389,15 @@ const save = async (): Promise<void> => {
         sort_order: form.value.sort_order,
         min_amount_override: form.value.min_override,
         hide_min_override: form.value.hide_min,
+        template: form.value.template,
+        template_config: form.value.template_config,
       },
     })
     if (rpcError) {
       error.value = rpcError.message
       return
     }
-    router.push('/admin/links')
+    router.push('/admin/pages')
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to save'
   } finally {

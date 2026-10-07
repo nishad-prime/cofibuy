@@ -12,7 +12,7 @@
 
     <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
 
-    <!-- `get_public_link` returns no row for an unknown or inactive slug, so
+    <!-- `get_public_page` returns no row for an unknown or inactive slug, so
            without this branch the page rendered blank. -->
     <div v-else-if="!link" class="card card-pad text-center">
       <AppIcon name="link" :size="28" class="mx-auto mb-3 text-stone-400" />
@@ -22,112 +22,113 @@
     </div>
 
     <template v-else>
-      <h1 class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
-        {{ linkTitle }}
-      </h1>
-
-      <section v-if="linkTeaser" class="card card-pad mt-6">
-        <MarkdownBody :source="linkTeaser" />
-      </section>
-
-      <!--
+      <!-- The template owns everything above the purchase form; the form
+           itself is handed over as a slot, because every template ends in the
+           same place: one way to pay, and the amount the customer chose. -->
+      <component :is="template.renderer" :page="renderPage" :config="templateConfig">
+        <template #purchase>
+          <!--
         Maintenance replaces the whole form rather than disabling it. A greyed-out
         button still invites the customer to type a phone number, and
         `create_order` would then refuse the order they just filled in -- so the form
         is taken away rather than made inert.
       -->
-      <div v-if="maintenance" class="card card-pad mt-8" role="status">
-        <div class="flex items-start gap-3">
-          <AppIcon name="clock" :size="20" class="mt-0.5 shrink-0 text-amber-600" />
-          <div>
-            <h2 class="text-base font-semibold text-stone-900">
-              {{ t('customer.paywall.closedTitle') }}
-            </h2>
-            <p class="mt-1 text-sm text-stone-600">{{ t('customer.paywall.closedBody') }}</p>
-            <p v-if="supportContact" class="mt-3 text-sm text-stone-600">
-              {{ t('customer.paywall.closedContact') }}:
-              <a :href="`tel:${supportContact}`" class="font-medium text-brand-800 underline">{{
-                supportContact
-              }}</a>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <form v-else class="mt-8 space-y-6" @submit.prevent="createOrder">
-        <section class="card card-pad">
-          <h2 class="text-lg font-semibold text-stone-900">
-            {{ t('customer.paywall.chooseMethod') }}
-          </h2>
-          <CopyText copy-key="paywall.chooseMethodHint" tag="p" class="hint mb-4" />
-
-          <GatewaySelector
-            v-if="gateways.length > 0"
-            v-model:selected="selectedKind"
-            :gateways="gateways"
-          />
-          <p v-else class="empty-state">{{ t('customer.paywall.noMethods') }}</p>
-        </section>
-
-        <section v-if="selectedKind" class="card card-pad">
-          <label class="label" for="amount">{{ t('customer.paywall.amount') }}</label>
-          <input
-            id="amount"
-            v-model.number="amount"
-            type="number"
-            min="0"
-            step="1"
-            inputmode="decimal"
-            class="field ltr-value"
-            :placeholder="t('customer.paywall.amountAny')"
-            :aria-describedby="amountHintId"
-          />
-          <p :id="amountHintId" class="hint" :class="amountError ? 'text-red-600' : ''">
-            {{ amountError || amountHint }}
-          </p>
-        </section>
-
-        <section v-if="selectedKind" class="card card-pad">
-          <h2 class="text-sm font-semibold text-stone-900">{{ t('customer.paywall.summary') }}</h2>
-          <dl class="mt-3 space-y-2 text-sm">
-            <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">{{ t('customer.paywall.summaryLink') }}</dt>
-              <dd class="text-right font-medium text-stone-900">{{ linkTitle }}</dd>
+          <div v-if="maintenance" class="card card-pad mt-8" role="status">
+            <div class="flex items-start gap-3">
+              <AppIcon name="clock" :size="20" class="mt-0.5 shrink-0 text-amber-600" />
+              <div>
+                <h2 class="text-base font-semibold text-stone-900">
+                  {{ t('customer.paywall.closedTitle') }}
+                </h2>
+                <p class="mt-1 text-sm text-stone-600">{{ t('customer.paywall.closedBody') }}</p>
+                <p v-if="supportContact" class="mt-3 text-sm text-stone-600">
+                  {{ t('customer.paywall.closedContact') }}:
+                  <a :href="`tel:${supportContact}`" class="font-medium text-brand-800 underline">{{
+                    supportContact
+                  }}</a>
+                </p>
+              </div>
             </div>
-            <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">{{ t('customer.paywall.summaryAmount') }}</dt>
-              <dd class="ltr-value font-medium text-stone-900">{{ money(amount) }}</dd>
-            </div>
-          </dl>
-
-          <div v-if="linkCta || ctaUrl" class="mt-5 border-t border-stone-100 pt-4">
-            <CopyText
-              copy-key="paywall.deliverable"
-              tag="p"
-              class="text-sm font-medium text-stone-700"
-            />
-            <p class="mt-1 text-sm text-stone-600">{{ linkCta }}</p>
-            <a
-              v-if="ctaUrl"
-              :href="ctaUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="mt-2 inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline"
-            >
-              <span class="ltr-value">{{ ctaUrl }}</span>
-              <AppIcon name="external" :size="14" />
-            </a>
           </div>
 
-          <button
-            type="submit"
-            class="btn-primary mt-6 w-full"
-            :disabled="creating || !isAmountValid"
-          >
-            {{ creating ? t('customer.paywall.submitting') : t('customer.paywall.submit') }}
-          </button>
-        </section>
-      </form>
+          <form v-else class="mt-8 space-y-6" @submit.prevent="createOrder">
+            <section class="card card-pad">
+              <h2 class="text-lg font-semibold text-stone-900">
+                {{ t('customer.paywall.chooseMethod') }}
+              </h2>
+              <CopyText copy-key="paywall.chooseMethodHint" tag="p" class="hint mb-4" />
+
+              <GatewaySelector
+                v-if="gateways.length > 0"
+                v-model:selected="selectedKind"
+                :gateways="gateways"
+              />
+              <p v-else class="empty-state">{{ t('customer.paywall.noMethods') }}</p>
+            </section>
+
+            <section v-if="selectedKind" class="card card-pad">
+              <label class="label" for="amount">{{ t('customer.paywall.amount') }}</label>
+              <input
+                id="amount"
+                v-model.number="amount"
+                type="number"
+                min="0"
+                step="1"
+                inputmode="decimal"
+                class="field ltr-value"
+                :placeholder="t('customer.paywall.amountAny')"
+                :aria-describedby="amountHintId"
+              />
+              <p :id="amountHintId" class="hint" :class="amountError ? 'text-red-600' : ''">
+                {{ amountError || amountHint }}
+              </p>
+            </section>
+
+            <section v-if="selectedKind" class="card card-pad">
+              <h2 class="text-sm font-semibold text-stone-900">
+                {{ t('customer.paywall.summary') }}
+              </h2>
+              <dl class="mt-3 space-y-2 text-sm">
+                <div class="flex justify-between gap-4">
+                  <dt class="text-stone-500">{{ t('customer.paywall.summaryLink') }}</dt>
+                  <dd class="text-right font-medium text-stone-900">{{ linkTitle }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-stone-500">{{ t('customer.paywall.summaryAmount') }}</dt>
+                  <dd class="ltr-value font-medium text-stone-900">{{ money(amount) }}</dd>
+                </div>
+              </dl>
+
+              <div v-if="linkCta || ctaUrl" class="mt-5 border-t border-stone-100 pt-4">
+                <CopyText
+                  copy-key="paywall.deliverable"
+                  tag="p"
+                  class="text-sm font-medium text-stone-700"
+                />
+                <p class="mt-1 text-sm text-stone-600">{{ linkCta }}</p>
+                <a
+                  v-if="ctaUrl"
+                  :href="ctaUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mt-2 inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline"
+                >
+                  <span class="ltr-value">{{ ctaUrl }}</span>
+                  <AppIcon name="external" :size="14" />
+                </a>
+              </div>
+
+              <button
+                type="submit"
+                class="btn-primary mt-6 w-full"
+                :disabled="creating || !isAmountValid"
+              >
+                {{ creating ? t('customer.paywall.submitting') : t('customer.paywall.submit') }}
+              </button>
+            </section>
+          </form>
+        </template>
+      </component>
     </template>
   </main>
 </template>
@@ -139,10 +140,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
 import { useContent } from '@/composables/useContent'
+import { normalizeConfig, templateFor } from '@/pages/templates/registry'
 import { useSiteSettings } from '@/composables/useSiteSettings'
 import AppIcon from '@/components/AppIcon.vue'
 import CopyText from '@/components/CopyText.vue'
-import MarkdownBody from '@/components/MarkdownBody.vue'
 import GatewaySelector from '@/components/customer/GatewaySelector.vue'
 
 const route = useRoute()
@@ -173,7 +174,7 @@ interface Gateway {
   sort_order: number | null
 }
 
-interface Link {
+interface Page {
   id: string
   slug: string
   title_bn: string | null
@@ -184,7 +185,13 @@ interface Link {
   unlock_cta_label_en: string | null
   unlock_cta_url: string | null
   /**
-   * Already resolved for the link's override and the global default, and
+   * Which code-side layout draws this page, and that layout's config. The
+   * config is normalized on read so the renderer never meets a missing field.
+   */
+  template: string
+  template_config: unknown
+  /**
+   * Already resolved for the page's override and the global default, and
    * forced to null when the minimum is hidden, so there is no second path by
    * which a client could learn it.
    */
@@ -195,7 +202,7 @@ interface Link {
 
 const amountHintId = 'amount-hint'
 
-const link = ref<Link | null>(null)
+const link = ref<Page | null>(null)
 const gateways = ref<Gateway[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -205,11 +212,21 @@ const creating = ref(false)
 
 const slug = computed(() => route.params.slug as string)
 
+/**
+ * The template the page renders with, resolved from the registry. Everything
+ * template-shaped about the render — which layout, which config, which
+ * component — comes from this one lookup.
+ */
+const template = computed(() => templateFor(link.value?.template))
+const templateConfig = computed(() =>
+  normalizeConfig(template.value.id, link.value?.template_config),
+)
+// The v-else branch guarantees a page at render time; this alias records that
+// guarantee in one place instead of a non-null assertion in the markup.
+const renderPage = computed(() => link.value as Page)
+
 const linkTitle = computed(() =>
   link.value ? pick({ bn: link.value.title_bn, en: link.value.title_en } as any) : '',
-)
-const linkTeaser = computed(() =>
-  link.value ? pick({ bn: link.value.teaser_md_bn, en: link.value.teaser_md_en } as any) : '',
 )
 const linkCta = computed(() =>
   link.value
@@ -219,7 +236,7 @@ const linkCta = computed(() =>
 
 const ctaUrl = computed(() => link.value?.unlock_cta_url || '')
 
-// The unlocked body is deliberately absent from `get_public_link`; it is served
+// The unlocked body is deliberately absent from `get_public_page`; it is served
 // per-order once the order is approved, so it is never rendered from this page.
 const effectiveMin = computed(() => link.value?.min_amount ?? 0)
 
@@ -269,7 +286,7 @@ const describeRefusal = (code?: string): string => {
 
 onMounted(async () => {
   try {
-    const { data: linkData, error: linkError } = await (supabase.rpc as any)('get_public_link', {
+    const { data: linkData, error: linkError } = await (supabase.rpc as any)('get_public_page', {
       p_slug: slug.value,
     })
 
@@ -278,9 +295,9 @@ onMounted(async () => {
       return
     }
 
-    link.value = linkData as Link
+    link.value = linkData as Page
 
-    // `get_public_link` already returns the active payment methods nested in the
+    // `get_public_page` already returns the active payment methods nested in the
     // same payload, filtered to `is_active` server side.
     gateways.value = Array.isArray((linkData as any)?.gateways)
       ? ((linkData as any).gateways as Gateway[])

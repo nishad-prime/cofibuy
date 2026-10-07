@@ -46,6 +46,8 @@ insert into private.copy_registry (key, markdown_allowed) values
   ('home.subheading', false),
   ('home.empty', false),
   ('home.browse', false),
+  ('page.whatYouGet', false),
+  ('page.faq', false),
   ('paywall.back', false),
   ('paywall.chooseMethod', false),
   ('paywall.chooseMethodHint', true),

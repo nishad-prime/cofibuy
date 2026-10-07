@@ -10,7 +10,7 @@ select test_data.reset();
 select test_data.as_anon();
 
 -- A draft link the catalogue must not show, and a published one it must.
-insert into public.paywall_links (slug, title_en, is_active)
+insert into public.pages (slug, title_en, is_active)
 values ('draft-one', 'Not Ready', false);
 
 select test_data.link('guide', 500, false);
@@ -25,30 +25,30 @@ select test_data.gateway('bank');
 -- ---------------------------------------------------------------------------
 
 select is(
-  (select count(*)::int from api.list_public_links()),
+  (select count(*)::int from api.list_public_pages()),
   2,
   'the catalogue lists only published links'
 );
 
 select is(
-  (select slug from api.list_public_links() where slug = 'draft-one'),
+  (select slug from api.list_public_pages() where slug = 'draft-one'),
   null,
   'a draft link never reaches the catalogue'
 );
 
 -- A visitor is anonymous and must still see something, or the first screen of
 -- the site is an error page.
-select is((api.get_public_link('draft-one') ->> 'id'), null, 'an unpublished link is not readable by slug');
-select is((api.get_public_link('guide') ->> 'slug'), 'guide', 'a published link is readable by slug');
+select is((api.get_public_page('draft-one') ->> 'id'), null, 'an unpublished link is not readable by slug');
+select is((api.get_public_page('guide') ->> 'slug'), 'guide', 'a published link is readable by slug');
 
 select is(
-  jsonb_typeof(api.get_public_link('guide') -> 'gateways'),
+  jsonb_typeof(api.get_public_page('guide') -> 'gateways'),
   'array',
   'gateways arrive as an array'
 );
 
 select is(
-  (select count(*)::int from jsonb_array_elements(api.get_public_link('guide') -> 'gateways')),
+  (select count(*)::int from jsonb_array_elements(api.get_public_page('guide') -> 'gateways')),
   3,
   'every active gateway is offered'
 );
@@ -64,14 +64,14 @@ update public.payment_gateways set sort_order = 3 where name_en = 'Bank';
 select is(
   (
     select string_agg(g ->> 'kind', ',' order by g ->> 'sort_order')
-    from jsonb_array_elements(api.get_public_link('guide') -> 'gateways') g
+    from jsonb_array_elements(api.get_public_page('guide') -> 'gateways') g
   ),
   'nagad,bkash,bank',
   'gateways come back in sort_order'
 );
 
 select is(
-  (api.get_public_link('guide') -> 'gateways' -> 0 ->> 'name_en'),
+  (api.get_public_page('guide') -> 'gateways' -> 0 ->> 'name_en'),
   'Nagad',
   'the lowest sort_order comes first'
 );
@@ -83,10 +83,10 @@ select is(
 -- exercise is that there is no other route to the number.
 -- ---------------------------------------------------------------------------
 
-select is((api.get_public_link('guide') ->> 'min_amount')::numeric, 500, 'a visible minimum is returned');
-select is((api.get_public_link('guide') ->> 'min_hidden')::boolean, false, 'a visible minimum is flagged as visible');
-select is((api.get_public_link('hidden-price') ->> 'min_amount'), null, 'a hidden minimum is null');
-select is((api.get_public_link('hidden-price') ->> 'min_hidden')::boolean, true, 'a hidden minimum is flagged as hidden');
+select is((api.get_public_page('guide') ->> 'min_amount')::numeric, 500, 'a visible minimum is returned');
+select is((api.get_public_page('guide') ->> 'min_hidden')::boolean, false, 'a visible minimum is flagged as visible');
+select is((api.get_public_page('hidden-price') ->> 'min_amount'), null, 'a hidden minimum is null');
+select is((api.get_public_page('hidden-price') ->> 'min_hidden')::boolean, true, 'a hidden minimum is flagged as hidden');
 
 -- The whole text of the response, not just the one key. If the number survived
 -- anywhere in the payload, this is where it would show.
@@ -98,7 +98,7 @@ select is((api.get_public_link('hidden-price') ->> 'min_hidden')::boolean, true,
 -- trains everyone to ignore it.
 select is(
   regexp_replace(
-    api.get_public_link('hidden-price')::text,
+    api.get_public_page('hidden-price')::text,
     '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
     'uuid',
     'g'
@@ -108,7 +108,7 @@ select is(
 );
 
 select is(
-  (select count(*)::int from public.paywall_links_public),
+  (select count(*)::int from public.pages_public),
   2,
   'the public view exposes only published links'
 );
@@ -118,7 +118,7 @@ select is(
     select 1
     from information_schema.columns
     where table_schema = 'public'
-      and table_name = 'paywall_links_public'
+      and table_name = 'pages_public'
       and column_name in ('min_amount_override', 'hide_min_override', 'unlock_body_md_en', 'unlock_body_md_bn')
   ),
   false,
@@ -135,7 +135,7 @@ select is(
 -- ---------------------------------------------------------------------------
 
 select is(
-  api.get_unlocked_link('guide'),
+  api.get_unlocked_page('guide'),
   null,
   'an anonymous visitor gets null'
 );
@@ -143,31 +143,31 @@ select is(
 select test_data.as_user(test_data.new_user());
 
 select is(
-  api.get_unlocked_link('guide'),
+  api.get_unlocked_page('guide'),
   null,
   'a signed-in customer without a grant gets null'
 );
 
 insert into public.access_grants (user_id, link_id)
-values (auth.uid(), (select id from public.paywall_links where slug = 'guide'));
+values (auth.uid(), (select id from public.pages where slug = 'guide'));
 
 select is(
-  (api.get_unlocked_link('guide') ->> 'unlock_body_md_en'),
+  (api.get_unlocked_page('guide') ->> 'unlock_body_md_en'),
   'The full guide.',
   'a granted customer reads the paid body'
 );
 
 select is(
-  (api.get_unlocked_link('hidden-price') ->> 'unlock_body_md_en'),
+  (api.get_unlocked_page('hidden-price') ->> 'unlock_body_md_en'),
   null,
   'a grant on one link does not unlock another'
 );
 
 -- A revoked grant is not a grant.
-update public.access_grants set revoked_at = now() where link_id = (select id from public.paywall_links where slug = 'guide');
+update public.access_grants set revoked_at = now() where link_id = (select id from public.pages where slug = 'guide');
 
 select is(
-  api.get_unlocked_link('guide'),
+  api.get_unlocked_page('guide'),
   null,
   'a revoked grant stops working'
 );
@@ -180,23 +180,23 @@ select is(
 -- the catalogue. Unlisted is not private - the slug still works.
 --
 -- The interesting case is the enumeration hole. Column-level grants let anon read
--- `public.paywall_links` directly, so if only the RPC filtered, this whole feature
+-- `public.pages` directly, so if only the RPC filtered, this whole feature
 -- would be bypassable with one REST call.
 -- ---------------------------------------------------------------------------
 
--- `unlock_body_md_en` is required, not decorative: `paywall_links_publishable`
+-- `unlock_body_md_en` is required, not decorative: `pages_publishable`
 -- refuses to let a link go live without a body in at least one language.
-insert into public.paywall_links (slug, title_en, unlock_body_md_en, is_active, is_listed)
+insert into public.pages (slug, title_en, unlock_body_md_en, is_active, is_listed)
 values ('unlisted-report', 'Secret Report', 'The full report.', true, false);
 
 select is(
-  (select slug from api.list_public_links() where slug = 'unlisted-report'),
+  (select slug from api.list_public_pages() where slug = 'unlisted-report'),
   null,
   'an unlisted link is absent from the catalogue'
 );
 
 select is(
-  (api.get_public_link('unlisted-report') ->> 'slug'),
+  (api.get_public_page('unlisted-report') ->> 'slug'),
   'unlisted-report',
   'but it is still readable by its slug, because unlisted is not private'
 );
@@ -209,7 +209,7 @@ select test_data.as_anon();
 select is(
   (test_data.as_role(
     'anon',
-    'select count(*)::int as n from public.paywall_links where slug = ''unlisted-report'''
+    'select count(*)::int as n from public.pages where slug = ''unlisted-report'''
   ) #> '{rows,0,n}'),
   '0',
   'and a direct base-table read cannot see it either'
@@ -218,7 +218,7 @@ select is(
 select is(
   (test_data.as_role(
     'anon',
-    'select count(*)::int as n from public.paywall_links_public where slug = ''unlisted-report'''
+    'select count(*)::int as n from public.pages_public where slug = ''unlisted-report'''
   ) #> '{rows,0,n}'),
   '0',
   'nor through the public view'
@@ -227,20 +227,20 @@ select is(
 select is(
   (test_data.as_role(
     'anon',
-    'select count(*)::int as n from public.paywall_links where slug = ''guide'''
+    'select count(*)::int as n from public.pages where slug = ''guide'''
   ) #> '{rows,0,n}'),
   '1',
   'while a listed link is still directly readable'
 );
 
 select is(
-  test_data.as_role('anon', 'select is_listed from public.paywall_links limit 1') ->> 'state',
+  test_data.as_role('anon', 'select is_listed from public.pages limit 1') ->> 'state',
   '42501',
   'the flag itself is not a readable column, so it cannot be used to probe'
 );
 
 select is(
-  (select count(*)::int from api.list_public_links() where slug = 'guide'),
+  (select count(*)::int from api.list_public_pages() where slug = 'guide'),
   1,
   'a listed link is in the catalogue'
 );
@@ -259,11 +259,11 @@ select is(
 -- conflict set would revert on every subsequent edit.
 select test_data.as_user(test_data.new_staff('owner'));
 
--- `admin_upsert_link` returns the composite `public.paywall_links`, so the flag
+-- `admin_upsert_page` returns the composite `public.pages`, so the flag
 -- is read off the row rather than through `->>`.
 select is(
-  (api.admin_upsert_link(jsonb_build_object(
-    'id', (select id from public.paywall_links where slug = 'unlisted-report'),
+  (api.admin_upsert_page(jsonb_build_object(
+    'id', (select id from public.pages where slug = 'unlisted-report'),
     'slug', 'unlisted-report',
     'title_en', 'Secret Report, Revised',
     'unlock_body_md_en', 'The full report.',
@@ -276,8 +276,8 @@ select is(
 );
 
 select is(
-  (api.admin_upsert_link(jsonb_build_object(
-    'id', (select id from public.paywall_links where slug = 'unlisted-report'),
+  (api.admin_upsert_page(jsonb_build_object(
+    'id', (select id from public.pages where slug = 'unlisted-report'),
     'slug', 'unlisted-report',
     'title_en', 'Secret Report, Revised',
     'unlock_body_md_en', 'The full report.',
@@ -290,7 +290,7 @@ select is(
 );
 
 select is(
-  (select count(*)::int from api.list_public_links() where slug = 'unlisted-report'),
+  (select count(*)::int from api.list_public_pages() where slug = 'unlisted-report'),
   1,
   'a re-listed link comes back to the catalogue'
 );

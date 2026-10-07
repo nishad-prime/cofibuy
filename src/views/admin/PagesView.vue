@@ -109,7 +109,7 @@ const error = ref<string | null>(null)
 const loadLinks = async (): Promise<void> => {
   error.value = null
   try {
-    const { data, error: rpcError } = await (supabase.rpc as any)('admin_links')
+    const { data, error: rpcError } = await (supabase.rpc as any)('admin_pages')
     if (rpcError) {
       error.value = rpcError.message
       return
@@ -125,10 +125,10 @@ const loadLinks = async (): Promise<void> => {
 const deleteLink = async (id: string): Promise<void> => {
   if (!confirm('Delete this link? Existing orders keep their reference.')) return
   try {
-    // `p_link_id`, not `p_id`. PostgREST matches on the exact argument name, so
+    // `p_page_id`, not `p_id`. PostgREST matches on the exact argument name, so
     // the wrong one is a 404 rather than an error message anyone would read.
-    const { error: rpcError } = await (supabase.rpc as any)('admin_delete_link', {
-      p_link_id: id,
+    const { error: rpcError } = await (supabase.rpc as any)('admin_delete_page', {
+      p_page_id: id,
     })
     if (rpcError) {
       error.value = rpcError.message

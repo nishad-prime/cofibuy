@@ -12,7 +12,7 @@ select test_data.link('guide', 500, false);
 select test_data.gateway('bkash');
 
 -- A draft link, so "not published" and "does not exist" can be told apart.
-insert into public.paywall_links (slug, title_en, is_active)
+insert into public.pages (slug, title_en, is_active)
 values ('unpublished', 'Draft', false);
 
 -- ---------------------------------------------------------------------------

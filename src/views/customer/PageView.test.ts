@@ -27,6 +27,7 @@ const KIND = 'bkash Payment'
 const routerPush = vi.fn()
 const rpc = vi.fn()
 const getSession = vi.fn()
+const invoke = vi.fn()
 
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
@@ -69,19 +70,66 @@ function publicLink() {
     unlock_cta_url: null,
     min_amount: 0,
     min_hidden: false,
-    gateways: [{ id: '11111111-1111-4111-8111-111111111111', kind: KIND, sort_order: 0 }],
+    // A manual gateway: the tests below exercise the create-order path. The
+    // online path has its own test further down.
+    gateways: [
+      { id: '11111111-1111-4111-8111-111111111111', kind: KIND, sort_order: 0, provider: null },
+    ],
   }
 }
 
 beforeEach(() => {
   currentSlug = SLUG
   rpc.mockReset()
+  invoke.mockReset()
   getSession.mockReset()
   getSession.mockResolvedValue({ data: { session: { user: {} } }, error: null })
   routerPush.mockReset()
 })
 
 describe('kind_mismatch hand-off', () => {
+  it('hands off from the one-step online path too', async () => {
+    // An automatic gateway: submit goes to the edge function, and the raise
+    // comes back inside its error response rather than as an rpc error.
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page') return Promise.resolve({ data: publicLink(), error: null })
+      if (name === 'my_orders')
+        return Promise.resolve({
+          data: [{ id: ORDER_ID, slug: SLUG, status: 'awaiting_proof' }],
+          error: null,
+        })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+    invoke.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'Failed to send a request to the Edge Function',
+        context: {
+          body: {
+            error: 'cannot_start_payment',
+            detail: `kind_mismatch: open order already uses payment kind ${KIND}`,
+          },
+        },
+      },
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    await wrapper.get('#amount').setValue(500)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(invoke).toHaveBeenCalledWith(
+      'bkash-create-payment',
+      expect.objectContaining({ body: { slug: SLUG, kind: KIND, amount: 500 } }),
+    )
+    expect(routerPush).toHaveBeenCalledWith(`/${SLUG}/order/${ORDER_ID}`)
+    expect(wrapper.text()).not.toContain('kind_mismatch')
+  })
+
   it('takes the customer to the open order that is in the way', async () => {
     rpc.mockImplementation((name: string) => {
       if (name === 'get_public_page') return Promise.resolve({ data: publicLink(), error: null })

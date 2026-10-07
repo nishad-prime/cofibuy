@@ -5,19 +5,17 @@ import PageView from '@/views/customer/PageView.vue'
 import { i18n } from '@/i18n'
 
 /**
- * A regression test for the hand-off PageView owes a `kind_mismatch` raise.
+ * The page is the whole checkout.
  *
- * `api.create_order` raises `kind_mismatch` rather than returning an `ok: false` payload,
- * and its own migration comment spells out why the client cannot answer it with a message:
- * the customer's open order is deliberately pinned to one gateway so a transfer receipt
- * cannot be re-pointed at an account nobody watches, so nothing they do on this form can
- * make the mismatch go away. A sentence after `kind_mismatch:` describes an order id and a
- * payment kind - neither of which a customer knows or can act on - and reading it as a
- * refusal invites them to retry the same submission forever.
+ * Every state a customer's order can be in is actionable here: an open online
+ * order shows one pay button that runs the one-step flow in place, an open
+ * manual order shows the account and the evidence form inline, and an approved
+ * order shows what was bought. The page only falls back to the "new order"
+ * form when the customer has nothing in flight for this slug.
  *
- * What the customer actually wants is the order that is already waiting, so the view
- * looks it up and navigates. These tests pin that behaviour, plus the two ways the lookup
- * itself can fail, because each leaves a different sentence owed to the customer.
+ * The old flow navigated to a separate order page; these tests pin the inline
+ * behaviour instead, including the two ways the order lookup can fail, because
+ * each one decides whether the customer sees their order or a working form.
  */
 
 const SLUG = 'demo-report'
@@ -48,7 +46,7 @@ vi.mock('@/lib/supabase', () => ({
 let currentSlug = SLUG
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: { slug: currentSlug } }),
+  useRoute: () => ({ params: { slug: currentSlug }, query: {} }),
   useRouter: () => ({ push: (...args: unknown[]) => routerPush(...args) }),
 }))
 
@@ -60,8 +58,8 @@ const SelectorStub = defineComponent({
   setup: () => () => h('div'),
 })
 
-/** A link with one gateway, so the view preselects its kind and the amount field shows. */
-function publicLink() {
+/** One online gateway, so a page's kind is unambiguous in every test below. */
+function publicLink(provider: string | null) {
   return {
     slug: SLUG,
     title_bn: 'টেস্ট',
@@ -73,15 +71,27 @@ function publicLink() {
     unlock_cta_url: null,
     min_amount: 0,
     min_hidden: false,
-    // A manual gateway: the tests below exercise the create-order path. The
-    // online path has its own test further down.
-    gateways: [
-      { id: '11111111-1111-4111-8111-111111111111', kind: KIND, sort_order: 0, provider: null },
-    ],
+    template: 'standard',
+    template_config: {},
+    gateways: [{ id: '11111111-1111-4111-8111-111111111111', kind: KIND, sort_order: 0, provider }],
+  }
+}
+
+function openOrder() {
+  return {
+    id: ORDER_ID,
+    slug: SLUG,
+    gateway_kind: KIND,
+    status: 'awaiting_proof',
+    reference_code: 'AB12CD34',
+    amount: 500,
+    reject_reason_en: null,
+    reject_reason_bn: null,
   }
 }
 
 beforeEach(() => {
+  i18n.global.locale.value = 'en'
   currentSlug = SLUG
   rpc.mockReset()
   invoke.mockReset()
@@ -90,45 +100,15 @@ beforeEach(() => {
   routerPush.mockReset()
 })
 
-describe('kind_mismatch hand-off', () => {
-  it('hands off from the one-step online path too', async () => {
-    // An automatic gateway: submit goes to the edge function, and the raise
-    // comes back inside its error response rather than as an rpc error.
-    const onlineLink = {
-      ...publicLink(),
-      gateways: [
-        {
-          id: '11111111-1111-4111-8111-111111111111',
-          kind: KIND,
-          sort_order: 0,
-          provider: 'bkash_pgw',
-        },
-      ],
-    }
+describe('the page as the whole checkout', () => {
+  it('renders the open online order as one pay button', async () => {
     rpc.mockImplementation((name: string) => {
-      if (name === 'get_public_page') return Promise.resolve({ data: onlineLink, error: null })
-      if (name === 'my_orders')
-        return Promise.resolve({
-          data: [{ id: ORDER_ID, slug: SLUG, status: 'awaiting_proof' }],
-          error: null,
-        })
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink('bkash_pgw'), error: null })
+      if (name === 'my_orders') return Promise.resolve({ data: [openOrder()], error: null })
+      if (name === 'my_order_status')
+        return Promise.resolve({ data: { id: ORDER_ID, status: 'awaiting_proof' }, error: null })
       return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
-    })
-    // The shape the SDK really rejects with: an error named like the SDK's own
-    // classes, whose context is the Response the function answered with.
-    invoke.mockResolvedValue({
-      data: null,
-      error: {
-        name: 'FunctionsHttpError',
-        message: 'Edge Function returned a non-2xx status code',
-        context: new Response(
-          JSON.stringify({
-            error: 'cannot_start_payment',
-            detail: `kind_mismatch: open order already uses payment kind ${KIND}`,
-          }),
-          { status: 400 },
-        ),
-      },
     })
 
     const wrapper = mount(PageView, {
@@ -136,8 +116,16 @@ describe('kind_mismatch hand-off', () => {
     })
     await flushPromises()
 
-    await wrapper.get('#amount').setValue(500)
-    await wrapper.get('form').trigger('submit')
+    // The order is on the page: reference, amount, one button. No form, no
+    // navigation - the customer pays from here.
+    expect(wrapper.text()).toContain('AB12CD34')
+    expect(wrapper.find('#amount').exists()).toBe(false)
+
+    invoke.mockResolvedValue({
+      data: { ok: true, redirectUrl: 'https://bkash.test/pay' },
+      error: null,
+    })
+    await wrapper.find('button[type="button"]').trigger('click')
     await flushPromises()
 
     expect(invoke).toHaveBeenCalledWith(
@@ -146,26 +134,114 @@ describe('kind_mismatch hand-off', () => {
         body: expect.objectContaining({ slug: SLUG, kind: KIND, amount: 500 }),
       }),
     )
-    expect(routerPush).toHaveBeenCalledWith(`/${SLUG}/order/${ORDER_ID}`)
-    expect(wrapper.text()).not.toContain('kind_mismatch')
   })
 
-  it('takes the customer to the open order that is in the way', async () => {
+  it('renders the open manual order with the evidence form inline', async () => {
     rpc.mockImplementation((name: string) => {
-      if (name === 'get_public_page') return Promise.resolve({ data: publicLink(), error: null })
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink(null), error: null })
+      if (name === 'my_orders') return Promise.resolve({ data: [openOrder()], error: null })
+      if (name === 'my_order_status')
+        return Promise.resolve({
+          data: {
+            id: ORDER_ID,
+            status: 'awaiting_proof',
+            account_number: '01700000000',
+            account_name: 'Cofibuy',
+            account_fields: [],
+            evidence_fields: [
+              { key: 'trxid', type: 'text', required: true, label_en: 'TrxID', label_bn: null },
+            ],
+          },
+          error: null,
+        })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('AB12CD34')
+    expect(wrapper.find('form').exists()).toBe(true)
+  })
+
+  it('shows what an approved order bought, on the same page', async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink('bkash_pgw'), error: null })
+      if (name === 'my_orders')
+        return Promise.resolve({
+          data: [{ ...openOrder(), status: 'approved' }],
+          error: null,
+        })
+      if (name === 'get_unlocked_page')
+        return Promise.resolve({
+          data: { unlock_body_md_en: 'Here is your guide.', unlock_body_md_bn: 'আপনার গাইড।' },
+          error: null,
+        })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Here is your guide.')
+    expect(wrapper.find('#amount').exists()).toBe(false)
+  })
+
+  it('keeps the new-order form when the only order is expired', async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink(null), error: null })
+      if (name === 'my_orders')
+        return Promise.resolve({
+          data: [{ ...openOrder(), status: 'expired' }],
+          error: null,
+        })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('#amount').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('AB12CD34')
+  })
+
+  it('hands off to the open order when a new submission raises kind_mismatch', async () => {
+    // The race the hand-off exists for: the page was rendered before the open
+    // order existed (another tab, a double-tap), so the form was showing when
+    // the raise came back.
+    let orderLookup = 0
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink(null), error: null })
+      if (name === 'my_orders') {
+        orderLookup += 1
+        // The mount-time lookup predates the open order; the hand-off's own
+        // lookup, moments later, finds it.
+        return Promise.resolve({
+          data:
+            orderLookup === 1
+              ? []
+              : [
+                  // A different report must not be mistaken for the one in the way.
+                  { id: '11111111-1111-4111-8111-111111111111', slug: 'other', status: 'draft' },
+                  { id: ORDER_ID, slug: SLUG, status: 'awaiting_proof' },
+                ],
+          error: null,
+        })
+      }
       if (name === 'create_order')
         return Promise.resolve({
           data: null,
           error: { message: `kind_mismatch: open order already uses payment kind ${KIND}` },
-        })
-      if (name === 'my_orders')
-        return Promise.resolve({
-          data: [
-            // A different report, which must not be mistaken for the one in the way.
-            { id: '11111111-1111-4111-8111-111111111111', slug: 'other', status: 'draft' },
-            { id: ORDER_ID, slug: SLUG, status: 'awaiting_proof' },
-          ],
-          error: null,
         })
       return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
     })
@@ -184,49 +260,10 @@ describe('kind_mismatch hand-off', () => {
     expect(wrapper.text()).not.toContain('kind_mismatch')
   })
 
-  it('ignores an order whose status is already closed', async () => {
+  it('degrades to the new-order form when the order lookup fails', async () => {
     rpc.mockImplementation((name: string) => {
-      if (name === 'get_public_page') return Promise.resolve({ data: publicLink(), error: null })
-      if (name === 'create_order')
-        return Promise.resolve({
-          data: null,
-          error: { message: `kind_mismatch: open order already uses payment kind ${KIND}` },
-        })
-      if (name === 'my_orders')
-        return Promise.resolve({
-          data: [
-            { id: ORDER_ID, slug: SLUG, status: 'approved' },
-            { id: ORDER_ID, slug: SLUG, status: 'expired' },
-          ],
-          error: null,
-        })
-      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
-    })
-
-    const wrapper = mount(PageView, {
-      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
-    })
-    await flushPromises()
-
-    await wrapper.get('#amount').setValue(500)
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-
-    // Nothing is open any more, so there is nowhere to navigate - but saying so is what
-    // turns a dead end into an invitation to submit again.
-    expect(routerPush).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain(i18n.global.t('customer.paywall.openOrderExpired') as string)
-    expect(wrapper.text()).not.toContain('kind_mismatch')
-  })
-
-  it('says an order is in progress when the lookup itself fails', async () => {
-    rpc.mockImplementation((name: string) => {
-      if (name === 'get_public_page') return Promise.resolve({ data: publicLink(), error: null })
-      if (name === 'create_order')
-        return Promise.resolve({
-          data: null,
-          error: { message: `kind_mismatch: open order already uses payment kind ${KIND}` },
-        })
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink(null), error: null })
       if (name === 'my_orders')
         return Promise.resolve({ data: null, error: { message: 'permission denied' } })
       return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
@@ -237,14 +274,8 @@ describe('kind_mismatch hand-off', () => {
     })
     await flushPromises()
 
-    await wrapper.get('#amount').setValue(500)
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-
-    expect(routerPush).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain(i18n.global.t('customer.paywall.openOrderExists') as string)
-    // Quoting the lookup's own error would be the same mistake as the raise.
+    // A broken lookup must not take the form away: the customer can still try.
+    expect(wrapper.find('#amount').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('permission denied')
-    expect(wrapper.text()).not.toContain('kind_mismatch')
   })
 })

@@ -51,6 +51,107 @@
             </div>
           </div>
 
+          <p v-if="justPaid && unlockedBody" class="alert-success mt-6" role="status">
+            {{ t('customer.order.unlocked') }}
+          </p>
+
+          <!-- The deliverable, on the page it was bought from. -->
+          <section v-else-if="unlockedBody" class="card card-pad mt-8" role="status">
+            <h2 class="text-lg font-semibold text-stone-900">
+              {{ t('customer.order.unlocked') }}
+            </h2>
+            <MarkdownBody :source="unlockedBody" class="mt-4" />
+            <a
+              v-if="ctaUrl"
+              :href="ctaUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-4 inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline"
+            >
+              <span class="ltr-value">{{ ctaUrl }}</span>
+              <AppIcon name="external" :size="14" />
+            </a>
+          </section>
+
+          <!-- The customer's own open order, in every state it can be in. -->
+          <section v-else-if="existingOrder" class="card card-pad mt-8">
+            <h2 class="text-lg font-semibold text-stone-900">
+              {{ t('customer.order.title') }}
+            </h2>
+            <p class="hint mt-1">
+              {{ t('customer.order.reference') }}:
+              <span class="ltr-value font-medium text-stone-800">
+                {{ existingOrder.reference_code }}
+              </span>
+            </p>
+
+            <p v-if="error" class="alert-error mt-4" role="alert">{{ error }}</p>
+
+            <!-- Online: one button, and the customer is at bKash. -->
+            <template v-if="orderPaysOnline && existingOrder.status === 'awaiting_proof'">
+              <p class="mt-4 text-sm text-stone-600">
+                {{ t('customer.paywall.summaryAmount') }}:
+                <span class="ltr-value font-medium text-stone-900">
+                  {{ money(Number(existingOrder.amount)) }}
+                </span>
+              </p>
+              <button
+                type="button"
+                class="btn-primary mt-4 w-full"
+                :disabled="paying"
+                @click="payExisting"
+              >
+                {{ paying ? t('customer.paywall.submitting') : t('customer.order.payOnline') }}
+              </button>
+            </template>
+
+            <!-- Manual: the account to pay, and the proof to attach. -->
+            <template
+              v-else-if="
+                !orderPaysOnline && ['awaiting_proof', 'rejected'].includes(existingOrder.status)
+              "
+            >
+              <p v-if="existingOrder.status === 'rejected'" class="alert-error mt-4" role="alert">
+                {{ t('customer.order.rejectReason') }}:
+                {{
+                  pick({ bn: existingOrder.reject_reason_bn, en: existingOrder.reject_reason_en })
+                }}
+              </p>
+
+              <div class="mt-4">
+                <p class="label">{{ t('customer.paywall.sendTo') }}</p>
+                <GatewayAccountDetails
+                  class="rounded-lg bg-white px-3 py-2.5"
+                  :fields="orderAccountFields"
+                  :legacy-number="orderAccountLegacy.number"
+                  :legacy-name="orderAccountLegacy.name"
+                />
+              </div>
+
+              <div class="mt-5">
+                <h3 class="text-sm font-semibold text-stone-900">
+                  {{ t('customer.order.submitEvidence') }}
+                </h3>
+                <MarkdownBody :source="t('customer.order.evidenceHint')" class="hint mb-4" />
+                <EvidenceForm
+                  :evidence-fields="orderEvidenceFields"
+                  :submitting="submittingEvidence"
+                  @submit="submitEvidence"
+                />
+              </div>
+            </template>
+
+            <p
+              v-else-if="existingOrder.status === 'under_review'"
+              class="mt-4 text-sm text-stone-600"
+            >
+              {{ t('customer.order.underReview') }}
+            </p>
+            <p v-else-if="existingOrder.status === 'locked'" class="alert-error mt-4" role="alert">
+              {{ t('customer.order.locked') }}
+            </p>
+          </section>
+
           <form v-else class="mt-8 space-y-6" @submit.prevent="createOrder">
             <section class="card card-pad">
               <h2 class="text-lg font-semibold text-stone-900">
@@ -138,14 +239,23 @@ import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
 import { useContent } from '@/composables/useContent'
+import type { LocalizedPair } from '@/lib/content'
+import { watch } from 'vue'
 import { describeEdgeFailure } from '@/lib/edgeError'
+import { rpc, rpcList } from '@/lib/rpc'
+import type { MyOrder, MyOrderStatus } from '@/lib/rpc'
+import EvidenceForm, { type EvidenceField } from '@/components/customer/EvidenceForm.vue'
+import type { AccountField } from '@/components/customer/GatewayAccountDetails.vue'
+import GatewayAccountDetails from '@/components/customer/GatewayAccountDetails.vue'
+import { useFileUpload } from '@/composables/useFileUpload'
+import { buildEvidencePayload } from '@/lib/evidencePayload'
+import { useOrderPolling } from '@/composables/useOrderPolling'
 import { normalizeConfig, templateFor } from '@/pages/templates/registry'
 import { useSiteSettings } from '@/composables/useSiteSettings'
 import AppIcon from '@/components/AppIcon.vue'
 import MarkdownBody from '@/components/MarkdownBody.vue'
 import GatewaySelector from '@/components/customer/GatewaySelector.vue'
 import type { OrderResult, PublicPageDetail } from '@/lib/rpc'
-import { rpc } from '@/lib/rpc'
 
 const route = useRoute()
 const router = useRouter()
@@ -225,6 +335,187 @@ const templateConfig = computed(() =>
 // The v-else branch guarantees a page at render time; this alias records that
 // guarantee in one place instead of a non-null assertion in the markup.
 const renderPage = computed(() => link.value as Page)
+
+/**
+ * bKash lands the customer back here with `?paid=1` after the return leg settled
+ * their payment. It says one thing once and disappears: the deliverable below is
+ * the news, not the banner.
+ */
+const justPaid = computed(() => route.query?.paid === '1')
+
+// ---------------------------------------------------------------------------
+// The customer's order for this page, rendered on the page itself.
+//
+// Checkout used to bounce the customer through a separate order page: create
+// here, pay there, come back somewhere else. Every state an order can be in is
+// actionable on this page - pay it, attach proof to it, read what it bought -
+// so the page is the whole flow, and the /:slug/order/:id route survives only
+// as a deep-link alias for links people already have.
+// ---------------------------------------------------------------------------
+
+const existingOrder = ref<MyOrder | null>(null)
+const orderDetails = ref<MyOrderStatus | null>(null)
+const unlockedBody = ref<string | null>(null)
+const paying = ref(false)
+const submittingEvidence = ref(false)
+const fileUpload = useFileUpload()
+
+let polling: ReturnType<typeof useOrderPolling> | null = null
+
+const isOrderOpen = (status: string): boolean =>
+  ['draft', 'awaiting_proof', 'rejected', 'locked'].includes(status)
+
+/** The open order's gateway, matched against this page's published methods. */
+const orderGateway = computed(() =>
+  existingOrder.value && link.value
+    ? gateways.value.find((g) => g.kind === existingOrder.value!.gateway_kind)
+    : undefined,
+)
+
+/** An order pays online when its kind has an automatic account behind it. */
+const orderPaysOnline = computed(() => orderGateway.value?.provider != null)
+
+const orderAccountLegacy = computed(() => {
+  const d = orderDetails.value as { account_number?: unknown; account_name?: unknown } | null
+  return {
+    number: typeof d?.account_number === 'string' ? d.account_number : null,
+    name: typeof d?.account_name === 'string' ? d.account_name : null,
+  }
+})
+
+const orderEvidenceFields = computed(
+  () => (orderDetails.value?.evidence_fields ?? []) as unknown as EvidenceField[],
+)
+
+const orderAccountFields = computed(
+  () => (orderDetails.value?.account_fields ?? []) as unknown as AccountField[],
+)
+
+const fetchUnlocked = async (): Promise<void> => {
+  const { data } = await rpc<Record<string, unknown>>('get_unlocked_page', {
+    p_slug: slug.value,
+  })
+  if (data) {
+    unlockedBody.value = pick({
+      bn: data.unlock_body_md_bn,
+      en: data.unlock_body_md_en,
+    } as unknown as LocalizedPair)
+  }
+}
+
+/**
+ * Pays the existing order in place: the one-step RPC reuses it (the kind
+ * matches by construction - this order belongs to this page) and the customer
+ * leaves for bKash from here.
+ */
+const payExisting = async (): Promise<void> => {
+  if (!existingOrder.value || paying.value) return
+
+  paying.value = true
+  error.value = null
+  try {
+    const { data, error: fnError } = await supabase.functions.invoke('bkash-create-payment', {
+      body: {
+        slug: slug.value,
+        kind: existingOrder.value.gateway_kind,
+        amount: Number(existingOrder.value.amount),
+        origin: window.location.origin,
+      },
+    })
+
+    if (fnError) {
+      const failure = await describeEdgeFailure(fnError, 'The payment could not start.')
+      if (failure.cause !== '') console.warn('[bkash-create-payment]', failure)
+      error.value = failure.message
+      return
+    }
+
+    const payload = data as { ok?: boolean; redirectUrl?: string } | null
+    if (payload?.ok === true && payload.redirectUrl) {
+      window.location.assign(payload.redirectUrl)
+      return
+    }
+    error.value = t('customer.paywall.refused')
+  } finally {
+    paying.value = false
+  }
+}
+
+/** Evidence for the open manual order, uploaded and submitted on this page. */
+const submitEvidence = async (evidence: Record<string, unknown>): Promise<void> => {
+  if (!existingOrder.value) return
+
+  submittingEvidence.value = true
+  error.value = null
+  try {
+    const payload = await buildEvidencePayload(evidence, fileUpload.upload, existingOrder.value.id)
+
+    const { error: submitError } = await supabase.rpc('submit_evidence', {
+      p_order_id: existingOrder.value.id,
+      ...payload,
+    })
+
+    if (submitError) {
+      error.value = submitError.message
+      return
+    }
+
+    if (polling) await polling.refresh()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to submit evidence'
+  } finally {
+    submittingEvidence.value = false
+  }
+}
+
+const loadExistingOrder = async (): Promise<void> => {
+  // A session is not guaranteed: the customer may be reading before their first
+  // order. Nothing here may block the page's own render.
+  try {
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (!sessionData.session) return
+
+    const { data: orders } = await rpcList<MyOrder>('my_orders')
+    const mine = (orders ?? []).find(
+      (o) => o.slug === slug.value && (isOrderOpen(o.status) || o.status === 'approved'),
+    )
+    if (!mine) return
+
+    existingOrder.value = mine
+
+    if (mine.status === 'approved') {
+      await fetchUnlocked()
+      return
+    }
+
+    const { data: status } = await rpc<MyOrderStatus>('my_order_status', {
+      p_order_id: mine.id,
+    })
+    if (status) orderDetails.value = status
+
+    // An open order moves on its own - the operator reviews it, the cron expires
+    // it - so the page keeps watching it until it lands somewhere terminal.
+    polling = useOrderPolling(mine.id)
+    void polling.refresh()
+    polling.startPolling()
+
+    watch(polling.status, async (next) => {
+      if (next === 'approved') {
+        polling?.stopPolling()
+        await fetchUnlocked()
+      } else if (next === 'expired') {
+        // Nothing is in the way any more: the pay form comes back.
+        polling?.stopPolling()
+        existingOrder.value = null
+        orderDetails.value = null
+      } else if (next) {
+        orderDetails.value = { ...(orderDetails.value ?? {}), status: next } as MyOrderStatus
+      }
+    })
+  } catch (err) {
+    console.warn('[order-state]', err)
+  }
+}
 
 const linkTitle = computed(() =>
   link.value ? pick({ bn: link.value.title_bn, en: link.value.title_en }) : '',
@@ -314,6 +605,9 @@ onMounted(async () => {
     if (onlyKind) {
       selectedKind.value = onlyKind
     }
+
+    // The customer's own state on this page, after the page itself is known.
+    void loadExistingOrder()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load link'
   } finally {

@@ -167,11 +167,12 @@ onMounted(async () => {
     sandboxResult.value = settled?.sandbox === true
     working.value = false
 
-    // An approved order has something to show, so go straight there. A sandbox or a
-    // refused payment stays put: the order page is where the reason is explained and the
-    // customer can try again.
+    // An approved order has something to show, and that something lives on the page
+    // it was bought from - the same page the customer paid from. A sandbox or a
+    // refused payment stays put: this screen is where the reason is explained and
+    // the retry link is.
     if (settled?.status === 'approved') {
-      await router.replace(`/${slug.value}/order/${orderId.value}`)
+      await router.replace({ path: `/${slug.value}`, query: { paid: '1' } })
     }
   } catch (err) {
     // Thrown rather than returned: an aborted request, or `readError`/`router.replace`

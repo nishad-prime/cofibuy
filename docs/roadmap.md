@@ -349,6 +349,22 @@ field-mapping assertions were checked by renaming one form field and watching th
 
 ## Known loose ends
 
+- Resolved during the one-page checkout work, and worth recording why the bKash
+  function never worked: (1) the vault stub exposed plaintext under `secret`,
+  so the functions read ciphertext in production while passing every test here -
+  the stub now marks `secret` with a sentinel and exposes `decrypted_secret`;
+  (2) `createPayment` never sent `mode` or `callbackURL`, which bKash's
+  Tokenized Checkout requires; (3) a user JWT is no longer accepted in the
+  `apikey` slot, so the functions' caller clients send the anon key there and
+  the JWT in `Authorization`. Any new function must follow `userClientFor`.
+- The bKash callback URL is `<site-origin>/payment/return`, built from the
+  origin the page sends. It must be whitelisted in the bKash merchant portal,
+  or bKash refuses every create with a bare 400.
+- If a customer reports `FunctionsFetchError` wordings ("could not reach the
+  payment service"), the request never left their browser: VPN, antivirus, an
+  ad blocker, or a Cloudflare bot challenge. The pay button retries once; the
+  dev build appends the underlying cause to the message.
+
 - `supabase/migrations/20260101000006_cron.sql` still carries two `-- cron skipped`
   placeholders (it is applied history and cannot be edited), but
   `20261004150000_install_cron_schedules.sql` installs the real schedules on any

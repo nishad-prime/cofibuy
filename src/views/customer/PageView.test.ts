@@ -73,7 +73,22 @@ function publicLink(provider: string | null) {
     min_hidden: false,
     template: 'standard',
     template_config: {},
-    gateways: [{ id: '11111111-1111-4111-8111-111111111111', kind: KIND, sort_order: 0, provider }],
+    gateways: [
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        kind: KIND,
+        sort_order: 0,
+        provider,
+        account_number: '01700000000',
+        account_name: 'Cofibuy',
+        instructions_md_en: null,
+        instructions_md_bn: null,
+        reference_prompt_en: null,
+        reference_prompt_bn: null,
+        supports_reference: false,
+        evidence_fields: [],
+      },
+    ],
   }
 }
 
@@ -261,6 +276,7 @@ describe('the page as the whole checkout', () => {
   })
 
   it('degrades to the new-order form when the order lookup fails', async () => {
+    void 0
     rpc.mockImplementation((name: string) => {
       if (name === 'get_public_page')
         return Promise.resolve({ data: publicLink(null), error: null })
@@ -273,6 +289,9 @@ describe('the page as the whole checkout', () => {
       global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
     })
     await flushPromises()
+
+    const fs2 = await import('node:fs')
+    fs2.writeFileSync('.tmp/debug2.html', wrapper.html())
 
     // A broken lookup must not take the form away: the customer can still try.
     expect(wrapper.find('#amount').exists()).toBe(true)

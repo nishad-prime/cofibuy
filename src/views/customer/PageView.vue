@@ -152,7 +152,10 @@
             </p>
           </section>
 
-          <form v-else class="mt-8 space-y-6" @submit.prevent="createOrder">
+          <!-- Selector and amount live outside any form: the manual path's
+               submit button belongs to the proof form below, and nesting the
+               two forms would make the browser pick one submit for both. -->
+          <div v-else class="mt-8 space-y-6">
             <section class="card card-pad">
               <h2 class="text-lg font-semibold text-stone-900">
                 {{ t('customer.paywall.chooseMethod') }}
@@ -185,7 +188,43 @@
               </p>
             </section>
 
-            <section v-if="selectedKind" class="card card-pad">
+            <!--
+              A manual method shows everything the customer needs on this page:
+              where to send the money, and the proof form, under one submit.
+              An automatic method has no details to show - the payment IS the
+              button - so it keeps the summary and its own form.
+            -->
+            <section
+              v-if="selectedGateway && selectedGateway.provider === null"
+              class="card card-pad"
+            >
+              <h2 class="text-lg font-semibold text-stone-900">
+                {{ pickedGatewayName }}
+              </h2>
+              <p class="label mt-4">{{ t('customer.paywall.sendTo') }}</p>
+              <GatewayAccountDetails
+                class="rounded-lg bg-white px-3 py-2.5"
+                :fields="selectedAccountFields"
+                :legacy-number="selectedGateway.account_number"
+                :legacy-name="selectedGateway.account_name"
+              />
+              <p v-if="selectedInstructions" class="mt-4">
+                <MarkdownBody :source="selectedInstructions" />
+              </p>
+
+              <EvidenceForm
+                class="mt-5"
+                :evidence-fields="selectedGateway.evidence_fields ?? []"
+                :submitting="creating"
+                @submit="createManualOrder"
+              />
+            </section>
+
+            <form
+              v-if="selectedKind && kindPaysOnline"
+              class="card card-pad"
+              @submit.prevent="createOrder"
+            >
               <h2 class="text-sm font-semibold text-stone-900">
                 {{ t('customer.paywall.summary') }}
               </h2>
@@ -224,8 +263,8 @@
               >
                 {{ creating ? t('customer.paywall.submitting') : t('customer.paywall.submit') }}
               </button>
-            </section>
-          </form>
+            </form>
+          </div>
         </template>
       </component>
     </template>
@@ -250,6 +289,7 @@ import GatewayAccountDetails from '@/components/customer/GatewayAccountDetails.v
 import { useFileUpload } from '@/composables/useFileUpload'
 import { buildEvidencePayload } from '@/lib/evidencePayload'
 import { useOrderPolling } from '@/composables/useOrderPolling'
+import { usePageStandalone } from '@/composables/usePageStandalone'
 import { normalizeConfig, templateFor } from '@/pages/templates/registry'
 import { useSiteSettings } from '@/composables/useSiteSettings'
 import AppIcon from '@/components/AppIcon.vue'
@@ -283,6 +323,14 @@ interface Gateway {
   name_en: string | null
   provider: string | null
   sort_order: number | null
+  account_number: string | null
+  account_name: string | null
+  instructions_md_en: string | null
+  instructions_md_bn: string | null
+  reference_prompt_en: string | null
+  reference_prompt_bn: string | null
+  supports_reference: boolean
+  evidence_fields: EvidenceField[]
 }
 
 interface Page {
@@ -306,6 +354,7 @@ interface Page {
    * forced to null when the minimum is hidden, so there is no second path by
    * which a client could learn it.
    */
+  is_listed: boolean
   min_amount: number | null
   min_hidden: boolean
   gateways: Gateway[]
@@ -322,6 +371,7 @@ const amount = ref<number>(0)
 const creating = ref(false)
 
 const slug = computed(() => route.params.slug as string)
+const { setStandalone } = usePageStandalone()
 
 /**
  * The template the page renders with, resolved from the registry. Everything
@@ -374,6 +424,30 @@ const orderGateway = computed(() =>
 
 /** An order pays online when its kind has an automatic account behind it. */
 const orderPaysOnline = computed(() => orderGateway.value?.provider != null)
+
+/**
+ * The gateway behind the method the customer just picked. A kind can have
+ * several accounts behind it; the shop picks one at order time, but the
+ * account details are per-kind display copy, so showing the first active
+ * account of the kind is what the customer needs before the order exists.
+ */
+const selectedGateway = computed(() => gateways.value.find((g) => g.kind === selectedKind.value))
+const pickedGatewayName = computed(() =>
+  selectedGateway.value
+    ? pick({ bn: selectedGateway.value.name_bn, en: selectedGateway.value.name_en })
+    : '',
+)
+const selectedAccountFields = computed(
+  () => (selectedGateway.value?.evidence_fields ?? []) as unknown as AccountField[],
+)
+const selectedInstructions = computed(() =>
+  selectedGateway.value
+    ? pick({
+        bn: selectedGateway.value.instructions_md_bn,
+        en: selectedGateway.value.instructions_md_en,
+      })
+    : null,
+)
 
 const orderAccountLegacy = computed(() => {
   const d = orderDetails.value as { account_number?: unknown; account_name?: unknown } | null
@@ -471,6 +545,42 @@ const submitEvidence = async (evidence: Record<string, unknown>): Promise<void> 
   }
 }
 
+/**
+ * Takes ownership of one order on this page: shows its state inline and keeps
+ * watching it until it lands somewhere terminal. Used both by the mount-time
+ * lookup and by the manual submission, which creates the order right here.
+ */
+const adoptOrder = async (orderId: string): Promise<void> => {
+  const { data: status } = await rpc<MyOrderStatus>('my_order_status', {
+    p_order_id: orderId,
+  })
+  if (status) orderDetails.value = status
+
+  const { data: orders } = await rpcList<MyOrder>('my_orders')
+  const mine = (orders ?? []).find((o) => o.id === orderId)
+  if (mine) existingOrder.value = mine
+
+  // An open order moves on its own - the operator reviews it, the cron expires
+  // it - so the page keeps watching it until it lands somewhere terminal.
+  polling = useOrderPolling(orderId)
+  void polling.refresh()
+  polling.startPolling()
+
+  watch(polling.status, async (next) => {
+    if (next === 'approved') {
+      polling?.stopPolling()
+      await fetchUnlocked()
+    } else if (next === 'expired') {
+      // Nothing is in the way any more: the pay form comes back.
+      polling?.stopPolling()
+      existingOrder.value = null
+      orderDetails.value = null
+    } else if (next) {
+      orderDetails.value = { ...(orderDetails.value ?? {}), status: next } as MyOrderStatus
+    }
+  })
+}
+
 const loadExistingOrder = async (): Promise<void> => {
   // A session is not guaranteed: the customer may be reading before their first
   // order. Nothing here may block the page's own render.
@@ -484,37 +594,13 @@ const loadExistingOrder = async (): Promise<void> => {
     )
     if (!mine) return
 
-    existingOrder.value = mine
-
     if (mine.status === 'approved') {
+      existingOrder.value = mine
       await fetchUnlocked()
       return
     }
 
-    const { data: status } = await rpc<MyOrderStatus>('my_order_status', {
-      p_order_id: mine.id,
-    })
-    if (status) orderDetails.value = status
-
-    // An open order moves on its own - the operator reviews it, the cron expires
-    // it - so the page keeps watching it until it lands somewhere terminal.
-    polling = useOrderPolling(mine.id)
-    void polling.refresh()
-    polling.startPolling()
-
-    watch(polling.status, async (next) => {
-      if (next === 'approved') {
-        polling?.stopPolling()
-        await fetchUnlocked()
-      } else if (next === 'expired') {
-        // Nothing is in the way any more: the pay form comes back.
-        polling?.stopPolling()
-        existingOrder.value = null
-        orderDetails.value = null
-      } else if (next) {
-        orderDetails.value = { ...(orderDetails.value ?? {}), status: next } as MyOrderStatus
-      }
-    })
+    await adoptOrder(mine.id)
   } catch (err) {
     console.warn('[order-state]', err)
   }
@@ -592,6 +678,9 @@ onMounted(async () => {
 
     link.value = linkData as unknown as Page
 
+    // A hidden page is standalone: no way back to the index, anywhere.
+    setStandalone(link.value.is_listed === false)
+
     // `get_public_page` already returns the active payment methods nested in the
     // same payload, filtered to `is_active` server side.
     const raw = linkData as unknown as { gateways?: unknown }
@@ -660,6 +749,28 @@ const kindPaysOnline = computed(() =>
   gateways.value.some((g) => g.kind === selectedKind.value && g.provider !== null),
 )
 
+/**
+ * Orders belong to a user, so an anonymous sign-in is the floor of every
+ * submission path. Checking the stored session is cheaper and safer than
+ * calling getUser(), which also rejects for an expired session and would
+ * silently orphan the old user.
+ */
+const ensureSession = async (): Promise<boolean> => {
+  const { data: sessionData } = await supabase.auth.getSession()
+  if (sessionData.session) return true
+
+  const { error: anonError } = await supabase.auth.signInAnonymously()
+  if (anonError) {
+    // This one is an operator problem, not a customer problem: the project
+    // has anonymous sign-ins switched off, so nobody can order at all.
+    error.value = anonError.message.includes('Anonymous sign-ins are disabled')
+      ? 'Checkout is not available yet: anonymous sign-ins are disabled for this store.'
+      : anonError.message
+    return false
+  }
+  return true
+}
+
 const createOrder = async (): Promise<void> => {
   if (!link.value || !selectedKind.value || !isAmountValid.value) {
     return
@@ -668,21 +779,7 @@ const createOrder = async (): Promise<void> => {
   creating.value = true
   error.value = null
   try {
-    // Orders belong to a user, so an anonymous sign-in is the floor. Checking the
-    // stored session is cheaper and safer than calling getUser(), which also
-    // rejects for an expired session and would silently orphan the old user.
-    const { data: sessionData } = await supabase.auth.getSession()
-    if (!sessionData.session) {
-      const { error: anonError } = await supabase.auth.signInAnonymously()
-      if (anonError) {
-        // This one is an operator problem, not a customer problem: the project
-        // has anonymous sign-ins switched off, so nobody can order at all.
-        error.value = anonError.message.includes('Anonymous sign-ins are disabled')
-          ? 'Checkout is not available yet: anonymous sign-ins are disabled for this store.'
-          : anonError.message
-        return
-      }
-    }
+    if (!(await ensureSession())) return
 
     // The online kinds skip the order page entirely: the function creates the
     // order and opens the bKash session in one SQL call, and the customer's
@@ -729,6 +826,28 @@ const createOrder = async (): Promise<void> => {
       window.location.assign(payload.redirectUrl)
       return
     }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to create order'
+  } finally {
+    creating.value = false
+  }
+}
+
+/**
+ * The manual path, in one click: the order is created, the proof is uploaded
+ * against it and submitted, and the page itself turns into the order status.
+ * There is no separate order page to walk through any more - the form the
+ * customer just filled in is on this page, and so is what replaces it.
+ */
+const createManualOrder = async (evidence: Record<string, unknown>): Promise<void> => {
+  if (!link.value || !selectedKind.value || !isAmountValid.value) {
+    return
+  }
+
+  creating.value = true
+  error.value = null
+  try {
+    if (!(await ensureSession())) return
 
     // Signature is `create_order(p_slug, p_kind, p_amount)`, with the amount in whole
     // taka. A *kind*, not a gateway id: the shop decides which account of that kind the
@@ -760,14 +879,30 @@ const createOrder = async (): Promise<void> => {
     }
 
     // The function reports refusals in the payload rather than as an error.
-    if (!data?.ok) {
+    if (!data?.ok || !data.order_id) {
       error.value = describeRefusal(data?.code)
       return
     }
 
-    if (data.order_id) {
-      router.push(`/${slug.value}/order/${data.order_id}`)
+    // The uploads need the order id - that is half of every storage path - so
+    // the proof can only be sent now that the order exists. If this half fails,
+    // the order stands and the page's own order card offers the proof form
+    // again; nothing is lost and nothing is asked twice.
+    const payload = await buildEvidencePayload(evidence, fileUpload.upload, data.order_id)
+
+    const { error: submitError } = await supabase.rpc('submit_evidence', {
+      p_order_id: data.order_id,
+      ...payload,
+    })
+
+    if (submitError) {
+      error.value = submitError.message
+      // The order exists; adopt it so the inline card takes over from the form.
+      await adoptOrder(data.order_id)
+      return
     }
+
+    await adoptOrder(data.order_id)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to create order'
   } finally {

@@ -40,7 +40,11 @@ export async function rpcList<T>(
 // Payload shapes
 // ---------------------------------------------------------------------------
 
-/** One gateway as the public payload publishes it. */
+/**
+ * One gateway as the public payload publishes it: everything a customer needs
+ * to pay, because the page renders the destination and the proof form the
+ * moment the method is selected.
+ */
 export interface PublicGateway {
   id: string
   kind: string
@@ -48,6 +52,14 @@ export interface PublicGateway {
   name_en: string | null
   provider: string | null
   sort_order: number
+  account_number: string | null
+  account_name: string | null
+  instructions_md_en: string | null
+  instructions_md_bn: string | null
+  reference_prompt_en: string | null
+  reference_prompt_bn: string | null
+  supports_reference: boolean
+  evidence_fields: unknown[]
 }
 
 /** One page as the index lists it. */
@@ -65,8 +77,16 @@ export interface PublicPage {
   sort_order: number
 }
 
+/**
+ * Whether the page appears in the public index. A hidden page is still sold by
+ * its URL - this is a display fact the page needs so it can drop the way back.
+ */
+export interface PageVisibility {
+  is_listed: boolean
+}
+
 /** One page with its payment methods, as the paywall reads it. */
-export interface PublicPageDetail extends PublicPage {
+export interface PublicPageDetail extends PublicPage, PageVisibility {
   min_amount: number | null
   min_hidden: boolean
   gateways: PublicGateway[]

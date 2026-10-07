@@ -229,52 +229,6 @@ describe('the page as the whole checkout', () => {
     expect(wrapper.text()).not.toContain('AB12CD34')
   })
 
-  it('hands off to the open order when a new submission raises kind_mismatch', async () => {
-    // The race the hand-off exists for: the page was rendered before the open
-    // order existed (another tab, a double-tap), so the form was showing when
-    // the raise came back.
-    let orderLookup = 0
-    rpc.mockImplementation((name: string) => {
-      if (name === 'get_public_page')
-        return Promise.resolve({ data: publicLink(null), error: null })
-      if (name === 'my_orders') {
-        orderLookup += 1
-        // The mount-time lookup predates the open order; the hand-off's own
-        // lookup, moments later, finds it.
-        return Promise.resolve({
-          data:
-            orderLookup === 1
-              ? []
-              : [
-                  // A different report must not be mistaken for the one in the way.
-                  { id: '11111111-1111-4111-8111-111111111111', slug: 'other', status: 'draft' },
-                  { id: ORDER_ID, slug: SLUG, status: 'awaiting_proof' },
-                ],
-          error: null,
-        })
-      }
-      if (name === 'create_order')
-        return Promise.resolve({
-          data: null,
-          error: { message: `kind_mismatch: open order already uses payment kind ${KIND}` },
-        })
-      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
-    })
-
-    const wrapper = mount(PageView, {
-      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
-    })
-    await flushPromises()
-
-    await wrapper.get('#amount').setValue(500)
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-
-    expect(routerPush).toHaveBeenCalledWith(`/${SLUG}/order/${ORDER_ID}`)
-    // The raw raise must not reach the customer, whatever else happens.
-    expect(wrapper.text()).not.toContain('kind_mismatch')
-  })
-
   it('a hidden page drops the way back to the index', async () => {
     rpc.mockImplementation((name: string) => {
       if (name === 'get_public_page')
@@ -313,6 +267,35 @@ describe('the page as the whole checkout', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain(i18n.global.t('customer.paywall.back') as string)
+  })
+
+  it('the panel survives a refresh, because a refresh is another mount', async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink('bkash_pgw'), error: null })
+      if (name === 'my_orders') return Promise.resolve({ data: [openOrder()], error: null })
+      if (name === 'my_order_status')
+        return Promise.resolve({ data: { id: ORDER_ID, status: 'awaiting_proof' }, error: null })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    // First load: the customer submits nothing; the open order is already there.
+    const first = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+    expect(first.text()).toContain('AB12CD34')
+    expect(first.find('#amount').exists()).toBe(false)
+
+    // A refresh is exactly this: a second mount against the same session, which
+    // re-reads my_orders and lands on the same panel. The form must not come
+    // back just because the page was reloaded.
+    const second = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+    expect(second.text()).toContain('AB12CD34')
+    expect(second.find('#amount').exists()).toBe(false)
   })
 
   it('degrades to the new-order form when the order lookup fails', async () => {

@@ -86,7 +86,8 @@
     "payOnlineReturnBody": "পেমেন্ট হয়েছে কি না bKash-এর কাছে যাচাই করা হচ্ছে।",
     "payOnlineTestDone": "এটি একটি টেস্ট পেমেন্ট ছিল, তাই কোনো টাকা কাটা হয়নি এবং অর্ডারটি পরিশোধিত হয়নি।",
     "payOnlineFailed": "পেমেন্টটি সম্পন্ন হয়নি।",
-    "payOnlineRetry": "আবার পেমেন্ট করার চেষ্টা করুন"
+    "payOnlineRetry": "আবার পেমেন্ট করার চেষ্টা করুন",
+    "completeBy": "শেষ সময়"
   },
   "evidence": {
     "required": "আবশ্যক",

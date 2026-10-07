@@ -86,7 +86,8 @@
     "payOnlineReturnBody": "Checking with bKash whether the payment went through.",
     "payOnlineTestDone": "That was a test payment, so nothing was charged and the order stays unpaid.",
     "payOnlineFailed": "The payment did not go through.",
-    "payOnlineRetry": "Try the payment again"
+    "payOnlineRetry": "Try the payment again",
+    "completeBy": "Complete by"
   },
   "evidence": {
     "required": "required",

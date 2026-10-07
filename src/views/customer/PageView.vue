@@ -76,11 +76,19 @@
             </a>
           </section>
 
-          <!-- The customer's own open order, in every state it can be in. -->
+          <!-- The customer's own open order, in every state it can be in. This
+               section takes the payment form's place and persists across
+               refreshes: the session holds the order, and every mount reads it. -->
           <section v-else-if="existingOrder" class="card card-pad mt-8">
-            <h2 class="text-lg font-semibold text-stone-900">
-              {{ t('customer.order.title') }}
-            </h2>
+            <div class="flex items-center justify-between gap-3">
+              <h2 class="text-lg font-semibold text-stone-900">
+                {{ t('customer.order.title') }}
+              </h2>
+              <OrderStatusBadge
+                :status="existingOrder.status"
+                :label="t(`customer.order.status.${existingOrder.status}`)"
+              />
+            </div>
             <p class="hint mt-1">
               {{ t('customer.order.reference') }}:
               <span class="ltr-value font-medium text-stone-800">
@@ -88,16 +96,21 @@
               </span>
             </p>
 
+            <p class="mt-3 text-sm text-stone-600">
+              {{ t('customer.paywall.summaryAmount') }}:
+              <span class="ltr-value font-medium text-stone-900">
+                {{ money(Number(existingOrder.amount)) }}
+              </span>
+            </p>
+            <p v-if="existingOrder.expires_at" class="hint mt-1">
+              {{ t('customer.order.completeBy') }}:
+              <span class="ltr-value">{{ formatExpiry(existingOrder.expires_at) }}</span>
+            </p>
+
             <p v-if="error" class="alert-error mt-4" role="alert">{{ error }}</p>
 
             <!-- Online: one button, and the customer is at bKash. -->
             <template v-if="orderPaysOnline && existingOrder.status === 'awaiting_proof'">
-              <p class="mt-4 text-sm text-stone-600">
-                {{ t('customer.paywall.summaryAmount') }}:
-                <span class="ltr-value font-medium text-stone-900">
-                  {{ money(Number(existingOrder.amount)) }}
-                </span>
-              </p>
               <button
                 type="button"
                 class="btn-primary mt-4 w-full"
@@ -277,7 +290,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import { formatMoney } from '@/lib/money'
 import { useContent } from '@/composables/useContent'
@@ -289,6 +302,7 @@ import type { MyOrder, MyOrderStatus } from '@/lib/rpc'
 import EvidenceForm, { type EvidenceField } from '@/components/customer/EvidenceForm.vue'
 import type { AccountField } from '@/components/customer/GatewayAccountDetails.vue'
 import GatewayAccountDetails from '@/components/customer/GatewayAccountDetails.vue'
+import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 import { useFileUpload } from '@/composables/useFileUpload'
 import { buildEvidencePayload } from '@/lib/evidencePayload'
 import { useOrderPolling } from '@/composables/useOrderPolling'
@@ -301,7 +315,6 @@ import GatewaySelector from '@/components/customer/GatewaySelector.vue'
 import type { OrderResult, PublicPageDetail } from '@/lib/rpc'
 
 const route = useRoute()
-const router = useRouter()
 const supabase = getSupabase()
 const { pick } = useContent()
 const { t } = useI18n()
@@ -651,6 +664,13 @@ const amountError = computed(() => {
  */
 const money = (amt: number): string => formatMoney(amt, 'en', settings.value.currency)
 
+/** The order's deadline, in the customer's own clock format. */
+const formatExpiry = (iso: string): string =>
+  new Date(iso).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+
 /**
  * `create_order` refuses in the payload rather than as an error, so the reason
  * has to be surfaced instead of navigating to a nonexistent order.
@@ -718,6 +738,12 @@ onMounted(async () => {
  * waiting. Every branch below says or shows something the customer can act on, because a
  * raised exception with nothing behind it is a dead end.
  */
+/**
+ * A `kind_mismatch` raise means an open order for this page is already in the
+ * way. The page never navigates to it: the order panel takes the form's place
+ * right here, because the page is the whole checkout and a redirect to the
+ * deep-link route is exactly the multi-page flow this view exists to retire.
+ */
 const handOffToOpenOrder = async (): Promise<void> => {
   const { data, error: ordersError } = await supabase.rpc('my_orders')
 
@@ -738,7 +764,7 @@ const handOffToOpenOrder = async (): Promise<void> => {
     return
   }
 
-  await router.push(`/${slug.value}/order/${existing.id}`)
+  await adoptOrder(existing.id)
 }
 
 /**

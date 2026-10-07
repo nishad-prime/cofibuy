@@ -9,7 +9,6 @@ import { CURRENCIES } from './currency'
  * currency migration. The migration is authoritative for writes and this file is
  * authoritative for the select, so a code added to one and not the other would be
  * either unofferable or rejected. Read the SQL and compare, the same way
- * `sync-copy-keys.mjs` keeps the copy registry honest.
  */
 const here = dirname(fileURLToPath(import.meta.url))
 const migration = join(

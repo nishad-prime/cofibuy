@@ -123,7 +123,6 @@ const ITEMS: NavItem[] = [
   { to: '/admin/gateways', label: 'Gateways', icon: 'card' },
   { to: '/admin/team', label: 'Team', icon: 'team', ownerOnly: true },
   { to: '/admin/settings', label: 'Settings', icon: 'settings', ownerOnly: true },
-  { to: '/admin/copy', label: 'Site copy', icon: 'sparkles', ownerOnly: true },
   { to: '/admin/ai', label: 'AI provider', icon: 'lock', ownerOnly: true },
 ]
 

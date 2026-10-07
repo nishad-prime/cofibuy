@@ -124,15 +124,6 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresOwner: true },
       },
       {
-        // Copy rewrites what the shopfront says, including the text of the
-        // buttons that take a payment, so it sits with the other owner-only
-        // surfaces rather than with the review queue.
-        path: 'copy',
-        name: 'admin-copy',
-        component: () => import('@/views/admin/CopyView.vue'),
-        meta: { requiresOwner: true },
-      },
-      {
         // The model provider's credential is a secret the shop spends, not one of
         // its own, so it is owner-only in the same way and for the same reason as
         // the credential pages under /admin/gateways.

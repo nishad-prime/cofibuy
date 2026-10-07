@@ -17,7 +17,6 @@ export type Database = {
       admin_ai_providers: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_ai_settings: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_auto_providers: { Args: Record<PropertyKey, never>; Returns: Json[] }
-      admin_copy: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_delete_gateway: {
         Args: {
           p_gateway_id: string
@@ -92,12 +91,6 @@ export type Database = {
           p_order_id: string
         }
         Returns: Json
-      }
-      admin_set_copy: {
-        Args: {
-          p_items: Json
-        }
-        Returns: number
       }
       admin_set_settings: {
         Args: {
@@ -258,7 +251,6 @@ export type Database = {
         }
         Returns: string
       }
-      get_public_copy: { Args: Record<PropertyKey, never>; Returns: Json[] }
       get_public_page: {
         Args: {
           p_slug: string
@@ -288,6 +280,14 @@ export type Database = {
         Returns: Json
       }
       my_orders: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      pay_online_start: {
+        Args: {
+          p_slug: string
+          p_kind: string
+          p_amount: number
+        }
+        Returns: Json
+      }
       public_page_payload: {
         Args: {
           p_slug: string
@@ -527,30 +527,6 @@ export type Database = {
           target_id?: string | null
           meta?: Json
           created_at?: string
-        }
-        Relationships: []
-      }
-      copy_strings: {
-        Row: {
-          key: string
-          value_bn: string | null
-          value_en: string | null
-          is_markdown: boolean
-          updated_at: string
-        }
-        Insert: {
-          key: string
-          value_bn?: string | null
-          value_en?: string | null
-          is_markdown?: boolean
-          updated_at?: string
-        }
-        Update: {
-          key?: string
-          value_bn?: string | null
-          value_en?: string | null
-          is_markdown?: boolean
-          updated_at?: string
         }
         Relationships: []
       }

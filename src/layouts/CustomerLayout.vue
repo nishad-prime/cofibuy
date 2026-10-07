@@ -2,12 +2,11 @@
 import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LanguageToggle from '@/components/LanguageToggle.vue'
-import { loadCopyOverrides } from '@/composables/useCopyOverrides'
 import { loadSiteSettings } from '@/composables/useSiteSettings'
 
 const { t } = useI18n()
 
-// Both fired, not awaited. The bundled wording and the default settings are already
+// Fired, not awaited. The bundled wording and the default settings are already
 // rendering and stay correct if either never returns, so neither fetch may gate first
 // paint - see the composables for the budget and why it exists.
 //
@@ -16,7 +15,6 @@ const { t } = useI18n()
 // composables memoise, but asking in one place makes the one-request-per-session
 // property obvious rather than something to be discovered.
 onMounted(() => {
-  void loadCopyOverrides()
   void loadSiteSettings()
 })
 </script>

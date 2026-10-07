@@ -11,7 +11,7 @@ that matters.
 
 **Status: the database is finished and tested, and so is the interface.** The app
 includes customer checkout/recovery flows and a full admin interface for managing
-links, gateways, orders, team, settings, and the customer copy store. The Telegram
+pages, gateways, orders, team, and settings. The Telegram
 OTP worker remains in a separate repository (worker RPCs exist in the schema).
 
 ## Requirements
@@ -102,26 +102,24 @@ editor works, but `npx supabase db push` is better: it records what it applied.
 
 ## Commands
 
-| Command                        | What it does                                                   |
-| ------------------------------ | -------------------------------------------------------------- |
-| `npm run dev`                  | Vite dev server on :5173                                       |
-| `npm run build`                | typecheck, then production build                               |
-| `npm run bootstrap`            | pre-flight check on the checkout                               |
-| `npm run check`                | format, lint, typecheck, unit tests                            |
-| `npm run check:all`            | `check` plus the database suite, types, and the copy mirror    |
-| `npm test`                     | Vitest unit tests                                              |
-| `npm run test:db`              | database suite against an in-process PostgreSQL                |
-| `npm run test:db -- --migrate` | apply the migrations and stop                                  |
-| `npm run test:db -- --keep`    | leave the cluster running to poke at it                        |
-| `npm run format`               | Prettier, write                                                |
-| `npm run copy:keys:sync`       | regenerate the SQL copy registry from `src/config/copyKeys.ts` |
-| `npm run copy:keys:check`      | fail if the SQL copy registry is stale                         |
-| `npm run db:types`             | regenerate `src/lib/database.types.ts` from the migrations     |
-| `npm run db:types:check`       | fail if the generated types are stale                          |
-| `npx supabase start`           | local stack                                                    |
-| `npx supabase db reset`        | local stack: wipe, replay migrations, run seed                 |
-| `npx supabase db push`         | apply migrations to the linked project                         |
-| `npx supabase studio`          | dashboard for the local stack                                  |
+| Command                        | What it does                                               |
+| ------------------------------ | ---------------------------------------------------------- |
+| `npm run dev`                  | Vite dev server on :5173                                   |
+| `npm run build`                | typecheck, then production build                           |
+| `npm run bootstrap`            | pre-flight check on the checkout                           |
+| `npm run check`                | format, lint, typecheck, unit tests                        |
+| `npm run check:all`            | `check` plus the database suite and the generated types    |
+| `npm test`                     | Vitest unit tests                                          |
+| `npm run test:db`              | database suite against an in-process PostgreSQL            |
+| `npm run test:db -- --migrate` | apply the migrations and stop                              |
+| `npm run test:db -- --keep`    | leave the cluster running to poke at it                    |
+| `npm run format`               | Prettier, write                                            |
+| `npm run db:types`             | regenerate `src/lib/database.types.ts` from the migrations |
+| `npm run db:types:check`       | fail if the generated types are stale                      |
+| `npx supabase start`           | local stack                                                |
+| `npx supabase db reset`        | local stack: wipe, replay migrations, run seed             |
+| `npx supabase db push`         | apply migrations to the linked project                     |
+| `npx supabase studio`          | dashboard for the local stack                              |
 
 `npm run test:db` needs neither Docker nor a project. It downloads nothing at run
 time: `embedded-postgres` starts a real PostgreSQL in a child process, the
@@ -132,19 +130,18 @@ that is rolled back afterwards.
 
 ```
 src/                    Vue 3 + Tailwind 4 app
-  config/copyKeys.ts    the editable-copy registry: one source of truth
+  pages/templates/      the page template registry: layouts, config forms
   lib/                  domain helpers, generated types, the Supabase client
   i18n/                 customer strings (bn + en), admin strings (en only)
   views/                one file per screen
 supabase/
   config.toml           CLI config, including the exposed schema list
   migrations/           the schema, and every rule, in SQL
-  seed.sql              first owner + demo gateway + demo link
+  seed.sql              first owner + demo gateway + demo page
   tests/                the database suite
 scripts/
   bootstrap.mjs         pre-flight check
   generate-types.mjs    database.types.ts from the migrations
-  sync-copy-keys.mjs    the SQL copy registry from src/config/copyKeys.ts
   test-db.mjs           the database suite runner
   lib/local-db.mjs      the ephemeral cluster both of the above start
 ```
@@ -154,26 +151,18 @@ in SQL and are reached through `api.*` functions; the Vue side renders and
 submits. That is why the database suite is the larger half of the tests, and why
 `api` functions return `jsonb` — the payloads are not typed by the generator.
 
-### The copy store
+### Page templates
 
-An operator can rewrite every customer-facing string from `/admin/copy`, in both
-languages, without touching the bundle or rebuilding. Three pieces:
+A page's layout is code, not database. `src/pages/templates/registry.ts` is the
+single source of truth: each template declares its id, its config shape, the
+admin form that edits that config, and the customer component that renders it.
+The database stores which template a page uses and a JSON config, refusing any
+template id the running app does not declare and any config that is not an
+object.
 
-- `src/config/copyKeys.ts` is the single source of truth for which keys are
-  editable and which may contain markdown. `npm run copy:keys:sync` mirrors it
-  into `private.copy_registry` inside a migration, and `copy:keys:check` fails the
-  build if the two disagree.
-- `api.get_public_copy()` returns the stored overrides; the browser merges them
-  over the bundled locale files inside vue-i18n's message store, so
-  `t('customer.home.heading')` keeps working everywhere unchanged.
-- `api.admin_set_copy()` is owner-only — copy is customer-visible, so a reviewer
-  who can approve orders has no business rewriting what the shopfront says about
-  taking payment.
-
-Overriding never blocks first paint: there is a bounded wait
-(`FIRST_PAINT_BUDGET_MS`) after which the app commits to the bundled wording and
-applies overrides whenever they arrive. On a slow connection a customer may read
-the shipped wording for a moment before it changes.
+`ai-fill-form` fills any of these forms from one paragraph: the form describes
+its fields, the model fills them, and the operator reviews everything in the
+fields themselves before saving.
 
 ### Rules that live in SQL, not in the UI
 
@@ -182,13 +171,12 @@ the shipped wording for a moment before it changes.
 - The minimum amount, and whether it is hidden. A customer who guesses below it
   gets an identical `below_minimum` answer whether or not they were right, and
   the sixth attempt locks the order
-- One open order per user per link, enforced by an index rather than by a check
+- One open order per user per page, enforced by an index rather than by a check
 - Evidence rules: required fields, validator types, that a file path lives under
   `{user_id}/{order_id}/{field_key}/`, that it belongs to the submitting customer,
   and that evidence is append-only
 - Recovery: bcrypt-only OTP codes, five wrong guesses consumes the challenge, a
   resend supersedes the previous code for that phone number
-- Which copy keys exist, and which of them may contain markdown
 
 ## Deploying
 
@@ -208,10 +196,10 @@ production; it exists to get a local or preview project into a usable state.
   sign-ins as configured in `supabase/config.toml`)
 - The roadmap in `docs/roadmap.md` — phases 3 through 5 are not started
 
-The customer UI (link pages, checkout, evidence upload, status polling, recovery
-flow) and full admin UI (queue, order review, links, gateways, team, settings,
-copy) are now implemented. All UI calls verified RPCs from the tested database
-layer.
+The customer UI (page templates, one-step checkout, evidence upload, status
+polling, recovery flow) and full admin UI (queue, order review, pages,
+gateways, team, settings) are now implemented. All UI calls verified RPCs from
+the tested database layer.
 
 ## Deployment
 

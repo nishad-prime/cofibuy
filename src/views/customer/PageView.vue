@@ -241,7 +241,7 @@ import { formatMoney } from '@/lib/money'
 import { useContent } from '@/composables/useContent'
 import type { LocalizedPair } from '@/lib/content'
 import { watch } from 'vue'
-import { describeEdgeFailure } from '@/lib/edgeError'
+import { describeEdgeFailure, invokeWithRetry } from '@/lib/edgeError'
 import { rpc, rpcList } from '@/lib/rpc'
 import type { MyOrder, MyOrderStatus } from '@/lib/rpc'
 import EvidenceForm, { type EvidenceField } from '@/components/customer/EvidenceForm.vue'
@@ -409,19 +409,22 @@ const fetchUnlocked = async (): Promise<void> => {
  * leaves for bKash from here.
  */
 const payExisting = async (): Promise<void> => {
-  if (!existingOrder.value || paying.value) return
+  const order = existingOrder.value
+  if (!order || paying.value) return
 
   paying.value = true
   error.value = null
   try {
-    const { data, error: fnError } = await supabase.functions.invoke('bkash-create-payment', {
-      body: {
-        slug: slug.value,
-        kind: existingOrder.value.gateway_kind,
-        amount: Number(existingOrder.value.amount),
-        origin: window.location.origin,
-      },
-    })
+    const { data, error: fnError } = await invokeWithRetry(() =>
+      supabase.functions.invoke('bkash-create-payment', {
+        body: {
+          slug: slug.value,
+          kind: order.gateway_kind,
+          amount: Number(order.amount),
+          origin: window.location.origin,
+        },
+      }),
+    )
 
     if (fnError) {
       const failure = await describeEdgeFailure(fnError, 'The payment could not start.')

@@ -167,7 +167,7 @@ import GatewayAccountDetails, {
   type AccountField,
 } from '@/components/customer/GatewayAccountDetails.vue'
 import { buildEvidencePayload } from '@/lib/evidencePayload'
-import { describeEdgeFailure } from '@/lib/edgeError'
+import { describeEdgeFailure, invokeWithRetry } from '@/lib/edgeError'
 import { rpc } from '@/lib/rpc'
 import type { MyOrderStatus } from '@/lib/rpc'
 
@@ -308,9 +308,14 @@ const payOnline = async (): Promise<void> => {
   error.value = null
 
   try {
-    const { data, error: payError } = await supabase.functions.invoke('bkash-create-payment', {
-      body: { orderId: orderId.value, origin: window.location.origin },
-    })
+    const { data, error: payError } = await invokeWithRetry<{
+      redirectUrl?: string
+      error?: unknown
+    }>(() =>
+      supabase.functions.invoke('bkash-create-payment', {
+        body: { orderId: orderId.value, origin: window.location.origin },
+      }),
+    )
 
     if (payError || data?.error) {
       // The function's own message. `gateway_not_configured` in particular is the operator

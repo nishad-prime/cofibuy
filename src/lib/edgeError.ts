@@ -144,3 +144,24 @@ function describeTransportCause(context: unknown): string {
   if (typeof context === 'string' && context !== '') return context
   return 'No further detail available.'
 }
+
+/**
+ * Invokes an Edge Function and retries once when the request never left.
+ *
+ * A `FunctionsFetchError` is the one failure class that is almost always transient
+ * on Bangladeshi mobile networks - a dropped packet, a proxy hiccup, a challenge
+ * page that came and went. The second attempt costs one round trip and saves a
+ * customer a dead end; a refused request (`FunctionsHttpError`) is an answer, and
+ * answers are never retried.
+ */
+export async function invokeWithRetry<T = unknown>(
+  invoke: () => Promise<{ data: T | null; error: unknown }>,
+): Promise<{ data: T | null; error: unknown }> {
+  const first = await invoke()
+  if (first.error === null) return first
+  if ((first.error as { name?: unknown } | null)?.name !== 'FunctionsFetchError') return first
+
+  const second = await invoke()
+  if (second.error !== null && second.error === first.error) return second
+  return second
+}

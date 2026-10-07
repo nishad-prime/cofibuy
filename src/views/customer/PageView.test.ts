@@ -32,6 +32,9 @@ const invoke = vi.fn()
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     rpc: (...args: unknown[]) => rpc(...args),
+    functions: {
+      invoke: (...args: unknown[]) => invoke(...args),
+    },
     auth: {
       getSession: (...args: unknown[]) => getSession(...args),
       signInAnonymously: vi
@@ -91,8 +94,19 @@ describe('kind_mismatch hand-off', () => {
   it('hands off from the one-step online path too', async () => {
     // An automatic gateway: submit goes to the edge function, and the raise
     // comes back inside its error response rather than as an rpc error.
+    const onlineLink = {
+      ...publicLink(),
+      gateways: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          kind: KIND,
+          sort_order: 0,
+          provider: 'bkash_pgw',
+        },
+      ],
+    }
     rpc.mockImplementation((name: string) => {
-      if (name === 'get_public_page') return Promise.resolve({ data: publicLink(), error: null })
+      if (name === 'get_public_page') return Promise.resolve({ data: onlineLink, error: null })
       if (name === 'my_orders')
         return Promise.resolve({
           data: [{ id: ORDER_ID, slug: SLUG, status: 'awaiting_proof' }],
@@ -100,16 +114,20 @@ describe('kind_mismatch hand-off', () => {
         })
       return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
     })
+    // The shape the SDK really rejects with: an error named like the SDK's own
+    // classes, whose context is the Response the function answered with.
     invoke.mockResolvedValue({
       data: null,
       error: {
-        message: 'Failed to send a request to the Edge Function',
-        context: {
-          body: {
+        name: 'FunctionsHttpError',
+        message: 'Edge Function returned a non-2xx status code',
+        context: new Response(
+          JSON.stringify({
             error: 'cannot_start_payment',
             detail: `kind_mismatch: open order already uses payment kind ${KIND}`,
-          },
-        },
+          }),
+          { status: 400 },
+        ),
       },
     })
 

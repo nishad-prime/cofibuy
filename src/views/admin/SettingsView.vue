@@ -59,6 +59,26 @@
         <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.settings.index') }}</h2>
         <p class="hint">{{ t('admin.settings.indexHint') }}</p>
 
+        <div class="mt-3 space-y-2">
+          <textarea
+            v-model="paragraph"
+            rows="3"
+            placeholder="A small shop selling Bengali ebooks and study guides, paid by bKash or bank transfer."
+            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          ></textarea>
+          <button
+            type="button"
+            :disabled="filling || paragraph.trim() === ''"
+            class="rounded-md border border-blue-600 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 disabled:border-gray-300 disabled:text-gray-400"
+            @click="fillIndex"
+          >
+            {{ filling ? 'Filling...' : 'Fill from the paragraph' }}
+          </button>
+          <p v-if="fillError" class="rounded-lg bg-red-50 p-3 text-sm text-red-800">
+            {{ fillError }}
+          </p>
+        </div>
+
         <div class="mt-4 grid gap-4 md:grid-cols-2">
           <div>
             <label class="label" for="index_heading_en">{{
@@ -155,6 +175,7 @@
 import { ref, onMounted } from 'vue'
 import { getSupabase } from '@/lib/supabase'
 import { CURRENCIES, isSupportedCurrency } from '@/lib/currency'
+import { describeEdgeFailure } from '@/lib/edgeError'
 import { applyAdminCurrency } from '@/composables/useAdminCurrency'
 import { useAdminI18n } from '@/i18n/admin'
 
@@ -202,6 +223,69 @@ const form = ref<SettingsForm>({
 
 const loading = ref(true)
 const saving = ref(false)
+
+/**
+ * Describe-and-fill for the index words.
+ *
+ * The paragraph is a prompt, not shop copy, so it never reaches
+ * `admin_set_settings`; the fill lands in the four fields above, where it is an
+ * ordinary unsaved edit like typing.
+ */
+const paragraph = ref('')
+const filling = ref(false)
+const fillError = ref<string | null>(null)
+
+const FILL_FIELDS = [
+  {
+    key: 'index_heading_en',
+    label: 'Index heading (English)',
+    hint: 'the shop name-line, a few words',
+  },
+  {
+    key: 'index_heading_bn',
+    label: 'Index heading (Bangla)',
+    hint: 'the shop name-line, a few words',
+  },
+  {
+    key: 'index_subheading_en',
+    label: 'Index subheading (English)',
+    hint: 'one sentence: what the shop sells and how payment works',
+  },
+  {
+    key: 'index_subheading_bn',
+    label: 'Index subheading (Bangla)',
+    hint: 'one sentence: what the shop sells and how payment works',
+  },
+]
+
+const fillIndex = async (): Promise<void> => {
+  if (filling.value || paragraph.value.trim() === '') return
+
+  filling.value = true
+  fillError.value = null
+
+  try {
+    const { data, error: fnError } = await supabase.functions.invoke('ai-fill-form', {
+      body: { paragraph: paragraph.value.trim(), fields: FILL_FIELDS },
+    })
+
+    if (fnError) throw fnError
+
+    const values = (data as { values?: Record<string, unknown> } | null)?.values
+    if (!values) throw new Error('The fill came back empty.')
+
+    for (const field of FILL_FIELDS) {
+      const value = values[field.key]
+      if (typeof value === 'string' && value !== '') (form.value as any)[field.key] = value
+    }
+  } catch (err) {
+    const failure = await describeEdgeFailure(err, 'The fill did not come back.')
+    if (failure.cause !== '') console.warn('[ai-fill-form]', failure)
+    fillError.value = failure.message
+  } finally {
+    filling.value = false
+  }
+}
 const error = ref<string | null>(null)
 const success = ref(false)
 

@@ -111,80 +111,34 @@
         button that cannot lead anywhere is worse than not offering it.
       -->
       <fieldset v-if="isOwner" class="space-y-3 border-t border-gray-200 pt-4">
-        <legend class="text-sm font-medium text-gray-700">Draft the copy with AI</legend>
+        <legend class="text-sm font-medium text-gray-700">Fill the form with AI</legend>
 
         <p class="text-sm text-gray-600">
-          Describe what the guide is and what is in it. This text is used only as the model's
-          instructions — it is never saved — and the guide itself is never uploaded to it, so
-          anything you leave out cannot appear in the draft.
+          Write one paragraph about what this page sells and what the buyer receives. The model
+          fills every field from it, in both languages. Nothing is saved: everything lands in the
+          fields below for you to read and edit, and what you leave out cannot appear, because the
+          paragraph is the only thing the model sees.
         </p>
 
         <textarea
-          v-model="subject"
-          rows="3"
-          placeholder="A pocket guide to the birds of the Sundarbans, with photographs and a map of the trails."
+          v-model="paragraph"
+          rows="4"
+          placeholder="A pocket guide to the birds of the Sundarbans. Sixty pages, with photographs, a trail map and a checklist. Written for first-time visitors."
           class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         ></textarea>
 
         <button
           type="button"
-          :disabled="drafting || subject.trim() === ''"
+          :disabled="filling || paragraph.trim() === ''"
           class="rounded-md border border-blue-600 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 disabled:border-gray-300 disabled:text-gray-400"
-          @click="draftCopy"
+          @click="fillForm"
         >
-          {{ drafting ? 'Drafting...' : 'Draft copy' }}
+          {{ filling ? 'Filling...' : 'Fill every field' }}
         </button>
 
-        <p v-if="draftError" class="rounded-lg bg-red-50 p-3 text-sm text-red-800">
-          {{ draftError }}
+        <p v-if="fillError" class="rounded-lg bg-red-50 p-3 text-sm text-red-800">
+          {{ fillError }}
         </p>
-
-        <!--
-          The proposal stays open after a field is applied, because the operator will usually
-          keep most of it and reject one line, and the alternative - applying a single field
-          closing the panel - would force them to draft again for the rest.
-        -->
-        <div v-if="brief" class="space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
-          <div class="flex items-center justify-between gap-3">
-            <p class="text-sm font-medium text-blue-900">
-              Suggested copy — apply what you agree with.
-            </p>
-            <div class="flex items-center gap-3">
-              <button
-                type="button"
-                class="text-xs text-blue-700 underline underline-offset-2"
-                @click="applyAll"
-              >
-                Use all
-              </button>
-              <button
-                type="button"
-                class="text-xs text-gray-500 underline underline-offset-2"
-                @click="discardBrief"
-              >
-                Discard
-              </button>
-            </div>
-          </div>
-
-          <div
-            v-for="field in BRIEF_FIELDS"
-            :key="`brief-${field.form}`"
-            class="rounded border border-blue-100 bg-white p-2"
-          >
-            <div class="flex items-baseline justify-between gap-3">
-              <p class="text-xs font-medium text-gray-500">{{ field.label }}</p>
-              <button
-                type="button"
-                class="shrink-0 text-xs text-blue-700 underline underline-offset-2"
-                @click="applyBrief(field.form)"
-              >
-                {{ applied.includes(field.form) ? 'Applied' : 'Use this' }}
-              </button>
-            </div>
-            <p class="mt-1 whitespace-pre-wrap text-sm text-gray-800">{{ brief[field.key] }}</p>
-          </div>
-        </div>
       </fieldset>
 
       <div class="flex flex-wrap items-center space-x-4">
@@ -252,84 +206,95 @@ const error = ref<string | null>(null)
 const { isOwner } = useStaffRole()
 
 /**
- * AI draft state.
+ * Describe-and-fill state.
  *
- * `subject` is deliberately not part of `form`: it is a prompt, not shop copy, and saving it would
- * put a sentence the operator only meant for the model into the database.
+ * `paragraph` is deliberately not part of `form`: it is a prompt, not shop copy, and saving it
+ * would put a sentence the operator only meant for the model into the database. The fill lands
+ * directly in the form's own fields rather than in a separate proposal panel, because the fields
+ * are already on screen and already editable - a second copy of each value to accept or reject
+ * would only ask the operator to read everything twice.
  */
-const subject = ref('')
-const brief = ref<Record<string, string> | null>(null)
-const applied = ref<string[]>([])
-const drafting = ref(false)
-const draftError = ref<string | null>(null)
+const paragraph = ref('')
+const filling = ref(false)
+const fillError = ref<string | null>(null)
 
-const draftCopy = async (): Promise<void> => {
-  if (drafting.value || subject.value.trim() === '') return
+/**
+ * The fields the model is asked to fill, in form-field names.
+ *
+ * Drawn from the form itself so the answer keys are the save payload's keys and
+ * applying a value is one assignment. The landing template's lists (features,
+ * FAQ) stay out on purpose: `ai-fill-form` fills strings, and a model-authored
+ * list would be a proposal the operator cannot see the shape of before saving.
+ */
+const fillFields = computed(() => {
+  const fields = [
+    { key: 'title_en', label: 'Title (English)', hint: 'the page title, at most a few words' },
+    { key: 'title_bn', label: 'Title (Bangla)', hint: 'the page title, at most a few words' },
+    {
+      key: 'teaser_en',
+      label: 'Teaser (English)',
+      hint: 'one or two sentences shown above the pay form; plain prose, no headings',
+    },
+    {
+      key: 'teaser_bn',
+      label: 'Teaser (Bangla)',
+      hint: 'one or two sentences shown above the pay form; plain prose, no headings',
+    },
+    {
+      key: 'body_en',
+      label: 'What the buyer receives (English)',
+      hint: 'shown after payment is approved; plain prose, no headings',
+    },
+    {
+      key: 'body_bn',
+      label: 'What the buyer receives (Bangla)',
+      hint: 'shown after payment is approved; plain prose, no headings',
+    },
+    { key: 'cta_label_en', label: 'Pay button label (English)', hint: 'two or three words' },
+    { key: 'cta_label_bn', label: 'Pay button label (Bangla)', hint: 'two or three words' },
+  ]
 
-  drafting.value = true
-  draftError.value = null
+  if (form.value.template === 'landing') {
+    fields.push(
+      {
+        key: 'subtitle_en',
+        label: 'Hero subtitle (English)',
+        hint: 'one sentence under the title',
+      },
+      { key: 'subtitle_bn', label: 'Hero subtitle (Bangla)', hint: 'one sentence under the title' },
+    )
+  }
+  return fields
+})
+
+const fillForm = async (): Promise<void> => {
+  if (filling.value || paragraph.value.trim() === '') return
+
+  filling.value = true
+  fillError.value = null
 
   try {
-    const { data, error: fnError } = await supabase.functions.invoke('ai-draft-link', {
-      body: {
-        subject: subject.value.trim(),
-        slug: form.value.slug,
-        // The form's current values, sent under their column names so the draft can improve on
-        // them. Only what the operator has typed so far: a field they just cleared is empty on
-        // purpose, and treating that as missing context would quietly draft it back.
-        title_en: form.value.title_en,
-        title_bn: form.value.title_bn,
-        teaser_md_en: form.value.teaser_en,
-        teaser_md_bn: form.value.teaser_bn,
-        unlock_body_md_en: form.value.body_en,
-        unlock_body_md_bn: form.value.body_bn,
-        unlock_cta_label_en: form.value.cta_label_en,
-        unlock_cta_label_bn: form.value.cta_label_bn,
-      },
+    const { data, error: fnError } = await supabase.functions.invoke('ai-fill-form', {
+      body: { paragraph: paragraph.value.trim(), fields: fillFields.value },
     })
 
     if (fnError) throw fnError
 
-    const payload = data as { brief?: Record<string, unknown> } | null
-    const next = payload?.brief
+    const values = (data as { values?: Record<string, unknown> } | null)?.values
+    if (!values) throw new Error('The fill came back empty.')
 
-    // Every field or none. A partial set is the case the preview exists for, but a set missing a
-    // field is a function bug rather than a draft, and applying it would blank the field.
-    if (!next || BRIEF_FIELDS.some((field) => typeof next[field.key] !== 'string')) {
-      throw new Error('The draft came back incomplete, so nothing was applied.')
+    // A key the form does not have is ignored rather than invented into state.
+    for (const field of fillFields.value) {
+      const value = values[field.key]
+      if (typeof value === 'string' && value !== '') form.value[field.key] = value
     }
-
-    brief.value = next as Record<string, string>
-    applied.value = []
   } catch (err) {
-    // The function's `detail` names the field or provider at fault; the SDK's own message does
-    // not. `describeEdgeFailure` reads it out of the error's `context` and, when the request
-    // never reached the function, reports the transport fault rather than the SDK's generic
-    // `Failed to send a request to the Edge Function`, which reads the same for every cause.
-    const failure = await describeEdgeFailure(err, 'The draft did not come back.')
-    if (failure.cause !== '') console.warn('[ai-draft-link]', failure)
-    draftError.value = failure.message
+    const failure = await describeEdgeFailure(err, 'The fill did not come back.')
+    if (failure.cause !== '') console.warn('[ai-fill-form]', failure)
+    fillError.value = failure.message
   } finally {
-    drafting.value = false
+    filling.value = false
   }
-}
-
-/** Moves one proposed field into the form, where it is an unsaved edit like anything else. */
-const applyBrief = (formField: string): void => {
-  const field = BRIEF_FIELDS.find((f) => f.form === formField)
-  if (!field || !brief.value) return
-
-  form.value[field.form] = brief.value[field.key]
-  if (!applied.value.includes(field.form)) applied.value.push(field.form)
-}
-
-const applyAll = (): void => {
-  for (const field of BRIEF_FIELDS) applyBrief(field.form)
-}
-
-const discardBrief = (): void => {
-  brief.value = null
-  applied.value = []
 }
 
 onMounted(async () => {
@@ -365,7 +330,6 @@ onMounted(async () => {
 const save = async (): Promise<void> => {
   saving.value = true
   error.value = null
-  discardBrief()
   try {
     // `api.admin_upsert_page` takes one jsonb argument; the keys must match the
     // names it reads out of that jsonb exactly.

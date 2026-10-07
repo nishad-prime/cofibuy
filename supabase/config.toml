@@ -105,3 +105,9 @@ verify_jwt = false
 
 [functions.bkash-execute]
 verify_jwt = false
+
+[functions.ai-fill-form]
+# The function authorizes its caller against `admin_pages` with the caller's own
+# JWT, so platform verification is redundant with the database guard - and the
+# guard answers with a useful error body instead of a bare gateway 401.
+verify_jwt = false

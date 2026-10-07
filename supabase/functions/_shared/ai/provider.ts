@@ -63,6 +63,8 @@ export type AiErrorCode =
   | 'invalid_arguments'
   /** Arrived well-formed but wrong after the one retry. Raised by generate.ts. */
   | 'schema'
+  /** The request itself was malformed - a bad field list, not a bad model. */
+  | 'invalid_fields'
 
 /**
  * Every way an AI call can fail, as one type.

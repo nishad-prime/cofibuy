@@ -25,7 +25,7 @@
     "db:types": "node scripts/generate-types.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run functions:check && npm run functions:test && npm run test",
     "check:all": "npm run check && npm run test:db && npm run db:types:check",
-    "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/bkash-create-payment/index.ts supabase/functions/bkash-execute/index.ts supabase/functions/ai-draft-copy/index.ts supabase/functions/ai-fill-form/index.ts",
+    "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/bkash-create-payment/index.ts supabase/functions/bkash-execute/index.ts supabase/functions/ai-fill-form/index.ts",
     "functions:test": "deno test --allow-env --config supabase/functions/deno.json supabase/functions",
     "functions:deploy": "supabase functions deploy --import-map supabase/functions/deno.json",
     "bootstrap": "node scripts/bootstrap.mjs",

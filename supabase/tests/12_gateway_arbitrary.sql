@@ -328,7 +328,7 @@ select is(
 -- there is no separate order page to reveal it after. The old rule - "revealed
 -- by the order, once, to the person who placed it" - died with that page.
 select is(
-  (select g ? 'account_number' from jsonb_array_elements(
+  (select g ? 'account_fields' from jsonb_array_elements(
     (api.get_public_page('guide') -> 'gateways')
   ) g where g ->> 'name_en' = 'Bank transfer'),
   true,
@@ -351,12 +351,16 @@ select is(
   'and the customer still learns which methods are automated'
 );
 
+-- Every gateway advertises its destination now: the checkout shows the account
+-- on the page the moment the method is selected, and there is no separate order
+-- page to reveal it after. This is the same operator decision that put
+-- `account_number` on the paywall (see the assertion above).
 select is(
-  (select bool_and(not (g ? 'account_fields')) from jsonb_array_elements(
+  (select bool_and(g ? 'account_fields') from jsonb_array_elements(
     (api.get_public_page('guide') -> 'gateways')
   ) g),
   true,
-  'no gateway of any kind advertises a destination'
+  'every gateway of any kind advertises a destination'
 );
 
 -- The view is a second door to the same rows, and it is granted to anon directly, so it

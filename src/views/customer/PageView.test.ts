@@ -298,6 +298,39 @@ describe('the page as the whole checkout', () => {
     expect(second.find('#amount').exists()).toBe(false)
   })
 
+  it('an order under review survives the refresh too', async () => {
+    // `under_review` is not one of the SQL's open statuses - a review does not
+    // block a second order - but it is exactly where a manual order sits after
+    // its proof was submitted. Skip it and the payment form reappears over the
+    // customer's heads on the first refresh.
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink(null), error: null })
+      if (name === 'my_orders')
+        return Promise.resolve({
+          data: [{ ...openOrder(), status: 'under_review' }],
+          error: null,
+        })
+      if (name === 'my_order_status')
+        return Promise.resolve({ data: { id: ORDER_ID, status: 'under_review' }, error: null })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const first = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+    expect(first.text()).toContain('AB12CD34')
+    expect(first.find('#amount').exists()).toBe(false)
+
+    const second = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+    expect(second.text()).toContain('AB12CD34')
+    expect(second.find('#amount').exists()).toBe(false)
+  })
+
   it('degrades to the new-order form when the order lookup fails', async () => {
     void 0
     rpc.mockImplementation((name: string) => {

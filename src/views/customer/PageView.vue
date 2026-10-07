@@ -428,9 +428,6 @@ const fileUpload = useFileUpload()
 
 let polling: ReturnType<typeof useOrderPolling> | null = null
 
-const isOrderOpen = (status: string): boolean =>
-  ['draft', 'awaiting_proof', 'rejected', 'locked'].includes(status)
-
 /** The open order's gateway, matched against this page's published methods. */
 const orderGateway = computed(() =>
   existingOrder.value && link.value
@@ -572,6 +569,12 @@ const adoptOrder = async (orderId: string): Promise<void> => {
   })
   if (status) orderDetails.value = status
 
+  // An approved order has nothing left to act on: what it bought takes the
+  // panel's place.
+  if (status?.status === 'approved') {
+    await fetchUnlocked()
+  }
+
   const { data: orders } = await rpcList<MyOrder>('my_orders')
   const mine = (orders ?? []).find((o) => o.id === orderId)
   if (mine) existingOrder.value = mine
@@ -605,11 +608,29 @@ const loadExistingOrder = async (): Promise<void> => {
     if (!sessionData.session) return
 
     const { data: orders } = await rpcList<MyOrder>('my_orders')
-    const mine = (orders ?? []).find(
-      (o) => o.slug === slug.value && (isOrderOpen(o.status) || o.status === 'approved'),
-    )
+
+    // `under_review` is deliberately missing from the SQL's open set (a review
+    // does not block a second order), but it is exactly the state a customer's
+    // order sits in across a refresh after submitting proof - skip it and the
+    // payment form reappears over their heads. Approved wins over everything
+    // (they already own it); an open order beats one under review, because the
+    // open one is the thing they can still act on.
+    const priority: Record<string, number> = {
+      approved: 0,
+      draft: 1,
+      awaiting_proof: 1,
+      rejected: 1,
+      locked: 1,
+      under_review: 2,
+    }
+
+    const mine = (orders ?? [])
+      .filter((o) => o.slug === slug.value && o.status in priority)
+      .sort((a, b) => (priority[a.status] ?? 9) - (priority[b.status] ?? 9))[0]
     if (!mine) return
 
+    // Approved needs no status details - the content is the whole panel - so
+    // it skips the status fetch entirely.
     if (mine.status === 'approved') {
       existingOrder.value = mine
       await fetchUnlocked()

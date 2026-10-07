@@ -462,20 +462,29 @@ const selectedInstructions = computed(() =>
     : null,
 )
 
+/**
+ * `my_order_status` nests the gateway - and with it everything about where the
+ * money goes - one level down, under `gateway`. Reading those fields off the
+ * top level is the bug that rendered an empty account card on the panel.
+ */
+const statusGateway = computed(
+  () => (orderDetails.value as { gateway?: Record<string, unknown> } | null)?.gateway ?? null,
+)
+
 const orderAccountLegacy = computed(() => {
-  const d = orderDetails.value as { account_number?: unknown; account_name?: unknown } | null
+  const g = statusGateway.value
   return {
-    number: typeof d?.account_number === 'string' ? d.account_number : null,
-    name: typeof d?.account_name === 'string' ? d.account_name : null,
+    number: typeof g?.account_number === 'string' ? g.account_number : null,
+    name: typeof g?.account_name === 'string' ? g.account_name : null,
   }
 })
 
-const orderEvidenceFields = computed(
-  () => (orderDetails.value?.evidence_fields ?? []) as unknown as EvidenceField[],
+const orderAccountFields = computed(
+  () => (statusGateway.value?.account_fields ?? []) as unknown as AccountField[],
 )
 
-const orderAccountFields = computed(
-  () => (orderDetails.value?.account_fields ?? []) as unknown as AccountField[],
+const orderEvidenceFields = computed(
+  () => (statusGateway.value?.evidence_fields ?? []) as unknown as EvidenceField[],
 )
 
 const fetchUnlocked = async (): Promise<void> => {

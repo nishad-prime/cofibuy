@@ -19,8 +19,10 @@ vi.mock('@/lib/supabase', () => ({
  * would assert against its data. A fresh `@/i18n` also resets the active locale,
  * which the `default_lang` tests depend on.
  */
+import type * as useSiteSettingsModule from '@/composables/useSiteSettings'
+
 async function load(): Promise<{
-  settings: typeof import('@/composables/useSiteSettings')
+  settings: typeof useSiteSettingsModule
   locale: () => string
 }> {
   vi.resetModules()

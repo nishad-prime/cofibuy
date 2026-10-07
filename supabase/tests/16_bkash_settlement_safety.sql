@@ -309,7 +309,7 @@ select lives_ok(
 );
 
 select is(
-  (select d.secret::jsonb ->> 'username'
+  (select d.decrypted_secret::jsonb ->> 'username'
      from private.secret_bundles b
      join vault.decrypted_secrets d on d.id = b.vault_secret_id
     where b.subject_id = (select id from public.payment_gateways
@@ -319,7 +319,7 @@ select is(
 );
 
 select is(
-  (select d.secret::jsonb ->> 'app_secret'
+  (select d.decrypted_secret::jsonb ->> 'app_secret'
      from private.secret_bundles b
      join vault.decrypted_secrets d on d.id = b.vault_secret_id
     where b.subject_id = (select id from public.payment_gateways
@@ -364,7 +364,7 @@ select lives_ok(
 );
 
 select is(
-  (select d.secret::jsonb ->> 'app_secret'
+  (select d.decrypted_secret::jsonb ->> 'app_secret'
      from private.secret_bundles b
      join vault.decrypted_secrets d on d.id = b.vault_secret_id
     where b.subject_id = (select id from public.payment_gateways
@@ -374,7 +374,7 @@ select is(
 );
 
 select is(
-  (select d.secret::jsonb ->> 'username'
+  (select d.decrypted_secret::jsonb ->> 'username'
      from private.secret_bundles b
      join vault.decrypted_secrets d on d.id = b.vault_secret_id
     where b.subject_id = (select id from public.payment_gateways

@@ -309,7 +309,7 @@ const payOnline = async (): Promise<void> => {
 
   try {
     const { data, error: payError } = await supabase.functions.invoke('bkash-create-payment', {
-      body: { orderId: orderId.value },
+      body: { orderId: orderId.value, origin: window.location.origin },
     })
 
     if (payError || data?.error) {

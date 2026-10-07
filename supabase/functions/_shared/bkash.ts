@@ -190,6 +190,9 @@ export async function createPayment(
     currency: string
     invoice: string
     payerReference: string
+    /** Where bKash sends the browser when the payment finishes. Must be one of the
+     * URLs whitelisted in the bKash merchant portal, or bKash refuses the create. */
+    callbackUrl: string
   },
 ): Promise<{ paymentId: string; redirectUrl: string }> {
   const payload = await bkashFetch(environment, '/create', {
@@ -199,6 +202,12 @@ export async function createPayment(
       'x-app-key': credentials.app_key,
     },
     body: {
+      // `mode` 0011 is Tokenized Checkout, and `callbackURL` is mandatory with it.
+      // Neither was sent for the whole life of this function: bKash answered every
+      // create with a bare 400, which is what "the bKash function doesn't work"
+      // turned out to be.
+      mode: '0011',
+      callbackURL: request.callbackUrl,
       amount: request.amount.toFixed(2),
       currency: request.currency,
       intent: 'sale',

@@ -157,7 +157,7 @@ select is(
 );
 
 select is(
-  (select secret::jsonb ->> 'api_key' from vault.decrypted_secrets
+  (select decrypted_secret::jsonb ->> 'api_key' from vault.decrypted_secrets
     where id = (select vault_secret_id from private.secret_bundles
                 where subject_kind = 'ai_provider')),
   'sk-live-abc123',
@@ -165,7 +165,7 @@ select is(
 );
 
 select is(
-  (select secret::jsonb ->> 'base_url' from vault.decrypted_secrets
+  (select decrypted_secret::jsonb ->> 'base_url' from vault.decrypted_secrets
     where id = (select vault_secret_id from private.secret_bundles
                 where subject_kind = 'ai_provider')),
   'https://api.example.test/v1',
@@ -257,7 +257,7 @@ select lives_ok(
 );
 
 select is(
-  (select secret::jsonb ->> 'api_key' from vault.decrypted_secrets
+  (select decrypted_secret::jsonb ->> 'api_key' from vault.decrypted_secrets
     where id = (select vault_secret_id from private.secret_bundles
                 where subject_kind = 'ai_provider')),
   'sk-live-abc123',
@@ -265,7 +265,7 @@ select is(
 );
 
 select is(
-  (select secret::jsonb ->> 'model' from vault.decrypted_secrets
+  (select decrypted_secret::jsonb ->> 'model' from vault.decrypted_secrets
     where id = (select vault_secret_id from private.secret_bundles
                 where subject_kind = 'ai_provider')),
   'bigger-model',
@@ -306,7 +306,7 @@ select is(
 );
 
 select is(
-  (select secret::jsonb ->> 'app_secret' from vault.decrypted_secrets
+  (select decrypted_secret::jsonb ->> 'app_secret' from vault.decrypted_secrets
     where id = (select vault_secret_id from private.secret_bundles
                 where subject_kind = 'gateway')),
   'merchant-secret',
@@ -314,7 +314,7 @@ select is(
 );
 
 select is(
-  (select secret::jsonb ->> 'api_key' from vault.decrypted_secrets
+  (select decrypted_secret::jsonb ->> 'api_key' from vault.decrypted_secrets
     where id = (select vault_secret_id from private.secret_bundles
                 where subject_kind = 'ai_provider')),
   'sk-live-abc123',

@@ -34,8 +34,11 @@ const CLIENT_OPTIONS: SupabaseClientOptions<'api'> = {
  * `api` schema from CLIENT_OPTIONS, and `ApiClient` below is read back off it. Annotating this
  * function is what would force a hand-written `any` back into the file.
  */
-function buildClient(key: string) {
-  return createClient(Deno.env.get('SUPABASE_URL') ?? '', key, CLIENT_OPTIONS)
+function buildClient(key: string, accessToken?: string) {
+  return createClient(Deno.env.get('SUPABASE_URL') ?? '', key, {
+    ...CLIENT_OPTIONS,
+    ...(accessToken ? { global: { headers: { Authorization: `Bearer ${accessToken}` } } } : {}),
+  })
 }
 
 /**
@@ -51,12 +54,20 @@ export type ApiClient = ReturnType<typeof buildClient>
 /**
  * A client acting as the caller, carrying their JWT.
  *
- * Used only for authorization calls that must run as that user - `admin_copy` for the draft's
- * owner check, `admin_links` for the brief's - so a staff member gets `42501` from the database
- * rather than a decision this code makes about them. Never used to read a secret.
+ * The caller's token goes in the `Authorization` header, where PostgREST reads the
+ * role from; the client's own key is the project's anon key, because the platform
+ * refuses a user JWT in the `apikey` slot with `Invalid API key`. Passing the token
+ * as the key used to work when every key was a long-lived JWT, and the failure it
+ * causes now is total: every owner check and every customer RPC in a deployed
+ * function is refused before the database is reached.
+ *
+ * Used only for authorization calls that must run as that user - `admin_pages` for
+ * the fill's owner check, `pay_online_start` for the customer's own order - so a
+ * staff member gets `42501` from the database rather than a decision this code
+ * makes about them. Never used to read a secret.
  */
 export function userClientFor(accessToken: string): ApiClient {
-  return buildClient(accessToken)
+  return buildClient(Deno.env.get('SUPABASE_ANON_KEY') ?? '', accessToken)
 }
 
 /**

@@ -61,7 +61,7 @@ select is(
 );
 
 select is(
-  (select count(distinct secret::jsonb ->> 'username') from vault.decrypted_secrets),
+  (select count(distinct decrypted_secret::jsonb ->> 'username') from vault.decrypted_secrets),
   2::bigint,
   'the two bundles hold different credentials rather than one shared secret'
 );
@@ -333,7 +333,7 @@ select is(
 );
 
 select is(
-  (select secret::jsonb ->> 'app_secret'
+  (select decrypted_secret::jsonb ->> 'app_secret'
    from vault.decrypted_secrets d
    join private.secret_bundles b on b.vault_secret_id = d.id
    join public.payment_gateways g on g.id = b.subject_id
@@ -343,7 +343,7 @@ select is(
 );
 
 select is(
-  (select secret::jsonb ->> 'app_secret'
+  (select decrypted_secret::jsonb ->> 'app_secret'
    from vault.decrypted_secrets d
    join private.secret_bundles b on b.vault_secret_id = d.id
    join public.payment_gateways g on g.id = b.subject_id

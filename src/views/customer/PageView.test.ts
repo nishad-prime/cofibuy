@@ -142,7 +142,9 @@ describe('kind_mismatch hand-off', () => {
 
     expect(invoke).toHaveBeenCalledWith(
       'bkash-create-payment',
-      expect.objectContaining({ body: { slug: SLUG, kind: KIND, amount: 500 } }),
+      expect.objectContaining({
+        body: expect.objectContaining({ slug: SLUG, kind: KIND, amount: 500 }),
+      }),
     )
     expect(routerPush).toHaveBeenCalledWith(`/${SLUG}/order/${ORDER_ID}`)
     expect(wrapper.text()).not.toContain('kind_mismatch')

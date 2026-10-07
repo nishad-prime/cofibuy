@@ -26,6 +26,11 @@ interface CreatePaymentBody {
   slug?: unknown
   kind?: unknown
   amount?: unknown
+  /** The storefront's origin, so bKash's callback lands on this site's own
+   * `/payment/return`. The merchant portal whitelists it; a value that is not
+   * whitelisted is refused by bKash, so a spoofed origin fails there and not
+   * here. */
+  origin?: unknown
 }
 
 Deno.serve(async (request) => {
@@ -104,6 +109,18 @@ Deno.serve(async (request) => {
       orderId = body.orderId as string
     }
 
+    // bKash sends the customer's browser here when the payment finishes. It has to
+    // be exactly the URL whitelisted in the merchant portal - same scheme, host and
+    // path - so it is built from the storefront's own origin and never guessed.
+    const origin =
+      typeof body?.origin === 'string' && body.origin.startsWith('https://')
+        ? body.origin.replace(/\/$/, '')
+        : ''
+    if (origin === '') {
+      return errorResponse('invalid_request', 'origin must be an https URL', 400)
+    }
+    const callbackUrl = `${origin}/payment/return`
+
     const environment = asEnvironment(start.environment)
 
     // The only secret read in this function, and it is read with the service-role client
@@ -118,6 +135,7 @@ Deno.serve(async (request) => {
       // this is what makes a bKash statement reconcilable to an order without the IPN.
       invoice: String(start.invoice),
       payerReference: String(start.payer_reference),
+      callbackUrl,
     })
 
     // Recorded before the customer is sent anywhere. A payment bKash accepted but that we

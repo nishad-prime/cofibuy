@@ -117,7 +117,7 @@ select ok(
 );
 
 select is(
-  (select secret::jsonb ->> 'app_secret' from vault.decrypted_secrets),
+  (select decrypted_secret::jsonb ->> 'app_secret' from vault.decrypted_secrets),
   'secret-one',
   'the credential reached Vault rather than a plain column'
 );
@@ -227,13 +227,13 @@ select lives_ok(
 );
 
 select is(
-  (select secret::jsonb ->> 'app_secret' from vault.decrypted_secrets),
+  (select decrypted_secret::jsonb ->> 'app_secret' from vault.decrypted_secrets),
   'secret-one',
   'an empty credential payload leaves the stored secret alone'
 );
 
 select is(
-  (select secret::jsonb ->> 'username' from vault.decrypted_secrets),
+  (select decrypted_secret::jsonb ->> 'username' from vault.decrypted_secrets),
   'merchant-one',
   'and leaves every other stored credential alone too'
 );
@@ -257,19 +257,19 @@ select lives_ok(
 );
 
 select is(
-  (select secret::jsonb ->> 'app_secret' from vault.decrypted_secrets),
+  (select decrypted_secret::jsonb ->> 'app_secret' from vault.decrypted_secrets),
   'secret-two',
   'the retyped credential is the one that changed'
 );
 
 select is(
-  (select secret::jsonb ->> 'username' from vault.decrypted_secrets),
+  (select decrypted_secret::jsonb ->> 'username' from vault.decrypted_secrets),
   'merchant-one',
   'the credentials the operator never saw are still there afterwards'
 );
 
 select is(
-  (select secret::jsonb ->> 'password' from vault.decrypted_secrets),
+  (select decrypted_secret::jsonb ->> 'password' from vault.decrypted_secrets),
   'pw-one',
   'merge semantics hold for every untouched key, not just the first'
 );

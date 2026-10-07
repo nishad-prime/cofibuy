@@ -127,11 +127,18 @@ create table if not exists vault.secrets (
   updated_at timestamptz not null default now()
 );
 
--- Supabase exposes the decrypted value through a view rather than the base table. Mirroring
--- that means a migration cannot accidentally read `secret` from the wrong object and pass
--- locally where the permission would differ in production.
+-- Supabase exposes the decrypted value through a view rather than the base table, and the
+-- real view carries BOTH columns: `secret`, still the ciphertext, and `decrypted_secret`,
+-- the plaintext. The stub used to put plaintext under `secret`, so a function that read
+-- the wrong column passed every test here and handed providers ciphertext in production.
+-- Mirroring that means a migration cannot accidentally read `secret` from the wrong object
+-- and pass locally where the content would differ in production - and the sentinel makes
+-- a wrong-column read fail the ::jsonb cast right here, not at the customer.
 create or replace view vault.decrypted_secrets as
-  select id, name, description, secret, created_at, updated_at
+  select id, name, description,
+         'STUB-CIPHERTEXT:' || secret as secret,
+         secret as decrypted_secret,
+         created_at, updated_at
   from vault.secrets;
 
 create or replace function vault.create_secret(

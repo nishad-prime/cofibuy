@@ -393,7 +393,15 @@ const createOrder = async (): Promise<void> => {
     // slow function cannot be double-submitted into two sessions.
     if (kindPaysOnline.value) {
       const { data, error: fnError } = await supabase.functions.invoke('bkash-create-payment', {
-        body: { slug: slug.value, kind: selectedKind.value, amount: amount.value },
+        // bKash needs to know where to send the browser back to; the function
+        // builds the callback from this origin and bKash's own whitelist is
+        // what makes a spoofed value harmless.
+        body: {
+          slug: slug.value,
+          kind: selectedKind.value,
+          amount: amount.value,
+          origin: window.location.origin,
+        },
       })
 
       if (fnError) {

@@ -63,18 +63,32 @@ select is(
   'one call takes the customer from nothing to an open payment session'
 );
 
+-- The create-payment call the edge function makes next reads the invoice and the
+-- payer reference off this payload; a missing one went to bKash as "undefined".
+-- The invoice must be a reference code the order table actually knows. The value
+-- is stashed in a GUC because the alternative - comparing inside one statement -
+-- either re-runs the volatile call per row or races the created_at ordering.
+select test_data.as_role(
+  'authenticated',
+  $q$select set_config(
+    'test.invoice',
+    api.pay_online_start(
+      'report',
+      (select kind from public.payment_gateways where provider = 'bkash_pgw' limit 1),
+      500
+    ) ->> 'invoice',
+    true
+  ) as res$q$
+);
+
 select is(
   test_data.as_role(
-    'authenticated',
-    -- `my_orders` is the only read path an authenticated caller has on orders;
-    -- the base table is closed to them by design.
-    $q$select coalesce(
-      (select status::text from api.my_orders() limit 1),
-      'none'
-    ) as res$q$
+    'postgres',
+    $q$select (select count(*) from public.orders
+      where reference_code = current_setting('test.invoice', true))::text as res$q$
   ) #> '{rows,0,res}',
-  '"awaiting_proof"',
-  'and the order is awaiting proof of payment, which for bKash is the return leg'
+  '"1"',
+  'and it carries the order reference as the merchant invoice'
 );
 
 select * from finish();

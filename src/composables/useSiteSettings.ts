@@ -39,6 +39,11 @@ export interface SiteSettings {
   /** ISO code money is formatted in; always one of the supported list. */
   currency: Currency
   contact: string | null
+  /** The index's own words. Null falls back to the bundled copy keys. */
+  index_heading_en: string | null
+  index_heading_bn: string | null
+  index_subheading_en: string | null
+  index_subheading_bn: string | null
 }
 
 /**
@@ -58,6 +63,10 @@ function defaults(): SiteSettings {
     default_lang: 'bn',
     currency: DEFAULT_CURRENCY,
     contact: null,
+    index_heading_en: null,
+    index_heading_bn: null,
+    index_subheading_en: null,
+    index_subheading_bn: null,
   }
 }
 
@@ -85,6 +94,12 @@ function coerce(raw: unknown): SiteSettings {
     currency: isSupportedCurrency(row.currency) ? row.currency : DEFAULT_CURRENCY,
     contact:
       typeof row.contact === 'string' && row.contact.trim() !== '' ? row.contact.trim() : null,
+    index_heading_en: typeof row.index_heading_en === 'string' ? row.index_heading_en : null,
+    index_heading_bn: typeof row.index_heading_bn === 'string' ? row.index_heading_bn : null,
+    index_subheading_en:
+      typeof row.index_subheading_en === 'string' ? row.index_subheading_en : null,
+    index_subheading_bn:
+      typeof row.index_subheading_bn === 'string' ? row.index_subheading_bn : null,
   }
 }
 

@@ -86,13 +86,23 @@ alter table public.pages
 -- config is public by design, but the paid body is still grant-only and the
 -- price overrides are still resolved server side.
 drop view public.paywall_links_public;
-create view public.pages_public as
+create view public.pages_public
+  -- Security invoker, like the view it replaces: the projection adds nothing
+  -- and must not quietly bypass the table's RLS for unlisted rows.
+  with (security_invoker = on)
+  as
   select id, slug, title_en, title_bn, teaser_md_en, teaser_md_bn,
          unlock_cta_label_en, unlock_cta_label_bn, unlock_cta_url,
          template, template_config, sort_order
   from public.pages
   where is_active;
 grant select on public.pages_public to anon, authenticated;
+
+-- The security-invoker view resolves column rights against the base table, so
+-- the two template columns the projection now carries need their own grants.
+-- The config is what the renderer draws the page from: public by design, and
+-- holding nothing the customer is not told anyway.
+grant select (template, template_config) on public.pages to anon, authenticated;
 
 -- effective_min: recreated from the renamed table
 CREATE OR REPLACE FUNCTION private.effective_min(p_link pages, p_settings site_settings)

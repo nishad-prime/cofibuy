@@ -88,10 +88,11 @@ select is(
   'no staff data in the public payload'
 );
 
+-- Seven settings plus the four index words the index editor saves here.
 select is(
   (select count(*) from jsonb_object_keys(api.get_public_settings())),
-  7,
-  'the projection is exactly the seven published keys'
+  11,
+  'the projection is exactly the eleven published keys'
 );
 
 -- ---------------------------------------------------------------------------

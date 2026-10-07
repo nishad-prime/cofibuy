@@ -1019,6 +1019,10 @@ export type Database = {
           updated_at: string
           maintenance_mode: boolean
           currency: string
+          index_heading_en: string | null
+          index_heading_bn: string | null
+          index_subheading_en: string | null
+          index_subheading_bn: string | null
         }
         Insert: {
           id?: number
@@ -1030,6 +1034,10 @@ export type Database = {
           updated_at?: string
           maintenance_mode?: boolean
           currency?: string
+          index_heading_en?: string | null
+          index_heading_bn?: string | null
+          index_subheading_en?: string | null
+          index_subheading_bn?: string | null
         }
         Update: {
           id?: number
@@ -1041,6 +1049,10 @@ export type Database = {
           updated_at?: string
           maintenance_mode?: boolean
           currency?: string
+          index_heading_en?: string | null
+          index_heading_bn?: string | null
+          index_subheading_en?: string | null
+          index_subheading_bn?: string | null
         }
         Relationships: []
       }

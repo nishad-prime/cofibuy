@@ -56,6 +56,58 @@
       </section>
 
       <section class="card card-pad">
+        <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.settings.index') }}</h2>
+        <p class="hint">{{ t('admin.settings.indexHint') }}</p>
+
+        <div class="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="label" for="index_heading_en">{{
+              t('admin.settings.indexHeadingEn')
+            }}</label>
+            <input
+              id="index_heading_en"
+              v-model="form.index_heading_en"
+              type="text"
+              class="field"
+            />
+          </div>
+          <div>
+            <label class="label" for="index_heading_bn">{{
+              t('admin.settings.indexHeadingBn')
+            }}</label>
+            <input
+              id="index_heading_bn"
+              v-model="form.index_heading_bn"
+              type="text"
+              class="field"
+            />
+          </div>
+          <div>
+            <label class="label" for="index_subheading_en">{{
+              t('admin.settings.indexSubEn')
+            }}</label>
+            <textarea
+              id="index_subheading_en"
+              v-model="form.index_subheading_en"
+              rows="2"
+              class="field"
+            ></textarea>
+          </div>
+          <div>
+            <label class="label" for="index_subheading_bn">{{
+              t('admin.settings.indexSubBn')
+            }}</label>
+            <textarea
+              id="index_subheading_bn"
+              v-model="form.index_subheading_bn"
+              rows="2"
+              class="field"
+            ></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-pad">
         <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.settings.recovery') }}</h2>
 
         <label class="mt-4 flex items-start gap-3">
@@ -118,6 +170,10 @@ interface SettingsForm {
   maintenance_mode: boolean
   contact: string
   currency: string
+  index_heading_en: string
+  index_heading_bn: string
+  index_subheading_en: string
+  index_subheading_bn: string
 }
 
 /**
@@ -138,6 +194,10 @@ const form = ref<SettingsForm>({
   maintenance_mode: false,
   contact: '',
   currency: 'BDT',
+  index_heading_en: '',
+  index_heading_bn: '',
+  index_subheading_en: '',
+  index_subheading_bn: '',
 })
 
 const loading = ref(true)
@@ -163,6 +223,12 @@ onMounted(async () => {
         // A stored code outside the allowlist can only come from a direct write that
         // predates the constraint; the select cannot render it, so fall back to BDT.
         currency: isSupportedCurrency(data.currency) ? data.currency : 'BDT',
+        index_heading_en: typeof data.index_heading_en === 'string' ? data.index_heading_en : '',
+        index_heading_bn: typeof data.index_heading_bn === 'string' ? data.index_heading_bn : '',
+        index_subheading_en:
+          typeof data.index_subheading_en === 'string' ? data.index_subheading_en : '',
+        index_subheading_bn:
+          typeof data.index_subheading_bn === 'string' ? data.index_subheading_bn : '',
       }
     }
   } catch (err) {
@@ -190,6 +256,12 @@ const save = async (): Promise<void> => {
         maintenance_mode: form.value.maintenance_mode,
         contact: form.value.contact,
         currency: form.value.currency,
+        // Always sent: the fields are loaded on mount, so they round-trip what
+        // the operator found, and a blank means "clear it" in the RPC.
+        index_heading_en: form.value.index_heading_en,
+        index_heading_bn: form.value.index_heading_bn,
+        index_subheading_en: form.value.index_subheading_en,
+        index_subheading_bn: form.value.index_subheading_bn,
       },
     })
     if (rpcError) {

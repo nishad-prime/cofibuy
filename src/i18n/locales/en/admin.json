@@ -148,7 +148,13 @@
     "contactHint": "Shown to customers while the shop is closed. Leave blank to remove.",
     "save": "Save settings",
     "saving": "Saving...",
-    "saved": "Settings saved."
+    "saved": "Settings saved.",
+    "index": "Public index",
+    "indexHint": "The heading and subheading shown above the list of pages. Leave blank to use the shipped wording.",
+    "indexHeadingEn": "Index heading (EN)",
+    "indexHeadingBn": "Index heading (BN)",
+    "indexSubEn": "Index subheading (EN)",
+    "indexSubBn": "Index subheading (BN)"
   },
   "copy": {
     "heading": "Site copy",

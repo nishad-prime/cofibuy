@@ -86,6 +86,11 @@ describe('projecting the row', () => {
       default_lang: 'en',
       currency: 'USD',
       contact: '01700000000',
+      // The index words ride the same projection; a row without them leaves nulls.
+      index_heading_en: null,
+      index_heading_bn: null,
+      index_subheading_en: null,
+      index_subheading_bn: null,
     })
   })
 

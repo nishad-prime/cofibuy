@@ -1,10 +1,12 @@
 <template>
   <main class="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:py-14">
     <section class="max-w-2xl">
+      <!-- The index's own words win over the bundled copy: the settings fetch is
+           best-effort, so the copy keys are the fallback a slow database leaves. -->
       <h1 class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
-        {{ t('customer.home.heading') }}
+        {{ heading }}
       </h1>
-      <p class="mt-3 text-base text-stone-600">{{ t('customer.home.subheading') }}</p>
+      <p class="mt-3 text-base text-stone-600">{{ subheading }}</p>
     </section>
 
     <div v-if="loading" class="empty-state">{{ t('customer.common.loading') }}</div>
@@ -33,14 +35,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getSupabase } from '@/lib/supabase'
 import AppIcon from '@/components/AppIcon.vue'
 import PageCard from '@/components/customer/PageCard.vue'
+import { useContent } from '@/composables/useContent'
+import { useSiteSettings } from '@/composables/useSiteSettings'
 
 const { t } = useI18n()
+const { pick } = useContent()
+const { settings } = useSiteSettings()
 const supabase = getSupabase()
+
+// The operator's index words, falling back to the shipped copy when unset.
+const heading = computed(
+  () =>
+    pick({
+      bn: settings.value.index_heading_bn,
+      en: settings.value.index_heading_en,
+    }) ?? t('customer.home.heading'),
+)
+const subheading = computed(
+  () =>
+    pick({
+      bn: settings.value.index_subheading_bn,
+      en: settings.value.index_subheading_en,
+    }) ?? t('customer.home.subheading'),
+)
 
 // `list_public_pages` returns the `paywall_links_public` view, so the teaser and
 // CTA columns are the `*_md_*` variants.

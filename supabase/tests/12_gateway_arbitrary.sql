@@ -323,24 +323,24 @@ select is(
   'an arbitrary kind reaches the customer payload'
 );
 
--- The destination is not on the paywall. Before, the list page carried every account number
--- and account name the shop had, to anyone who asked, and the customer chose a method from
--- among accounts belonging to every other customer of the shop. The account is revealed by
--- the order, once, to the person who placed it.
-select is(
-  (select g -> 'account_fields' from jsonb_array_elements(
-    (api.get_public_page('guide') -> 'gateways')
-  ) g where g ->> 'name_en' = 'Bank transfer'),
-  null::jsonb,
-  'the paywall carries no destination to send the money to'
-);
-
+-- The destination IS on the paywall now, by operator decision: the checkout
+-- shows the account and the proof form the moment a method is selected, and
+-- there is no separate order page to reveal it after. The old rule - "revealed
+-- by the order, once, to the person who placed it" - died with that page.
 select is(
   (select g ? 'account_number' from jsonb_array_elements(
     (api.get_public_page('guide') -> 'gateways')
   ) g where g ->> 'name_en' = 'Bank transfer'),
-  false,
-  'and no account number either'
+  true,
+  'the paywall carries the destination to send the money to'
+);
+
+select is(
+  (select g ? 'evidence_fields' from jsonb_array_elements(
+    (api.get_public_page('guide') -> 'gateways')
+  ) g where g ->> 'name_en' = 'Bank transfer'),
+  true,
+  'and the proof fields it asks for'
 );
 
 select is(

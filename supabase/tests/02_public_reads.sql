@@ -3,7 +3,7 @@
 -- Two questions here. What can a visitor see before signing in, and — the one
 -- that actually matters — can they find the minimum a link is hiding?
 
-select plan(31);
+select plan(33);
 
 select test_data.reset();
 
@@ -199,6 +199,24 @@ select is(
   (api.get_public_page('unlisted-report') ->> 'slug'),
   'unlisted-report',
   'but it is still readable by its slug, because unlisted is not private'
+);
+
+-- The paywall renders the account details and the proof form the moment a
+-- method is selected, so the public payload has to carry them; and a hidden
+-- page has to know it is standalone.
+select is(
+  (
+    api.get_public_page('unlisted-report')
+    -> 'gateways' -> 0 ? 'account_number'
+  ),
+  true,
+  'the published gateway carries its account details'
+);
+
+select is(
+  (api.get_public_page('unlisted-report') ->> 'is_listed'),
+  'false',
+  'a hidden page says so, so it can drop the way back to the index'
 );
 
 select test_data.as_anon();

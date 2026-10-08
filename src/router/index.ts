@@ -72,18 +72,32 @@ const routes: RouteRecordRaw[] = [
         name: 'admin-order-detail',
         component: () => import('@/views/admin/OrderDetailView.vue'),
       },
+      // The old /admin/links paths redirect: URLs an operator has bookmarked,
+      // or a stale tab, must not become a 404 after a rename.
       {
         path: 'links',
+        redirect: '/admin/pages',
+      },
+      {
+        path: 'links/new',
+        redirect: '/admin/pages/new',
+      },
+      {
+        path: 'links/:id/edit',
+        redirect: '/admin/pages/:id/edit',
+      },
+      {
+        path: 'pages',
         name: 'admin-pages',
         component: () => import('@/views/admin/PagesView.vue'),
       },
       {
-        path: 'links/new',
+        path: 'pages/new',
         name: 'admin-pages-new',
         component: () => import('@/views/admin/PageFormView.vue'),
       },
       {
-        path: 'links/:id/edit',
+        path: 'pages/:id/edit',
         name: 'admin-pages-edit',
         component: () => import('@/views/admin/PageFormView.vue'),
       },

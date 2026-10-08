@@ -393,7 +393,7 @@ describe('the page as the whole checkout', () => {
     expect(wrapper.text()).toContain(i18n.global.t('customer.paywall.custom') as string)
 
     // Tapping a chip sets the amount the summary shows - no typing at all.
-    await chips[1].trigger('click')
+    await chips[1]!.trigger('click')
     expect(wrapper.text()).toContain('৳500')
 
     // Custom brings the field back, and it starts empty for an arbitrary value.

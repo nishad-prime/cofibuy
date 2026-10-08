@@ -119,7 +119,7 @@ interface NavItem {
 
 const ITEMS: NavItem[] = [
   { to: '/admin/queue', label: 'Order queue', icon: 'queue' },
-  { to: '/admin/links', label: 'Links', icon: 'link' },
+  { to: '/admin/pages', label: 'Pages', icon: 'link' },
   { to: '/admin/gateways', label: 'Gateways', icon: 'card' },
   { to: '/admin/team', label: 'Team', icon: 'team', ownerOnly: true },
   { to: '/admin/settings', label: 'Settings', icon: 'settings', ownerOnly: true },
@@ -136,7 +136,7 @@ const navOpen = ref(false)
 const visibleItems = computed(() => ITEMS.filter((item) => !item.ownerOnly || isOwner.value))
 
 // Exact match for the index routes, prefix match for nested ones such as
-// /admin/links/:id/edit, so the parent stays highlighted while editing.
+// /admin/pages/:id/edit, so the parent stays highlighted while editing.
 function isActive(to: string): boolean {
   return route.path === to || route.path.startsWith(`${to}/`)
 }

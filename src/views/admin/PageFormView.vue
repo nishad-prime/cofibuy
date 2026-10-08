@@ -1,6 +1,6 @@
 <template>
   <div>
-    <router-link to="/admin/links" class="mb-4 inline-block text-blue-600 hover:underline">
+    <router-link to="/admin/pages" class="mb-4 inline-block text-blue-600 hover:underline">
       ← Back to pages
     </router-link>
 

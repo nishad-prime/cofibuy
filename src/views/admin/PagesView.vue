@@ -5,7 +5,7 @@
         <h1 class="page-title">Links</h1>
         <p class="page-subtitle">Each link is one sellable page customers open.</p>
       </div>
-      <router-link to="/admin/links/new" class="btn-primary">
+      <router-link to="/admin/pages/new" class="btn-primary">
         <AppIcon name="plus" :size="18" />
         New link
       </router-link>
@@ -69,7 +69,7 @@
               <td class="td">
                 <div class="flex items-center justify-end gap-1">
                   <router-link
-                    :to="`/admin/links/${link.id}/edit`"
+                    :to="`/admin/pages/${link.id}/edit`"
                     class="btn-secondary !px-3 !py-1.5 !text-xs"
                   >
                     Edit

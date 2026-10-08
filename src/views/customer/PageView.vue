@@ -210,6 +210,41 @@
               An automatic method has no details to show - the payment IS the
               button - so it keeps the summary and its own form.
             -->
+            <!-- The summary is the same for both paths: what is being bought,
+                 and for how much. The method-specific bodies follow it. -->
+            <section v-if="selectedKind" class="card card-pad">
+              <h2 class="text-sm font-semibold text-stone-900">
+                {{ t('customer.paywall.summary') }}
+              </h2>
+              <dl class="mt-3 space-y-2 text-sm">
+                <div class="flex justify-between gap-4">
+                  <dt class="text-stone-500">{{ t('customer.paywall.summaryLink') }}</dt>
+                  <dd class="text-right font-medium text-stone-900">{{ linkTitle }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-stone-500">{{ t('customer.paywall.summaryAmount') }}</dt>
+                  <dd class="ltr-value font-medium text-stone-900">{{ money(amount) }}</dd>
+                </div>
+              </dl>
+
+              <div v-if="linkCta || ctaUrl" class="mt-5 border-t border-stone-100 pt-4">
+                <p class="text-sm font-medium text-stone-700">
+                  {{ t('customer.paywall.deliverable') }}
+                </p>
+                <p class="mt-1 text-sm text-stone-600">{{ linkCta }}</p>
+                <a
+                  v-if="ctaUrl"
+                  :href="ctaUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mt-2 inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline"
+                >
+                  <span class="ltr-value">{{ ctaUrl }}</span>
+                  <AppIcon name="external" :size="14" />
+                </a>
+              </div>
+            </section>
+
             <section
               v-if="selectedGateway && selectedGateway.provider === null"
               class="card card-pad"
@@ -241,37 +276,6 @@
               class="card card-pad"
               @submit.prevent="createOrder"
             >
-              <h2 class="text-sm font-semibold text-stone-900">
-                {{ t('customer.paywall.summary') }}
-              </h2>
-              <dl class="mt-3 space-y-2 text-sm">
-                <div class="flex justify-between gap-4">
-                  <dt class="text-stone-500">{{ t('customer.paywall.summaryLink') }}</dt>
-                  <dd class="text-right font-medium text-stone-900">{{ linkTitle }}</dd>
-                </div>
-                <div class="flex justify-between gap-4">
-                  <dt class="text-stone-500">{{ t('customer.paywall.summaryAmount') }}</dt>
-                  <dd class="ltr-value font-medium text-stone-900">{{ money(amount) }}</dd>
-                </div>
-              </dl>
-
-              <div v-if="linkCta || ctaUrl" class="mt-5 border-t border-stone-100 pt-4">
-                <p class="text-sm font-medium text-stone-700">
-                  {{ t('customer.paywall.deliverable') }}
-                </p>
-                <p class="mt-1 text-sm text-stone-600">{{ linkCta }}</p>
-                <a
-                  v-if="ctaUrl"
-                  :href="ctaUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="mt-2 inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline"
-                >
-                  <span class="ltr-value">{{ ctaUrl }}</span>
-                  <AppIcon name="external" :size="14" />
-                </a>
-              </div>
-
               <button
                 type="submit"
                 class="btn-primary mt-6 w-full"

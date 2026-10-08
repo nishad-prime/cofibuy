@@ -67,8 +67,8 @@ function publicLink(provider: string | null) {
     teaser_md_bn: null,
     teaser_md_en: null,
     unlock_cta_label_bn: null,
-    unlock_cta_label_en: null,
-    unlock_cta_url: null,
+    unlock_cta_label_en: 'Get the pack',
+    unlock_cta_url: 'https://example.com/pack',
     min_amount: 0,
     min_hidden: false,
     template: 'standard',
@@ -227,6 +227,27 @@ describe('the page as the whole checkout', () => {
 
     expect(wrapper.find('#amount').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('AB12CD34')
+  })
+
+  it('the summary shows for a manual selection too, not only online', async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink(null), error: null })
+      if (name === 'my_orders') return Promise.resolve({ data: [], error: null })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    // Summary heading and the deliverable note belong to both paths; the form
+    // the summary once lived in was the online one, so a manual selection lost
+    // everything above the account details.
+    expect(wrapper.text()).toContain(i18n.global.t('customer.paywall.summary') as string)
+    expect(wrapper.text()).toContain(i18n.global.t('customer.paywall.deliverable') as string)
+    expect(wrapper.text()).toContain('01700000000')
   })
 
   it('the selected manual method shows its account rows on the page', async () => {

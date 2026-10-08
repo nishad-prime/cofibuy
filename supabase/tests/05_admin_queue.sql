@@ -12,7 +12,7 @@
 set client_min_messages = warning;
 set application_name = 'test-05-admin';
 
-select plan(71);
+select plan(80);
 
 -- ---------------------------------------------------------------------------
 -- A customer is nobody
@@ -567,7 +567,7 @@ select is(
 );
 
 select is(
-  (api.admin_stats() ->> 'active_links')::int,
+  (api.admin_stats() ->> 'active_pages')::int,
   1,
   'and knows the catalogue'
 );
@@ -576,6 +576,66 @@ select is(
   (api.admin_stats() ->> 'active_gateways')::int,
   1,
   'and the payment methods it is taking'
+);
+
+-- The wider dashboard numbers: three customers placed three orders in this
+-- window, one expired later (subject c's order lapses on its own), and the
+-- 30-day windows cover everything the fixtures just created.
+select is(
+  (api.admin_stats() ->> 'total_orders')::int,
+  3,
+  'and counts every order ever placed'
+);
+
+select is(
+  (api.admin_stats() ->> 'customers')::int,
+  3,
+  'and counts distinct customers, not orders'
+);
+
+select is(
+  (api.admin_stats() ->> 'orders_30d')::int,
+  3,
+  'and the 30-day window covers the fixtures'
+);
+
+select is(
+  (api.admin_stats() ->> 'revenue_30d')::numeric,
+  750::numeric,
+  'and the revenue window matches the all-time figure here'
+);
+
+-- The analytics series: one row per day for the window, zeros included - a
+-- chart that skips quiet days draws a line through time that does not exist.
+select is(
+  (select count(*) from api.admin_analytics(30))::int,
+  30,
+  'the analytics window is one row per day, zeros included'
+);
+
+select is(
+  (select sum(orders_created) from api.admin_analytics(30))::int,
+  3,
+  'and the daily created counts sum to every order'
+);
+
+select is(
+  (select sum(revenue_approved) from api.admin_analytics(30))::numeric,
+  750::numeric,
+  'and the daily revenue sums to the approved money'
+);
+
+-- Per-page performance: the one page that sold, ranked with its money.
+select is(
+  (select count(*) from api.admin_page_performance(5))::int,
+  1::bigint,
+  'the performance table lists selling pages'
+);
+
+select is(
+  (select revenue from api.admin_page_performance(5))::numeric,
+  750::numeric,
+  'and carries the page revenue'
 );
 
 select * from finish();

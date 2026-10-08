@@ -16,6 +16,16 @@ export type Database = {
     Functions: {
       admin_ai_providers: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_ai_settings: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      admin_analytics: {
+        Args: {
+          p_days?: number
+          day?: string
+          orders_created?: number
+          orders_approved?: number
+          revenue_approved?: number
+        }
+        Returns: Json[]
+      }
       admin_auto_providers: { Args: Record<PropertyKey, never>; Returns: Json[] }
       admin_delete_gateway: {
         Args: {
@@ -76,6 +86,17 @@ export type Database = {
           created_at?: string
           submitted_at?: string
           has_duplicate_trxid?: boolean
+        }
+        Returns: Json[]
+      }
+      admin_page_performance: {
+        Args: {
+          p_limit?: number
+          slug?: string
+          title_en?: string
+          title_bn?: string
+          orders_approved?: number
+          revenue?: number
         }
         Returns: Json[]
       }

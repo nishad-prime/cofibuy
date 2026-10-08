@@ -327,3 +327,111 @@ on conflict (slug) do update set
   template = excluded.template, template_config = excluded.template_config,
   is_active = excluded.is_active, is_listed = excluded.is_listed,
   sort_order = excluded.sort_order;
+
+insert into public.pages (
+  slug, title_en, title_bn, teaser_md_en, teaser_md_bn,
+  unlock_body_md_en, unlock_body_md_bn,
+  unlock_cta_label_en, unlock_cta_label_bn, unlock_cta_url,
+  template, template_config,
+  is_active, is_listed, sort_order
+)
+values (
+  '18plus-collection',
+  'The 18+ Collection',
+  '১৮+ কালেকশন',
+  'Our adults-only collection. Age-verified access, delivered discreetly.',
+  'আমাদের শুধুমাত্র প্রাপ্তবয়স্কদের কালেকশন। বয়স যাচাই করা অ্যাক্সেস, গোপনীয়তার সাথে ডেলিভারি।',
+  '## Your access
+
+The full 18+ collection is unlocked on this page. Bookmark it - your access
+does not expire. By opening this page you confirm you are 18 or older.',
+  '## আপনার অ্যাক্সেস
+
+পূর্ণ ১৮+ কালেকশন এই পেজেই আনলক হবে। পেজটি বুকমার্ক করুন - আপনার অ্যাক্সেসের
+মেয়াদ শেষ হবে না। এই পেজ খুললে আপনি নিশ্চিত করছেন যে আপনার বয়স ১৮ বা তার বেশি।',
+  'Open the collection', 'কালেকশন দেখুন', 'https://example.com/18plus',
+  'sales-landing',
+  '{
+    "hero_eyebrow_en": "18+ only · Age verified",
+    "hero_eyebrow_bn": "শুধু ১৮+ · বয়স যাচাইকৃত",
+    "hero_title_en": "The 18+ Collection",
+    "hero_title_bn": "১৮+ কালেকশন",
+    "hero_subtitle_en": "A curated adults-only library, delivered discreetly. Verified age required - no exceptions.",
+    "hero_subtitle_bn": "বাছাই করা প্রাপ্তবয়স্কদের লাইব্রেরি, গোপনীয়তার সাথে ডেলিভারি। বয়স যাচাই আবশ্যক - কোনো ব্যতিক্রম নয়।",
+    "hero_image_url": "",
+    "hero_image_alt_en": "The 18+ collection cover",
+    "hero_image_alt_bn": "১৮+ কালেকশনের কভার",
+    "hero_cta_en": "Get access",
+    "hero_cta_bn": "অ্যাক্সেস নিন",
+    "problem_heading_en": "Quality adult content is buried under noise",
+    "problem_heading_bn": "ভালো প্রাপ্তবয়স্ক কনটেন্ট শব্দের নিচে হারিয়ে যায়",
+    "problem_body_en": "Most of what is out there is ads, pop-ups and re-uploads of re-uploads. This collection is the opposite: curated, complete, and delivered without a single redirect.",
+    "problem_body_bn": "বাইরের বেশিরভাগ জিনিসই বিজ্ঞাপন, পপ-আপ আর বারবার কপি করা কপি। এই কালেকশন তার উল্টো: বাছাই করা, সম্পূর্ণ, এবং কোনো রিডাইরেক্ট ছাড়াই ডেলিভারি।",
+    "benefits": [
+      { "icon": "🔒", "title_en": "Discreet by design", "title_bn": "সম্পূর্ণ গোপনীয়",
+        "body_en": "No names on statements, no emails you did not ask for. The charge reads like any other purchase.",
+        "body_bn": "স্টেটমেন্টে নাম নেই, অনাকাঙ্ক্ষিত ইমেইল নেই। চার্জটি দেখতে সাধারণ কেনাকাটার মতোই।" },
+      { "icon": "⚡", "title_en": "Instant, permanent access", "title_bn": "তাৎক্ষণিক ও স্থায়ী অ্যাক্সেস",
+        "body_en": "The moment your payment is approved, the collection unlocks on this page - and stays unlocked.",
+        "body_bn": "পেমেন্ট অনুমোদনের সাথে সাথেই কালেকশন এই পেজে আনলক হবে - এবং আনলক থাকবে।" },
+      { "icon": "📥", "title_en": "Complete drops, no dead links", "title_bn": "সম্পূর্ণ ড্রপ, কোনো মৃত লিংক নেই",
+        "body_en": "Every volume is checked before it goes in. What you buy is what opens.",
+        "body_bn": "প্রতিটি ভলিউম যোগ করার আগে যাচাই করা হয়। যা কিনবেন, তা-ই খুলবে।" }
+    ],
+    "included_heading_en": "What is inside the collection",
+    "included_heading_bn": "কালেকশনে যা আছে",
+    "included": [
+      { "title_en": "The full curated library", "title_bn": "সম্পূর্ণ বাছাই করা লাইব্রেরি",
+        "body_en": "Every volume in the collection, organized and complete.",
+        "body_bn": "কালেকশনের প্রতিটি ভলিউম, গুছিয়ে ও সম্পূর্ণভাবে।" },
+      { "title_en": "Monthly additions", "title_bn": "মাসিক সংযোজন",
+        "body_en": "New volumes are added to the same page at no extra cost.",
+        "body_bn": "নতুন ভলিউম একই পেজে অতিরিক্ত খরচ ছাড়াই যোগ হয়।" },
+      { "title_en": "Age-verified single purchase", "title_bn": "বয়স-যাচাইকৃত একবারের কেনা",
+        "body_en": "One payment, one confirmation that you are 18 or older, and the collection is yours.",
+        "body_bn": "একবার পেমেন্ট, একবার ১৮+ নিশ্চিতকরণ - এরপর কালেকশনটি আপনার।" }
+    ],
+    "how_heading_en": "How it works",
+    "how_heading_bn": "যেভাবে কাজ করে",
+    "how": [
+      { "title_en": "Pay by bKash", "title_bn": "বিকাশে পেমেন্ট করুন",
+        "body_en": "Choose your amount and pay from the checkout below.",
+        "body_bn": "নিচের চেকআউট থেকে পরিমাণ বেছে নিয়ে পেমেন্ট করুন।" },
+      { "title_en": "Confirm you are 18+", "title_bn": "১৮+ নিশ্চিত করুন",
+        "body_en": "Opening the collection confirms your age. Purchase only if it is.",
+        "body_bn": "কালেকশন খোলা মানেই বয়স নিশ্চিতকরণ। প্রযোজ্য হলেই কিনুন।" },
+      { "title_en": "The page unlocks", "title_bn": "পেজ আনলক হবে",
+        "body_en": "The collection appears right here, permanently.",
+        "body_bn": "কালেকশনটি এখানেই স্থায়ীভাবে দেখা যাবে।" }
+    ],
+    "testimonials": [],
+    "faq": [
+      { "q_en": "Is my purchase discreet?", "q_bn": "কেনাকাটা কি গোপন থাকবে?",
+        "a_en": "Yes. The bKash statement shows a plain reference code, never the product.",
+        "a_bn": "হ্যাঁ। বিকাশ স্টেটমেন্টে শুধু একটি সাধারণ রেফারেন্স কোড দেখাবে, পণ্যের নাম নয়।" },
+      { "q_en": "How is my age checked?", "q_bn": "বয়স কীভাবে যাচাই হয়?",
+        "a_en": "By purchase. Opening the collection is your confirmation that you are 18 or older.",
+        "a_bn": "কেনার মাধ্যমে। কালেকশন খোলা মানেই আপনার ১৮ বা তার বেশি বয়সের নিশ্চিতকরণ।" },
+      { "q_en": "Does access expire?", "q_bn": "অ্যাক্সেসের মেয়াদ শেষ হয়?",
+        "a_en": "No. The page stays unlocked for you, including future additions.",
+        "a_bn": "না। ভবিষ্যৎ সংযোজনসহ পেজটি আপনার জন্য আনলক থাকবে।" },
+      { "q_en": "What if I lose the page?", "q_bn": "পেজ হারিয়ে ফেললে?",
+        "a_en": "Use the recovery option on the home page with the phone number you paid from.",
+        "a_bn": "হোম পেজের রিকভারি অপশন ব্যবহার করুন, যে নম্বর থেকে পেমেন্ট করেছেন।" }
+    ],
+    "checkout_heading_en": "Get access to the collection",
+    "checkout_heading_bn": "কালেকশনে অ্যাক্সেস নিন",
+    "checkout_note_en": "By paying you confirm you are 18 or older and want the collection unlocked on this page.",
+    "checkout_note_bn": "পেমেন্ট করলে আপনি নিশ্চিত করছেন যে আপনার বয়স ১৮ বা তার বেশি, এবং এই পেজে কালেকশনটি আনলক করতে চান।"
+  }'::jsonb,
+  true, false, 4
+)
+on conflict (slug) do update set
+  title_en = excluded.title_en, title_bn = excluded.title_bn,
+  teaser_md_en = excluded.teaser_md_en, teaser_md_bn = excluded.teaser_md_bn,
+  unlock_body_md_en = excluded.unlock_body_md_en, unlock_body_md_bn = excluded.unlock_body_md_bn,
+  unlock_cta_label_en = excluded.unlock_cta_label_en, unlock_cta_label_bn = excluded.unlock_cta_label_bn,
+  unlock_cta_url = excluded.unlock_cta_url,
+  template = excluded.template, template_config = excluded.template_config,
+  is_active = excluded.is_active, is_listed = excluded.is_listed,
+  sort_order = excluded.sort_order;

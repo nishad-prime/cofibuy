@@ -230,17 +230,16 @@ select is(
   'the page publishes its price chips'
 );
 
-select is(
-  test_data.as_role(
-    'postgres',
-    $q$with attempted as (
-      update public.pages set amount_presets = '["lots"]'::jsonb
-        where slug = 'unlisted-report' returning 1
-    ) select null from attempted$q$
-  ) ->> 'state',
-  '22023',
-  'and a preset that is not a number is refused at the write'
-);
+-- The shim's `as_role` wraps its SQL in a subquery, where a data-modifying
+-- statement cannot live, so the refusal is asserted in a block of its own.
+do $$
+begin
+  update public.pages set amount_presets = '["lots"]'::jsonb
+    where slug = 'unlisted-report';
+  perform ok(false, 'a preset that is not a number is refused at the write');
+exception when others then
+  perform ok(sqlstate = '22023', 'a preset that is not a number is refused at the write');
+end $$;
 
 select test_data.as_anon();
 

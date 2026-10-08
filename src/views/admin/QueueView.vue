@@ -5,13 +5,51 @@
       <p class="page-subtitle">Payments awaiting your review and approval.</p>
     </header>
 
-    <div v-if="loading" class="empty-state">Loading...</div>
+    <!--
+      Filter chips: one tap answers "show me the rejected ones" without the
+      operator reading rows they have already decided on. All is an explicit
+      chip rather than the absence of a filter, so the active state is always
+      visible.
+    -->
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        class="rounded-full border px-3 py-1.5 text-sm font-medium transition"
+        :class="
+          statusFilter === null
+            ? 'border-brand-600 bg-brand-50 text-brand-800'
+            : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
+        "
+        @click="setStatusFilter(null)"
+      >
+        All
+      </button>
+      <button
+        v-for="status in STATUSES"
+        :key="status"
+        type="button"
+        class="rounded-full border px-3 py-1.5 text-sm font-medium transition"
+        :class="
+          statusFilter === status
+            ? 'border-brand-600 bg-brand-50 text-brand-800'
+            : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
+        "
+        @click="setStatusFilter(status)"
+      >
+        {{ statusLabel(status) }}
+      </button>
+      <span class="ml-auto text-sm text-stone-500 ltr-value">{{ orders.length }}</span>
+    </div>
 
-    <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
+    <p v-if="error" class="alert-error" role="alert">{{ error }}</p>
+
+    <div v-else-if="loading" class="empty-state">Loading...</div>
 
     <div v-else-if="orders.length === 0" class="card empty-state">
       <AppIcon name="check" :size="28" class="mx-auto mb-3 text-emerald-600" />
-      <p class="font-medium text-stone-700">Nothing to review</p>
+      <p class="font-medium text-stone-700">
+        {{ statusFilter ? t('admin.status.' + statusFilter) : 'Nothing to review' }}
+      </p>
       <p class="mt-1">New orders will appear here as soon as customers submit payment.</p>
     </div>
 
@@ -85,6 +123,51 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 
 /**
+ * The status filter. `admin_orders` has taken `p_status` since the day it was
+ * written; the UI just never offered it, so the operator scrolled a 500-row
+ * table looking for the one rejected order.
+ */
+const STATUSES = [
+  'under_review',
+  'awaiting_proof',
+  'approved',
+  'rejected',
+  'locked',
+  'expired',
+] as const
+
+const statusFilter = ref<string | null>(null)
+const loadedFor = ref<string | null>(null)
+
+const loadOrders = async (): Promise<void> => {
+  loading.value = true
+  error.value = null
+  try {
+    const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_orders', {
+      p_status: statusFilter.value,
+    })
+
+    if (rpcError) {
+      error.value = rpcError.message
+      return
+    }
+
+    orders.value = (data ?? []) as unknown as typeof orders.value
+    loadedFor.value = statusFilter.value
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to load orders'
+  } finally {
+    loading.value = false
+  }
+}
+
+const setStatusFilter = (status: string | null): void => {
+  if (status === statusFilter.value) return
+  statusFilter.value = status
+  void loadOrders()
+}
+
+/**
  * `admin_orders` returns flat columns, not a nested gateway object: the amount
  * column is `amount`, in whole taka, and the method is `kind`.
  *
@@ -103,21 +186,8 @@ const viewOrder = (orderId: string): void => {
   router.push(`/admin/orders/${orderId}`)
 }
 
-onMounted(async () => {
+onMounted(() => {
   void loadCurrency()
-  try {
-    const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_orders')
-
-    if (rpcError) {
-      error.value = rpcError.message
-      return
-    }
-
-    orders.value = (data ?? []) as unknown as typeof orders.value
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load orders'
-  } finally {
-    loading.value = false
-  }
+  void loadOrders()
 })
 </script>

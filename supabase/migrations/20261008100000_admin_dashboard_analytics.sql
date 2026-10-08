@@ -70,14 +70,30 @@ returns table (
   orders_approved bigint,
   revenue_approved numeric
 )
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
+begin
+  -- Analytics is shop-wide money. A customer's anonymous signup carries the
+  -- authenticated role, so the grant alone would hand every buyer the shop's
+  -- revenue - the staff check is the only thing between them and it.
+  if not private.is_staff() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
   -- The window is generated first and left-joined, so a day with no orders is a
   -- zero row, not a missing one: a chart that silently skips quiet days draws
-  -- a line through time that does not exist.
+  -- a line through time that does not exist. The WITH lives in a subquery
+  -- because plpgsql's RETURN QUERY parser is happier with a plain SELECT.
+  return query
+  select
+    t.day,
+    t.orders_created,
+    t.orders_approved,
+    t.revenue_approved
+  from (
   with calendar as (
     select generate_series(
       (now() - make_interval(days => greatest(p_days, 1) - 1))::date,
@@ -100,14 +116,16 @@ as $$
     group by 1
   )
   select
-    calendar.day,
-    coalesce(created.n, 0),
-    coalesce(approved.n, 0),
-    coalesce(approved.revenue, 0)
+    calendar.day as day,
+    coalesce(created.n, 0) as orders_created,
+    coalesce(approved.n, 0) as orders_approved,
+    coalesce(approved.revenue, 0) as revenue_approved
   from calendar
   left join created on created.day = calendar.day
   left join approved on approved.day = calendar.day
   order by calendar.day
+  ) as t;
+end
 $$;
 
 revoke all on function api.admin_analytics(integer) from public, anon, authenticated;
@@ -121,11 +139,18 @@ returns table (
   orders_approved bigint,
   revenue numeric
 )
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
+begin
+  -- Same rule: per-page revenue is shop-wide money, not customer money.
+  if not private.is_staff() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  return query
   select
     l.slug,
     l.title_en,
@@ -137,7 +162,8 @@ as $$
   where l.slug is not null
   group by l.id, l.slug, l.title_en, l.title_bn
   order by coalesce(sum(o.amount), 0) desc, count(o.id) desc
-  limit least(greatest(coalesce(p_limit, 5), 1), 25)
+  limit least(greatest(coalesce(p_limit, 5), 1), 25);
+end
 $$;
 
 revoke all on function api.admin_page_performance(integer) from public, anon, authenticated;

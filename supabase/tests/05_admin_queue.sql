@@ -12,7 +12,7 @@
 set client_min_messages = warning;
 set application_name = 'test-05-admin';
 
-select plan(80);
+select plan(83);
 
 -- ---------------------------------------------------------------------------
 -- A customer is nobody
@@ -636,6 +636,27 @@ select is(
   (select revenue from api.admin_page_performance(5))::numeric,
   750::numeric,
   'and carries the page revenue'
+);
+
+-- Analytics is shop-wide money, and a customer's anonymous signup carries the
+-- authenticated role - the grant alone would hand every buyer the revenue.
+select is(
+  test_data.as_role('anon', 'select * from api.admin_analytics(30)') ->> 'state',
+  '42501',
+  'anonymous callers cannot read the analytics series'
+);
+
+select is(
+  test_data.as_role('anon', 'select * from api.admin_page_performance(5)') ->> 'state',
+  '42501',
+  'nor the per-page performance'
+);
+
+select test_data.as_user(test_data.new_user());
+select is(
+  test_data.as_role('authenticated', 'select * from api.admin_analytics(30)') ->> 'state',
+  '42501',
+  'and neither can a signed-in customer: staff is the gate, not the role'
 );
 
 select * from finish();

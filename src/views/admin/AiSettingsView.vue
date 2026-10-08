@@ -1,8 +1,8 @@
 <template>
   <div class="mx-auto max-w-3xl">
     <header class="mb-6">
-      <h1 class="text-2xl font-bold tracking-tight text-stone-900">AI copy</h1>
-      <p class="mt-1 text-sm text-stone-500">
+      <h1 class="page-title">AI provider</h1>
+      <p class="page-subtitle">
         Point the shop at a model provider and store its credential once. Everything that drafts
         copy — briefs, field rewrites, the blurbs staff paste into the shopfront — reads this one
         setting, so there is a single place to rotate a key or turn the feature off.

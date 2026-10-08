@@ -2,7 +2,7 @@
   <div>
     <header class="mb-6">
       <h1 class="page-title">Order queue</h1>
-      <p class="page-subtitle">Payments awaiting your review and approval.</p>
+      <p class="page-subtitle">Every order in the shop, filtered by where it stands.</p>
     </header>
 
     <!--

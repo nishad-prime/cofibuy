@@ -31,6 +31,30 @@
         </select>
       </div>
 
+      <!--
+        The price chips the paywall shows. Comma-separated whole taka values;
+        the customer taps one instead of typing, or picks Custom and types
+        anything at or above the minimum. Leave empty for no chips.
+      -->
+      <div>
+        <label for="presets" class="block text-sm font-medium text-gray-700">Amount presets</label>
+        <input
+          id="presets"
+          v-model="presetsInput"
+          placeholder="100, 500, 1000"
+          class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+        />
+        <div v-if="presetsPreview.length > 0" class="mt-2 flex flex-wrap gap-2">
+          <span
+            v-for="preset in presetsPreview"
+            :key="preset"
+            class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-gray-700"
+          >
+            ৳{{ preset }}
+          </span>
+        </div>
+      </div>
+
       <div class="grid gap-6 md:grid-cols-2">
         <div>
           <label class="block text-sm font-medium text-gray-700">Title (EN)</label>
@@ -202,6 +226,20 @@ type PageForm = Record<string, string | boolean | number | null | Record<string,
 
 const form = ref<PageForm>(linkFormDefaults() as PageForm)
 
+/**
+ * The presets, edited as comma-separated text and normalized on save. The
+ * input keeps exactly what the operator typed; the payload carries the parsed
+ * whole numbers, because the database refuses anything else.
+ */
+const presetsInput = ref('')
+
+const presetsPreview = computed(() =>
+  presetsInput.value
+    .split(',')
+    .map((part) => Number(part.trim()))
+    .filter((n) => Number.isFinite(n) && n >= 1),
+)
+
 /** The template whose options panel is on screen right now. */
 const template = computed(() => templateFor(form.value.template))
 
@@ -328,6 +366,9 @@ onMounted(async () => {
         template: link.template ?? 'standard',
         template_config: normalizeConfig(link.template as string, link.template_config),
       })
+      presetsInput.value = ((form.value.amount_presets as number[] | null) ?? [])
+        .map((n) => String(n))
+        .join(', ')
     }
   }
 })
@@ -360,6 +401,7 @@ const save = async (): Promise<void> => {
         hide_min_override: form.value.hide_min,
         template: form.value.template,
         template_config: form.value.template_config,
+        amount_presets: presetsPreview.value,
       },
     })
     if (rpcError) {

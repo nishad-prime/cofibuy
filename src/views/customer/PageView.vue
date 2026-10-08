@@ -188,14 +188,47 @@
 
             <section v-if="selectedKind" class="card card-pad">
               <label class="label" for="amount">{{ t('customer.paywall.amount') }}</label>
+
+              <!-- Tap a price, or tap Custom and type one. The input stays
+                   hidden behind the chips until the customer asks for it. -->
+              <div v-if="amountPresets.length > 0" class="mt-3 flex flex-wrap gap-2">
+                <button
+                  v-for="preset in amountPresets"
+                  :key="preset"
+                  type="button"
+                  class="rounded-full border px-4 py-2 text-sm font-medium transition"
+                  :class="
+                    amountMode === 'preset' && amount === preset
+                      ? 'border-brand-600 bg-brand-50 text-brand-800 ring-1 ring-brand-600'
+                      : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'
+                  "
+                  @click="selectPreset(preset)"
+                >
+                  <span class="ltr-value">{{ money(preset) }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="rounded-full border px-4 py-2 text-sm font-medium transition"
+                  :class="
+                    amountMode === 'custom'
+                      ? 'border-brand-600 bg-brand-50 text-brand-800 ring-1 ring-brand-600'
+                      : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'
+                  "
+                  @click="amountMode = 'custom'"
+                >
+                  {{ t('customer.paywall.custom') }}
+                </button>
+              </div>
+
               <input
+                v-if="amountPresets.length === 0 || amountMode === 'custom'"
                 id="amount"
                 v-model.number="amount"
                 type="number"
                 min="0"
                 step="1"
                 inputmode="decimal"
-                class="field ltr-value"
+                class="field ltr-value mt-3"
                 :placeholder="t('customer.paywall.amountAny')"
                 :aria-describedby="amountHintId"
               />
@@ -378,6 +411,7 @@ interface Page {
   is_listed: boolean
   min_amount: number | null
   min_hidden: boolean
+  amount_presets: number[] | null
   gateways: Gateway[]
 }
 
@@ -673,6 +707,28 @@ const ctaUrl = computed(() => link.value?.unlock_cta_url || '')
 const effectiveMin = computed(() => link.value?.min_amount ?? 0)
 
 const hideMin = computed(() => link.value?.min_hidden === true)
+
+/**
+ * The operator's price chips, ready to tap: whole numbers only, deduped and
+ * sorted, and anything below the page's effective minimum is dropped - a chip
+ * the customer cannot legally tap is worse than no chip. No presets, or all
+ * of them filtered, and the plain input is all there is.
+ */
+const amountPresets = computed(() => {
+  const raw = (link.value?.amount_presets ?? []) as unknown as number[]
+  const floor = hideMin.value ? 0 : effectiveMin.value
+  return [...new Set(raw.map(Number).filter((n) => Number.isFinite(n) && n >= floor))].sort(
+    (a, b) => a - b,
+  )
+})
+
+/** Which chip the customer tapped; custom reveals the typing field. */
+const amountMode = ref<'preset' | 'custom'>('preset')
+
+const selectPreset = (preset: number): void => {
+  amountMode.value = 'preset'
+  amount.value = preset
+}
 
 const isAmountValid = computed(() => {
   if (effectiveMin.value > 0) return amount.value >= effectiveMin.value

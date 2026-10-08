@@ -370,6 +370,66 @@ describe('the page as the whole checkout', () => {
     expect(second.find('#amount').exists()).toBe(false)
   })
 
+  it('price chips set the amount, and Custom reveals the typing field', async () => {
+    const presetLink = {
+      ...publicLink(null),
+      amount_presets: [200, 500, 1000],
+    }
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page') return Promise.resolve({ data: presetLink, error: null })
+      if (name === 'my_orders') return Promise.resolve({ data: [], error: null })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    // The chips are the interface; the typing field is hidden behind Custom.
+    expect(wrapper.find('#amount').exists()).toBe(false)
+    const chips = wrapper.findAll('button[type="button"]').filter((b) => b.text().includes('৳'))
+    expect(chips.length).toBe(3)
+    expect(wrapper.text()).toContain(i18n.global.t('customer.paywall.custom') as string)
+
+    // Tapping a chip sets the amount the summary shows - no typing at all.
+    await chips[1].trigger('click')
+    expect(wrapper.text()).toContain('৳500')
+
+    // Custom brings the field back, and it starts empty for an arbitrary value.
+    const customChip = wrapper
+      .findAll('button[type="button"]')
+      .find((b) => b.text() === (i18n.global.t('customer.paywall.custom') as string))!
+    await customChip.trigger('click')
+    expect(wrapper.find('#amount').exists()).toBe(true)
+  })
+
+  it('presets below the effective minimum are not shown as tappable chips', async () => {
+    const presetLink = {
+      ...publicLink(null),
+      min_amount: 300,
+      amount_presets: [100, 200, 500],
+    }
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page') return Promise.resolve({ data: presetLink, error: null })
+      if (name === 'my_orders') return Promise.resolve({ data: [], error: null })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    const chipTexts = wrapper
+      .findAll('button[type="button"]')
+      .map((b) => b.text())
+      .join('|')
+    expect(chipTexts).not.toContain('৳100')
+    expect(chipTexts).not.toContain('৳200')
+    expect(chipTexts).toContain('৳500')
+  })
+
   it('degrades to the new-order form when the order lookup fails', async () => {
     void 0
     rpc.mockImplementation((name: string) => {

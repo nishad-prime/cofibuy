@@ -54,7 +54,8 @@
     "openOrderExists": "Your order for this report is already open, but it could not be loaded. Please try again.",
     "openOrderExpired": "Your previous order for this report has expired. You can start a new one now.",
     "accountNumber": "Account / wallet number",
-    "accountName": "Account name"
+    "accountName": "Account name",
+    "custom": "Custom"
   },
   "order": {
     "title": "Order status",

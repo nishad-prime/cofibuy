@@ -23,107 +23,96 @@
       <p class="mt-1">Add bKash, Nagad, a bank account, or anything else you accept.</p>
     </div>
 
-    <div v-else class="table-wrap">
-      <div class="table-scroll">
-        <table class="min-w-full divide-y divide-stone-200">
-          <thead class="bg-stone-50">
-            <tr>
-              <th class="th">Name</th>
-              <th class="th">How it is paid</th>
-              <th class="th">Traffic</th>
-              <th class="th">Send money to</th>
-              <th class="th">Evidence fields</th>
-              <th class="th">Status</th>
-              <th class="th"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-stone-200">
-            <tr v-for="gw in gateways" :key="gw.id" class="row-link">
-              <td class="td">
-                <p class="font-medium text-stone-900">{{ gw.name_en || gw.name_bn || '—' }}</p>
-                <p class="text-xs text-stone-500 uppercase">{{ gw.kind }}</p>
-              </td>
-              <td class="td">
-                <span v-if="gw.provider" class="badge-ok">Automatic</span>
-                <span v-else class="badge-muted">Manual</span>
-                <p v-if="gw.provider" class="mt-1 text-xs text-stone-500">
-                  Approves itself on confirmation
-                </p>
-                <!-- Which bKash this row's credentials belong to. Shown because a sandbox
-                     method silently never settles, and "it is active but nothing happens" is
-                     the symptom an operator would otherwise have to guess at. -->
-                <p v-if="gw.provider" class="mt-1">
-                  <span
-                    class="badge-muted text-[11px]"
-                    :class="gw.environment === 'live' ? 'text-emerald-700' : 'text-amber-700'"
-                  >
-                    {{ gw.environment === 'live' ? 'Live' : 'Sandbox' }}
-                  </span>
-                  <span
-                    v-if="gw.environment !== 'live'"
-                    class="mt-0.5 block text-[11px] text-amber-700"
-                  >
-                    Never settles
-                  </span>
-                </p>
-              </td>
-              <td class="td">
-                <span v-if="trafficShare(gw)">
-                  {{ trafficShare(gw) }}
-                  <span class="text-xs font-normal text-stone-500"> of {{ gw.kind }} </span>
-                </span>
-                <span
-                  v-else
-                  class="text-stone-400"
-                  :title="'Only one active account for this kind'"
-                >
-                  —
-                </span>
-              </td>
-              <td class="td">
-                <span v-if="detailCount(gw) > 0" :title="detailSummary(gw)">
-                  {{ detailCount(gw) }} ·
-                  {{ detailSummary(gw) }}
-                </span>
-                <span v-else-if="gw.provider" class="text-stone-400">Collected by provider</span>
-                <span v-else class="text-stone-400">—</span>
-              </td>
-              <td class="td">
-                <span
-                  v-if="fieldCount(gw) > 0"
-                  class="badge-muted ltr-value"
-                  :title="fieldKeys(gw).join(', ')"
-                >
-                  {{ fieldCount(gw) }} · {{ fieldKeys(gw).join(', ') }}
-                </span>
-                <span v-else class="text-stone-400">None</span>
-              </td>
-              <td class="td">
-                <span :class="gw.is_active ? 'badge-ok' : 'badge-muted'">
-                  {{ gw.is_active ? 'Active' : 'Hidden' }}
-                </span>
-              </td>
-              <td class="td">
-                <div class="flex items-center justify-end gap-1">
-                  <router-link
-                    :to="`/admin/gateways/${gw.id}/edit`"
-                    class="btn-secondary !px-3 !py-1.5 !text-xs"
-                  >
-                    Edit
-                  </router-link>
-                  <button
-                    type="button"
-                    class="btn-secondary !px-2.5 !py-1.5 text-red-700 hover:!bg-red-50"
-                    :aria-label="`Delete ${gw.name_en || 'gateway'}`"
-                    @click="deleteGateway(gw.id)"
-                  >
-                    <AppIcon name="trash" :size="16" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <!--
+      Cards, not a table. Seven columns of prose - mode, environment, traffic share,
+      destination summary, proof fields, status, actions - cannot survive a narrow
+      viewport without becoming a horizontal scroll, and a horizontal scroll in the
+      middle of a settings page is where rows go unread. One card per method keeps
+      every signal and reflows at any width.
+    -->
+    <div v-else class="grid gap-4 lg:grid-cols-2">
+      <div v-for="gw in gateways" :key="gw.id" class="card card-pad flex flex-col">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="font-medium text-stone-900">{{ gw.name_en || gw.name_bn || '—' }}</p>
+            <p class="text-xs text-stone-500 uppercase">{{ gw.kind }}</p>
+          </div>
+          <span :class="gw.is_active ? 'badge-ok' : 'badge-muted'">
+            {{ gw.is_active ? 'Active' : 'Hidden' }}
+          </span>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <span v-if="gw.provider" class="badge-ok">Automatic</span>
+          <span v-else class="badge-muted">Manual</span>
+          <!-- Which bKash this row's credentials belong to. Shown because a sandbox
+               method silently never settles, and "it is active but nothing happens" is
+               the symptom an operator would otherwise have to guess at. -->
+          <span
+            v-if="gw.provider"
+            class="badge-muted text-[11px]"
+            :class="gw.environment === 'live' ? 'text-emerald-700' : 'text-amber-700'"
+          >
+            {{ gw.environment === 'live' ? 'Live' : 'Sandbox' }}
+          </span>
+          <span v-if="gw.provider && gw.environment !== 'live'" class="text-[11px] text-amber-700">
+            Never settles
+          </span>
+        </div>
+        <p v-if="gw.provider" class="mt-1 text-xs text-stone-500">
+          Approves itself on confirmation
+        </p>
+
+        <dl class="mt-4 space-y-2 text-sm">
+          <div v-if="trafficShare(gw)" class="flex items-baseline justify-between gap-3">
+            <dt class="text-stone-500">Traffic</dt>
+            <dd class="text-right">
+              {{ trafficShare(gw) }}
+              <span class="text-xs text-stone-500"> of {{ gw.kind }}</span>
+            </dd>
+          </div>
+          <div class="flex items-baseline justify-between gap-3">
+            <dt class="text-stone-500">Send money to</dt>
+            <dd class="text-right">
+              <span v-if="detailCount(gw) > 0" :title="detailSummary(gw)">
+                {{ detailCount(gw) }} ·
+                <span class="text-xs text-stone-500">{{ detailSummary(gw) }}</span>
+              </span>
+              <span v-else-if="gw.provider" class="text-stone-400">Collected by provider</span>
+              <span v-else class="text-stone-400">—</span>
+            </dd>
+          </div>
+          <div class="flex items-baseline justify-between gap-3">
+            <dt class="text-stone-500">Proof fields</dt>
+            <dd class="text-right">
+              <span
+                v-if="fieldCount(gw) > 0"
+                class="badge-muted ltr-value"
+                :title="fieldKeys(gw).join(', ')"
+              >
+                {{ fieldCount(gw) }} · {{ fieldKeys(gw).join(', ') }}
+              </span>
+              <span v-else class="text-stone-400">None</span>
+            </dd>
+          </div>
+        </dl>
+
+        <div class="mt-4 flex items-center justify-end gap-1 border-t border-stone-100 pt-3">
+          <router-link
+            :to="`/admin/gateways/${gw.id}/edit`"
+            class="btn-secondary !px-3 !py-1.5 !text-xs"
+          >
+            Edit
+          </router-link>
+          <button
+            type="button"
+            class="btn-secondary !px-2.5 !py-1.5 text-red-700 hover:!bg-red-50"
+            :aria-label="`Delete ${gw.name_en || 'gateway'}`"
+            @click="deleteGateway(gw.id)"
+          >
+            <AppIcon name="trash" :size="16" />
+          </button>
+        </div>
       </div>
     </div>
   </div>

@@ -85,7 +85,6 @@ async function impersonate(client, { userId, role, email }) {
 
 async function runTestFile(client, file, { useShim }) {
   const sql = readFileSync(file, 'utf8')
-  const relative = file.replace(root, '').replace(/^[\\/]/, '')
   const name = basename(file)
 
   await client.query('begin')

@@ -233,8 +233,10 @@ select is(
 select is(
   test_data.as_role(
     'postgres',
-    $q$update public.pages set amount_presets = '["lots"]'::jsonb
-      where slug = 'unlisted-report'$q$
+    $q$with attempted as (
+      update public.pages set amount_presets = '["lots"]'::jsonb
+        where slug = 'unlisted-report' returning 1
+    ) select null from attempted$q$
   ) ->> 'state',
   '22023',
   'and a preset that is not a number is refused at the write'

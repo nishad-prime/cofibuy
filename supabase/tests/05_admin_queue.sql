@@ -12,7 +12,7 @@
 set client_min_messages = warning;
 set application_name = 'test-05-admin';
 
-select plan(69);
+select plan(71);
 
 -- ---------------------------------------------------------------------------
 -- A customer is nobody
@@ -269,6 +269,37 @@ select is(
   (select count(*) from api.admin_order_duplicate_trxids((test_data.subject_order()).id) d where d.field_key = 'trxid'),
   1::bigint,
   'the same TrxID typed in another case still collides'
+);
+
+-- The scan is about transaction IDs, not about any shared value: two customers
+-- paying the same price is the queue's Tuesday, not a fraud signal.
+select test_data.reset();
+select test_data.as_subject('a');
+select test_data.new_subject();
+select test_data.link('guide', 500, false);
+select test_data.gateway('bkash');
+select test_data.orders('guide', 'bKash', 750, 'a') ->> 'ok';
+select test_data.submit(test_data.subject_id(), (test_data.subject_order()).id, '{"trxid": "aaaa1111bbbb"}') ->> 'ok';
+select test_data.new_subject('b');
+select test_data.as_subject('b');
+select test_data.orders('guide', 'bKash', 750, 'b') ->> 'ok';
+select test_data.submit(test_data.subject_id('b'), (test_data.subject_order('b')).id, '{"trxid": "zzzz9999yyyy"}') ->> 'ok';
+select test_data.reviewer();
+select test_data.as_subject('staff');
+
+select is(
+  (select count(*) from api.admin_order_duplicate_trxids((test_data.subject_order('b')).id)),
+  0::bigint,
+  'the same amount on two orders is not a shared transaction ID'
+);
+
+select is(
+  (
+    select has_duplicate_trxid
+    from api.admin_orders(null, (select reference_code from public.orders where user_id = test_data.subject_id('b')))
+  ),
+  false,
+  'and the queue does not flag it either'
 );
 
 -- ---------------------------------------------------------------------------

@@ -109,6 +109,9 @@
         >
           {{ t('admin.queue.reject') }}
         </button>
+      </div>
+
+      <div v-if="canResetProbes" class="mt-6 flex flex-wrap gap-3">
         <button type="button" class="btn-secondary" :disabled="actionLoading" @click="resetProbes">
           {{ t('admin.queue.resetProbes') }}
         </button>
@@ -199,7 +202,18 @@ const actionError = ref<string | null>(null)
 const showRejectModal = ref(false)
 const rejectReason = ref('')
 
-const canReview = computed(() => isStaff.value)
+/**
+ * The actions follow the order's state, because the RPCs refuse anything else:
+ * approve and reject move an order out of `under_review` and nowhere else, and
+ * the probe reset matters only while a customer can still act on the order.
+ * A staff badge alone used to render all three buttons on every order -
+ * approved, expired, draft - and every press was a database error.
+ */
+const canReview = computed(() => isStaff.value && order.value?.status === 'under_review')
+
+const canResetProbes = computed(
+  () => isStaff.value && ['draft', 'awaiting_proof', 'locked'].includes(order.value?.status ?? ''),
+)
 
 /**
  * `admin_order_detail` returns `amount` in whole taka, not `amount_minor`.

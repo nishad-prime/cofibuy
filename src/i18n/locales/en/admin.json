@@ -41,7 +41,11 @@
     "approving": "Approvingâ€¦",
     "rejecting": "Rejectingâ€¦",
     "resetProbes": "Reset attempts",
-    "unlockAll": "Customer already has access"
+    "unlockAll": "Customer already has access",
+    "hintAwaitingProof": "Waiting for the customer to pay and submit proof.",
+    "hintApproved": "This order is settled. The customer can access the page.",
+    "hintExpired": "This order expired before payment. The customer can start a new one.",
+    "hintLocked": "Locked after repeated invalid amounts. Use the reset above to unlock it."
   },
   "login": {
     "heading": "Admin sign in",

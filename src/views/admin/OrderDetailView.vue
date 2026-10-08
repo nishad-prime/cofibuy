@@ -117,6 +117,10 @@
         </button>
       </div>
 
+      <p v-if="!canReview && !canResetProbes && stateHint" class="hint mt-6" role="status">
+        {{ stateHint }}
+      </p>
+
       <p v-if="actionError" class="alert-error mt-4" role="alert">{{ actionError }}</p>
 
       <div
@@ -215,6 +219,26 @@ const canResetProbes = computed(
   () => isStaff.value && ['draft', 'awaiting_proof', 'locked'].includes(order.value?.status ?? ''),
 )
 
+/**
+ * When the action area is empty, say why. An operator landing on an approved
+ * order used to find nothing where buttons usually sit - a state worth a
+ * sentence, not a hole in the page.
+ */
+const stateHint = computed(() => {
+  if (!order.value || canReview.value) return null
+  switch (order.value.status) {
+    case 'awaiting_proof':
+      return t('admin.queue.hintAwaitingProof')
+    case 'approved':
+      return t('admin.queue.hintApproved')
+    case 'expired':
+      return t('admin.queue.hintExpired')
+    case 'locked':
+      return t('admin.queue.hintLocked')
+    default:
+      return null
+  }
+})
 /**
  * `admin_order_detail` returns `amount` in whole taka, not `amount_minor`.
  *

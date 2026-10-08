@@ -97,10 +97,12 @@ describe('order actions follow the order state', () => {
     expect(wrapper.text()).toContain('admin.queue.reject')
   })
 
-  it('an approved order offers nothing to press', async () => {
+  it('an approved order offers nothing to press, but says so', async () => {
     const wrapper = await mountAt('approved')
     expect(wrapper.text()).not.toContain('admin.queue.approve')
     expect(wrapper.text()).not.toContain('admin.queue.reject')
+    // The empty action area explains itself instead of reading as a bug.
+    expect(wrapper.text()).toContain('admin.queue.hintApproved')
   })
 
   it('a locked order offers only the probe reset', async () => {

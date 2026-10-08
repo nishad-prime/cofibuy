@@ -3,7 +3,7 @@
 -- Two questions here. What can a visitor see before signing in, and — the one
 -- that actually matters — can they find the minimum a link is hiding?
 
-select plan(33);
+select plan(35);
 
 select test_data.reset();
 
@@ -217,6 +217,27 @@ select is(
   (api.get_public_page('unlisted-report') ->> 'is_listed'),
   'false',
   'a hidden page says so, so it can drop the way back to the index'
+);
+
+-- The price chips come from the page; a page with none publishes an empty list,
+-- and the paywall falls back to a plain input.
+update public.pages set amount_presets = '[100, 500, 1000]'::jsonb
+  where slug = 'unlisted-report';
+
+select is(
+  (api.get_public_page('unlisted-report') -> 'amount_presets'),
+  '[100, 500, 1000]'::jsonb,
+  'the page publishes its price chips'
+);
+
+select is(
+  test_data.as_role(
+    'postgres',
+    $q$update public.pages set amount_presets = '["lots"]'::jsonb
+      where slug = 'unlisted-report'$q$
+  ) ->> 'state',
+  '22023',
+  'and a preset that is not a number is refused at the write'
 );
 
 select test_data.as_anon();

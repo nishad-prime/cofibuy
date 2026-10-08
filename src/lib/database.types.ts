@@ -776,6 +776,7 @@ export type Database = {
           is_listed: boolean
           template: string
           template_config: Json
+          amount_presets: Json
         }
         Insert: {
           slug: string
@@ -798,6 +799,7 @@ export type Database = {
           is_listed?: boolean
           template?: string
           template_config?: Json
+          amount_presets?: Json
         }
         Update: {
           id?: string
@@ -820,6 +822,7 @@ export type Database = {
           is_listed?: boolean
           template?: string
           template_config?: Json
+          amount_presets?: Json
         }
         Relationships: []
       }

@@ -341,6 +341,7 @@ interface Gateway {
   sort_order: number | null
   account_number: string | null
   account_name: string | null
+  account_fields: AccountField[] | null
   instructions_md_en: string | null
   instructions_md_bn: string | null
   reference_prompt_en: string | null
@@ -451,7 +452,7 @@ const pickedGatewayName = computed(() =>
     : '',
 )
 const selectedAccountFields = computed(
-  () => (selectedGateway.value?.evidence_fields ?? []) as unknown as AccountField[],
+  () => (selectedGateway.value?.account_fields ?? []) as unknown as AccountField[],
 )
 const selectedInstructions = computed(() =>
   selectedGateway.value

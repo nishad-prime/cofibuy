@@ -229,6 +229,24 @@ describe('the page as the whole checkout', () => {
     expect(wrapper.text()).not.toContain('AB12CD34')
   })
 
+  it('the selected manual method shows its account rows on the page', async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === 'get_public_page')
+        return Promise.resolve({ data: publicLink(null), error: null })
+      if (name === 'my_orders') return Promise.resolve({ data: [], error: null })
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc: ${name}` } })
+    })
+
+    const wrapper = mount(PageView, {
+      global: { plugins: [i18n], stubs: { GatewaySelector: SelectorStub } },
+    })
+    await flushPromises()
+
+    // The gateway's own account_fields, not its proof fields: reading the wrong
+    // array here rendered an empty account card above a perfectly good payload.
+    expect(wrapper.text()).toContain('01700000000')
+  })
+
   it('a hidden page drops the way back to the index', async () => {
     rpc.mockImplementation((name: string) => {
       if (name === 'get_public_page')

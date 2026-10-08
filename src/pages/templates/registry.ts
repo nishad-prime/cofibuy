@@ -20,8 +20,12 @@
 import { markRaw, type Component } from 'vue'
 import StandardTemplate from '@/components/customer/templates/StandardTemplate.vue'
 import LandingTemplate from '@/components/customer/templates/LandingTemplate.vue'
+import SalesLandingTemplate from '@/components/customer/templates/SalesLandingTemplate.vue'
+import MinimalProductTemplate from '@/components/customer/templates/MinimalProductTemplate.vue'
 import StandardConfigForm from '@/components/admin/templates/StandardConfigForm.vue'
 import LandingConfigForm from '@/components/admin/templates/LandingConfigForm.vue'
+import SalesLandingConfigForm from '@/components/admin/templates/SalesLandingConfigForm.vue'
+import MinimalProductConfigForm from '@/components/admin/templates/MinimalProductConfigForm.vue'
 
 /** One feature row of the landing template. */
 export interface LandingItem {
@@ -47,6 +51,98 @@ export interface LandingConfig {
   faq: LandingFaq[]
 }
 
+/**
+ * One feature row of a selling page.
+ */
+export interface BenefitItem {
+  icon: string
+  title_en: string
+  title_bn: string
+  body_en: string
+  body_bn: string
+}
+
+/** One numbered step of "how it works". */
+export interface StepItem {
+  title_en: string
+  title_bn: string
+  body_en: string
+  body_bn: string
+}
+
+/** One testimonial row. */
+export interface TestimonialItem {
+  quote_en: string
+  quote_bn: string
+  author_en: string
+  author_bn: string
+}
+
+/**
+ * The sales-landing content: the whole page's copy and imagery, owned by the
+ * template. Flat scalar keys are what the AI fill reads; the arrays are
+ * edited section by section in the template's admin form.
+ */
+export interface SalesLandingConfig {
+  hero_eyebrow_en: string
+  hero_eyebrow_bn: string
+  hero_title_en: string
+  hero_title_bn: string
+  hero_subtitle_en: string
+  hero_subtitle_bn: string
+  hero_image_url: string
+  hero_image_alt_en: string
+  hero_image_alt_bn: string
+  hero_cta_en: string
+  hero_cta_bn: string
+  problem_heading_en: string
+  problem_heading_bn: string
+  problem_body_en: string
+  problem_body_bn: string
+  benefits: BenefitItem[]
+  included_heading_en: string
+  included_heading_bn: string
+  included: LandingItem[]
+  how_heading_en: string
+  how_heading_bn: string
+  how: StepItem[]
+  testimonials: TestimonialItem[]
+  faq: LandingFaq[]
+  checkout_heading_en: string
+  checkout_heading_bn: string
+  checkout_note_en: string
+  checkout_note_bn: string
+}
+
+/**
+ * The minimal-product content: the same idea as the sales page, said once.
+ */
+export interface MinimalProductConfig {
+  hero_title_en: string
+  hero_title_bn: string
+  hero_subtitle_en: string
+  hero_subtitle_bn: string
+  hero_image_url: string
+  hero_image_alt_en: string
+  hero_image_alt_bn: string
+  included: LandingItem[]
+  faq: LandingFaq[]
+  checkout_note_en: string
+  checkout_note_bn: string
+}
+
+/**
+ * Scrolls the customer to the page's checkout section. Every CTA on a
+ * template page ends here - a CTA that navigates would break the one-page
+ * checkout, and one that did nothing would break the sales flow.
+ */
+export function scrollToCheckout(): void {
+  const target = document.getElementById('page-checkout')
+  if (!target) return
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+}
+
 export interface PageTemplate {
   /** The `pages.template` value. Stable across releases: rows in the wild keep it. */
   id: string
@@ -54,6 +150,51 @@ export interface PageTemplate {
   defaultConfig: Record<string, unknown>
   adminForm: Component
   renderer: Component
+}
+
+const SALES_DEFAULT: SalesLandingConfig = {
+  hero_eyebrow_en: '',
+  hero_eyebrow_bn: '',
+  hero_title_en: '',
+  hero_title_bn: '',
+  hero_subtitle_en: '',
+  hero_subtitle_bn: '',
+  hero_image_url: '',
+  hero_image_alt_en: '',
+  hero_image_alt_bn: '',
+  hero_cta_en: '',
+  hero_cta_bn: '',
+  problem_heading_en: '',
+  problem_heading_bn: '',
+  problem_body_en: '',
+  problem_body_bn: '',
+  benefits: [],
+  included_heading_en: '',
+  included_heading_bn: '',
+  included: [],
+  how_heading_en: '',
+  how_heading_bn: '',
+  how: [],
+  testimonials: [],
+  faq: [],
+  checkout_heading_en: '',
+  checkout_heading_bn: '',
+  checkout_note_en: '',
+  checkout_note_bn: '',
+}
+
+const MINIMAL_DEFAULT: MinimalProductConfig = {
+  hero_title_en: '',
+  hero_title_bn: '',
+  hero_subtitle_en: '',
+  hero_subtitle_bn: '',
+  hero_image_url: '',
+  hero_image_alt_en: '',
+  hero_image_alt_bn: '',
+  included: [],
+  faq: [],
+  checkout_note_en: '',
+  checkout_note_bn: '',
 }
 
 const LANDING_DEFAULT: LandingConfig = {
@@ -84,6 +225,20 @@ export const PAGE_TEMPLATES: readonly PageTemplate[] = [
     adminForm: markRaw(LandingConfigForm),
     renderer: markRaw(LandingTemplate),
   },
+  {
+    id: 'sales-landing',
+    label: 'Sales page',
+    defaultConfig: SALES_DEFAULT as unknown as Record<string, unknown>,
+    adminForm: markRaw(SalesLandingConfigForm),
+    renderer: markRaw(SalesLandingTemplate),
+  },
+  {
+    id: 'minimal-product',
+    label: 'Minimal product',
+    defaultConfig: MINIMAL_DEFAULT as unknown as Record<string, unknown>,
+    adminForm: markRaw(MinimalProductConfigForm),
+    renderer: markRaw(MinimalProductTemplate),
+  },
 ]
 
 /**
@@ -112,6 +267,67 @@ export function templateFor(id: string | null | undefined): PageTemplate {
 export function normalizeConfig(templateId: string, raw: unknown): Record<string, unknown> {
   const template = templateFor(templateId)
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
+
+  if (template.id === 'sales-landing') {
+    const s = source as Partial<SalesLandingConfig>
+    return {
+      ...SALES_DEFAULT,
+      ...s,
+      hero_image_url: typeof s.hero_image_url === 'string' ? s.hero_image_url : '',
+      benefits: (Array.isArray(s.benefits) ? s.benefits : []).map((item) => ({
+        icon: item?.icon ?? '',
+        title_en: item?.title_en ?? '',
+        title_bn: item?.title_bn ?? '',
+        body_en: item?.body_en ?? '',
+        body_bn: item?.body_bn ?? '',
+      })),
+      included: (Array.isArray(s.included) ? s.included : []).map((item) => ({
+        title_en: item?.title_en ?? '',
+        title_bn: item?.title_bn ?? '',
+        body_en: item?.body_en ?? '',
+        body_bn: item?.body_bn ?? '',
+      })),
+      how: (Array.isArray(s.how) ? s.how : []).map((step) => ({
+        title_en: step?.title_en ?? '',
+        title_bn: step?.title_bn ?? '',
+        body_en: step?.body_en ?? '',
+        body_bn: step?.body_bn ?? '',
+      })),
+      testimonials: (Array.isArray(s.testimonials) ? s.testimonials : []).map((entry) => ({
+        quote_en: entry?.quote_en ?? '',
+        quote_bn: entry?.quote_bn ?? '',
+        author_en: entry?.author_en ?? '',
+        author_bn: entry?.author_bn ?? '',
+      })),
+      faq: (Array.isArray(s.faq) ? s.faq : []).map((entry) => ({
+        q_en: entry?.q_en ?? '',
+        q_bn: entry?.q_bn ?? '',
+        a_en: entry?.a_en ?? '',
+        a_bn: entry?.a_bn ?? '',
+      })),
+    } as unknown as Record<string, unknown>
+  }
+
+  if (template.id === 'minimal-product') {
+    const s = source as Partial<MinimalProductConfig>
+    return {
+      ...MINIMAL_DEFAULT,
+      ...s,
+      hero_image_url: typeof s.hero_image_url === 'string' ? s.hero_image_url : '',
+      included: (Array.isArray(s.included) ? s.included : []).map((item) => ({
+        title_en: item?.title_en ?? '',
+        title_bn: item?.title_bn ?? '',
+        body_en: item?.body_en ?? '',
+        body_bn: item?.body_bn ?? '',
+      })),
+      faq: (Array.isArray(s.faq) ? s.faq : []).map((entry) => ({
+        q_en: entry?.q_en ?? '',
+        q_bn: entry?.q_bn ?? '',
+        a_en: entry?.a_en ?? '',
+        a_bn: entry?.a_bn ?? '',
+      })),
+    } as unknown as Record<string, unknown>
+  }
 
   if (template.id === 'landing') {
     const s = source as Partial<LandingConfig>

@@ -200,6 +200,32 @@
     @apply alert border-emerald-200 bg-emerald-50 text-emerald-800;
   }
 
+  .section-block {
+    min-height: min(800px, 100svh);
+    display: flex;
+    align-items: center;
+    padding-block: 3rem;
+  }
+
+  .page-section-inner {
+    width: 100%;
+    max-width: 48rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .page-section-inner {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .section-block {
+      scroll-behavior: auto;
+    }
+  }
+
   .empty-state {
     @apply px-6 py-16 text-center text-sm text-stone-500;
   }

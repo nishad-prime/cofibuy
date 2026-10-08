@@ -117,7 +117,8 @@
   },
   "page": {
     "whatYouGet": "What you get",
-    "faq": "Questions and answers"
+    "faq": "Questions and answers",
+    "getStarted": "Get started"
   },
   "errors": {
     "transport": "Could not reach the payment service. Check your connection, then try again. If you are on a VPN or a strict network, that can block the request.",

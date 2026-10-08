@@ -289,13 +289,13 @@ select test_data.orders('guide', 'bKash', 750, 'a') ->> 'ok';
 -- A screenshot folder that leaked would hand over other people's bank records,
 -- so what is readable in the bucket matters as much as whether it can be listed.
 select is(
-  (test_data.as_role('authenticated', 'select name from storage.objects') ->> 'ok')::text,
+  (test_data.as_role('authenticated', 'select name from storage.objects where bucket_id = ''proofs''') ->> 'ok')::text,
   'true',
   'a customer can list the proofs bucket'
 );
 
 select is(
-  (test_data.as_role('authenticated', 'select name from storage.objects') ->> 'rows')::text,
+  (test_data.as_role('authenticated', 'select name from storage.objects where bucket_id = ''proofs''') ->> 'rows')::text,
   '[]',
   'and this session sees nothing in it, having uploaded nothing'
 );
@@ -351,15 +351,18 @@ select is(
   'and the first folder in the path must be the caller''s own'
 );
 
--- No update or delete policy exists on the bucket at all. Evidence is
+-- No update or delete policy exists for the proofs bucket. Evidence is
 -- append-only: a corrected screenshot is a new upload under a new attempt, so
--- the one that was reviewed has to stay exactly as it was.
+-- the one that was reviewed has to stay exactly as it was. Page art is a
+-- different bucket with its own rules - the operator may replace an image -
+-- so the count is scoped to the proofs policies rather than the table.
 select is(
   (
     select count(*)
     from pg_policies
     where schemaname = 'storage'
       and tablename = 'objects'
+      and policyname like 'proofs_%'
       and cmd in ('UPDATE', 'DELETE')
   )::int,
   0,

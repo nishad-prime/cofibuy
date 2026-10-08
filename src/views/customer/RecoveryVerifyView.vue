@@ -42,14 +42,14 @@
         {{ t('customer.recovery.sent') }}
       </div>
 
-      <div v-if="grantedLinks.length > 0" class="card card-pad">
+      <div v-if="grantedPages.length > 0" class="card card-pad">
         <ul class="space-y-2">
-          <li v-for="link in grantedLinks" :key="link.slug">
+          <li v-for="page in grantedPages" :key="page.slug">
             <router-link
-              :to="`/${link.slug}`"
+              :to="`/${page.slug}`"
               class="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-3 py-2.5 text-sm font-medium text-stone-900 transition hover:border-brand-400 hover:bg-brand-50"
             >
-              {{ pick({ bn: link.title_bn, en: link.title_en } as any) || link.slug }}
+              {{ pick({ bn: page.title_bn, en: page.title_en } as any) || page.slug }}
               <AppIcon name="arrowLeft" :size="16" class="rotate-180 text-stone-400" />
             </router-link>
           </li>
@@ -83,7 +83,7 @@ const code = ref('')
 const verifying = ref(false)
 const verified = ref(false)
 const error = ref<string | null>(null)
-const grantedLinks = ref<Array<{ slug: string; title_bn: string | null; title_en: string | null }>>(
+const grantedPages = ref<Array<{ slug: string; title_bn: string | null; title_en: string | null }>>(
   [],
 )
 
@@ -111,7 +111,7 @@ const submitVerify = async (): Promise<void> => {
     const payload = data as unknown as { ok?: boolean; links?: unknown[] } | null
     if (data && payload?.ok) {
       verified.value = true
-      grantedLinks.value = (payload.links ?? []) as typeof grantedLinks.value
+      grantedPages.value = (payload.links ?? []) as typeof grantedPages.value
     } else {
       error.value = 'Invalid code'
     }

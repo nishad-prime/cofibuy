@@ -2,12 +2,12 @@
   <div>
     <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="page-title">Links</h1>
-        <p class="page-subtitle">Each link is one sellable page customers open.</p>
+        <h1 class="page-title">Pages</h1>
+        <p class="page-subtitle">Each page sells one thing, unlocked by paying.</p>
       </div>
       <router-link to="/admin/pages/new" class="btn-primary">
         <AppIcon name="plus" :size="18" />
-        New link
+        New page
       </router-link>
     </header>
 
@@ -15,10 +15,10 @@
 
     <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
 
-    <div v-else-if="links.length === 0" class="card empty-state">
+    <div v-else-if="pages.length === 0" class="card empty-state">
       <AppIcon name="link" :size="28" class="mx-auto mb-3 text-stone-400" />
-      <p class="font-medium text-stone-700">No links yet</p>
-      <p class="mt-1">Create a link to publish a report customers can unlock by paying.</p>
+      <p class="font-medium text-stone-700">No pages yet</p>
+      <p class="mt-1">Create a page to publish a report customers can unlock by paying.</p>
     </div>
 
     <div v-else class="table-wrap">
@@ -26,7 +26,7 @@
         <table class="min-w-full divide-y divide-stone-200">
           <thead class="bg-stone-50">
             <tr>
-              <th class="th">Link</th>
+              <th class="th">Page</th>
               <th class="th">Slug</th>
               <th class="th">Price</th>
               <th class="th">Status</th>
@@ -34,42 +34,42 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-200">
-            <tr v-for="link in links" :key="link.id" class="row-link">
+            <tr v-for="page in pages" :key="page.id" class="row-link">
               <td class="td">
                 <p class="font-medium text-stone-900">
-                  {{ link.title_en || link.title_bn || '—' }}
+                  {{ page.title_en || page.title_bn || '—' }}
                 </p>
-                <p v-if="link.title_en && link.title_bn" class="text-xs text-stone-500">
-                  {{ link.title_bn }}
+                <p v-if="page.title_en && page.title_bn" class="text-xs text-stone-500">
+                  {{ page.title_bn }}
                 </p>
               </td>
               <td class="td">
                 <router-link
-                  :to="`/l/${link.slug}`"
+                  :to="`/l/${page.slug}`"
                   class="ltr-value text-brand-700 hover:underline"
                 >
-                  /l/{{ link.slug }}
+                  /l/{{ page.slug }}
                 </router-link>
               </td>
               <td class="td">
-                <span v-if="Number(link.min_amount_override) > 0" class="ltr-value">
-                  {{ formatMoney(Number(link.min_amount_override), 'en', currency) }}
+                <span v-if="Number(page.min_amount_override) > 0" class="ltr-value">
+                  {{ formatMoney(Number(page.min_amount_override), 'en', currency) }}
                 </span>
                 <span v-else class="text-xs text-stone-500">Site default</span>
               </td>
               <td class="td">
                 <!-- Three states, not two. "Hidden" used to mean `is_active =
                      false`, and reusing it for "not in the index" would make an
-                     unlisted link indistinguishable from a draft - when one is
+                     unlisted page indistinguishable from a draft - when one is
                      fully buyable and the other cannot be opened at all. -->
-                <span v-if="!link.is_active" class="badge-muted">Draft</span>
-                <span v-else-if="!link.is_listed" class="badge-warn">Unlisted</span>
+                <span v-if="!page.is_active" class="badge-muted">Draft</span>
+                <span v-else-if="!page.is_listed" class="badge-warn">Unlisted</span>
                 <span v-else class="badge-ok">Live</span>
               </td>
               <td class="td">
                 <div class="flex items-center justify-end gap-1">
                   <router-link
-                    :to="`/admin/pages/${link.id}/edit`"
+                    :to="`/admin/pages/${page.id}/edit`"
                     class="btn-secondary !px-3 !py-1.5 !text-xs"
                   >
                     Edit
@@ -77,8 +77,8 @@
                   <button
                     type="button"
                     class="btn-secondary !px-2.5 !py-1.5 text-red-700 hover:!bg-red-50"
-                    :aria-label="`Delete ${link.title_en || link.slug}`"
-                    @click="deleteLink(link.id)"
+                    :aria-label="`Delete ${page.title_en || page.slug}`"
+                    @click="deleteLink(page.id)"
                   >
                     <AppIcon name="trash" :size="16" />
                   </button>
@@ -113,11 +113,11 @@ interface AdminPageRow {
   hide_min_override: boolean | null
 }
 
-const links = ref<AdminPageRow[]>([])
+const pages = ref<AdminPageRow[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-const loadLinks = async (): Promise<void> => {
+const loadPages = async (): Promise<void> => {
   error.value = null
   try {
     const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_pages')
@@ -125,7 +125,7 @@ const loadLinks = async (): Promise<void> => {
       error.value = rpcError.message
       return
     }
-    links.value = (data ?? []) as unknown as typeof links.value
+    pages.value = (data ?? []) as unknown as typeof pages.value
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load links'
   } finally {
@@ -134,7 +134,7 @@ const loadLinks = async (): Promise<void> => {
 }
 
 const deleteLink = async (id: string): Promise<void> => {
-  if (!confirm('Delete this link? Existing orders keep their reference.')) return
+  if (!confirm('Delete this page? Existing orders keep their reference.')) return
   try {
     // `p_page_id`, not `p_id`. PostgREST matches on the exact argument name, so
     // the wrong one is a 404 rather than an error message anyone would read.
@@ -145,14 +145,14 @@ const deleteLink = async (id: string): Promise<void> => {
       error.value = rpcError.message
       return
     }
-    await loadLinks()
+    await loadPages()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to delete link'
+    error.value = err instanceof Error ? err.message : 'Failed to delete page'
   }
 }
 
 onMounted(() => {
   void loadCurrency()
-  void loadLinks()
+  void loadPages()
 })
 </script>

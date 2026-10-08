@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n'
  * to send the money.
  *
  * One component for all three places that used to read `account_number` and
- * `account_name` directly - the method picker, the link page and the order page. Three
+ * `account_name` directly - the method picker, the page and the order view. Three
  * copies of the same markup is three places for a new detail type to be forgotten, and
  * the order page in particular has to agree with the picker, or a customer copies a
  * different number than the one they were shown.

@@ -13,22 +13,22 @@
 
     <p v-else-if="error" class="alert-error mt-10" role="alert">{{ error }}</p>
 
-    <div v-else-if="links.length === 0" class="card empty-state mt-10">
+    <div v-else-if="pages.length === 0" class="card empty-state mt-10">
       <AppIcon name="link" :size="28" class="mx-auto mb-3 text-stone-400" />
       <p class="font-medium text-stone-700">{{ t('customer.home.empty') }}</p>
     </div>
 
     <div v-else class="mt-10 grid gap-5 sm:grid-cols-2">
       <PageCard
-        v-for="link in links"
-        :key="link.id"
-        :slug="link.slug"
-        :title-bn="link.title_bn"
-        :title-en="link.title_en"
-        :teaser-md-bn="link.teaser_md_bn"
-        :teaser-md-en="link.teaser_md_en"
-        :cta-label-bn="link.unlock_cta_label_bn"
-        :cta-label-en="link.unlock_cta_label_en"
+        v-for="page in pages"
+        :key="page.id"
+        :slug="page.slug"
+        :title-bn="page.title_bn"
+        :title-en="page.title_en"
+        :teaser-md-bn="page.teaser_md_bn"
+        :teaser-md-en="page.teaser_md_en"
+        :cta-label-bn="page.unlock_cta_label_bn"
+        :cta-label-en="page.unlock_cta_label_en"
       />
     </div>
   </main>
@@ -41,7 +41,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import PageCard from '@/components/customer/PageCard.vue'
 import { useContent } from '@/composables/useContent'
 import { useSiteSettings } from '@/composables/useSiteSettings'
-import type { PublicPage } from '@/lib/rpc'
+
 import { rpcList } from '@/lib/rpc'
 
 const { t } = useI18n()
@@ -64,9 +64,9 @@ const subheading = computed(
     }) ?? t('customer.home.subheading'),
 )
 
-// `list_public_pages` returns the `paywall_links_public` view, so the teaser and
+// `list_public_pages` returns the `pages_public` view, so the teaser and
 // CTA columns are the `*_md_*` variants.
-interface PublicLink {
+interface PublicPageRow {
   id: string
   slug: string
   title_bn: string | null
@@ -77,22 +77,22 @@ interface PublicLink {
   unlock_cta_label_en: string | null
 }
 
-const links = ref<PublicLink[]>([])
+const pages = ref<PublicPageRow[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const { data, error: rpcError } = await rpcList<PublicPage>('list_public_pages')
+    const { data, error: rpcError } = await rpcList<PublicPageRow>('list_public_pages')
 
     if (rpcError) {
       error.value = rpcError.message
       return
     }
 
-    links.value = (data as PublicLink[]) || []
+    pages.value = (data as PublicPageRow[]) || []
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load links'
+    error.value = err instanceof Error ? err.message : 'Failed to load pages'
   } finally {
     loading.value = false
   }

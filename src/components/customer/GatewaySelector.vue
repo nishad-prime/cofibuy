@@ -48,7 +48,7 @@ import { useContent } from '@/composables/useContent'
  * What the paywall payload now carries for a gateway: an id, a kind, a display name, the
  * provider slug, and a sort order. Deliberately narrow - the account number, instructions,
  * reference prompt and evidence fields were published here for every anonymous visitor of
- * every paywall link and now live on the order instead, so this component has nothing to
+ * every paywall page and now live on the order instead, so this component has nothing to
  * render them from.
  */
 interface Gateway {

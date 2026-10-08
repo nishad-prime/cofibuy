@@ -22,7 +22,7 @@ export interface BriefField {
 }
 
 /** The eight values a draft returns, in the order the form should show them. */
-export const LINK_BRIEF_FIELDS: BriefField[] = [
+export const PAGE_BRIEF_FIELDS: BriefField[] = [
   { key: 'title_en', form: 'title_en', label: 'Title (EN)', kind: 'input' },
   { key: 'title_bn', form: 'title_bn', label: 'Title (BN)', kind: 'input' },
   {
@@ -90,7 +90,7 @@ export const LINK_BRIEF_COLUMNS = [
  * nothing, because renaming one in the form would leave both copies agreeing with each other.
  * One object, used by the form and asserted here.
  */
-export const linkFormDefaults = (): Record<string, string | boolean | number | null> => ({
+export const pageFormDefaults = (): Record<string, string | boolean | number | null> => ({
   slug: '',
   title_en: '',
   title_bn: '',

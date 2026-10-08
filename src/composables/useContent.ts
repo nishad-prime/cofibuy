@@ -9,7 +9,7 @@ import { useI18n } from 'vue-i18n'
  * Separate from `useI18n` on purpose: strings that ship in the repository are
  * translations of each other and fall back per language, while content columns
  * are authored independently by an admin in `/admin/pages` and resolve
- * per R2 — each side falls back to the other, and a link that has only one
+ * per R2 — each side falls back to the other, and a page that has only one
  * language is simply monolingual rather than broken.
  */
 export function useContent() {

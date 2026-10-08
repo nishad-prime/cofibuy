@@ -76,7 +76,7 @@
         The prose fields, rendered from one list.
 
         They were in the form's state and in its save payload long before they had inputs, so an
-        operator could load a link, change its title, save, and silently write back every teaser,
+        operator could load a page, change its title, save, and silently write back every teaser,
         body and button label exactly as they found it - with no way to see or change any of it.
         The list is the single place these eight fields are named, and the draft panel below reads
         the same one, so a field that gains an input here cannot be missing there.
@@ -185,7 +185,7 @@
            the slug to stop working. -->
       <p v-if="form.is_active && !form.is_listed" class="text-sm text-amber-700">
         This page is live and buyable by its URL, but it will not appear in the public index. Anyone
-        with the link can still open and pay for it.
+        with the URL can still open and pay for it.
       </p>
 
       <button
@@ -209,7 +209,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import { describeEdgeFailure } from '@/lib/edgeError'
 import { useStaffRole } from '@/composables/useStaffRole'
-import { LINK_BRIEF_FIELDS as BRIEF_FIELDS, linkFormDefaults } from '@/config/linkBriefFields'
+import { PAGE_BRIEF_FIELDS as BRIEF_FIELDS, pageFormDefaults } from '@/config/linkBriefFields'
 import { normalizeConfig, PAGE_TEMPLATES, templateFor } from '@/pages/templates/registry'
 import { rpc, rpcList } from '@/lib/rpc'
 
@@ -217,14 +217,14 @@ const route = useRoute()
 const router = useRouter()
 const supabase = getSupabase()
 
-const linkId = computed(() => route.params.id as string)
+const pageId = computed(() => route.params.id as string)
 const isEdit = computed(() => !!route.params.id)
 
 type PageForm = Record<string, string | boolean | number | null | Record<string, unknown>> & {
   template: string
 }
 
-const form = ref<PageForm>(linkFormDefaults() as PageForm)
+const form = ref<PageForm>(pageFormDefaults() as PageForm)
 
 /**
  * The presets, edited as comma-separated text and normalized on save. The
@@ -343,28 +343,28 @@ const fillForm = async (): Promise<void> => {
 onMounted(async () => {
   if (isEdit.value) {
     const { data } = await rpcList<Record<string, unknown>>('admin_pages')
-    const link = (data ?? []).find((l) => l.id === linkId.value)
-    if (link) {
+    const row = (data ?? []).find((l) => l.id === pageId.value)
+    if (row) {
       // The row columns and the form fields have different names, so assigning
       // the row wholesale would silently blank every markdown field on save.
       Object.assign(form.value, {
-        slug: link.slug ?? '',
-        title_en: link.title_en ?? '',
-        title_bn: link.title_bn ?? '',
-        teaser_en: link.teaser_md_en ?? '',
-        teaser_bn: link.teaser_md_bn ?? '',
-        body_en: link.unlock_body_md_en ?? '',
-        body_bn: link.unlock_body_md_bn ?? '',
-        cta_label_en: link.unlock_cta_label_en ?? '',
-        cta_label_bn: link.unlock_cta_label_bn ?? '',
-        cta_url: link.unlock_cta_url ?? '',
-        is_active: link.is_active ?? false,
-        is_listed: link.is_listed ?? true,
-        sort_order: link.sort_order ?? 0,
-        min_override: link.min_amount_override ?? null,
-        hide_min: link.hide_min_override ?? false,
-        template: link.template ?? 'standard',
-        template_config: normalizeConfig(link.template as string, link.template_config),
+        slug: row.slug ?? '',
+        title_en: row.title_en ?? '',
+        title_bn: row.title_bn ?? '',
+        teaser_en: row.teaser_md_en ?? '',
+        teaser_bn: row.teaser_md_bn ?? '',
+        body_en: row.unlock_body_md_en ?? '',
+        body_bn: row.unlock_body_md_bn ?? '',
+        cta_label_en: row.unlock_cta_label_en ?? '',
+        cta_label_bn: row.unlock_cta_label_bn ?? '',
+        cta_url: row.unlock_cta_url ?? '',
+        is_active: row.is_active ?? false,
+        is_listed: row.is_listed ?? true,
+        sort_order: row.sort_order ?? 0,
+        min_override: row.min_amount_override ?? null,
+        hide_min: row.hide_min_override ?? false,
+        template: row.template ?? 'standard',
+        template_config: normalizeConfig(row.template as string, row.template_config),
       })
       presetsInput.value = ((form.value.amount_presets as number[] | null) ?? [])
         .map((n) => String(n))
@@ -381,7 +381,7 @@ const save = async (): Promise<void> => {
     // names it reads out of that jsonb exactly.
     const { error: rpcError } = await rpc<Record<string, unknown>>('admin_upsert_page', {
       p_page: {
-        id: isEdit.value ? linkId.value : '',
+        id: isEdit.value ? pageId.value : '',
         slug: form.value.slug,
         title_en: form.value.title_en,
         title_bn: form.value.title_bn,

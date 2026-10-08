@@ -17,7 +17,7 @@
 
     <!-- `get_public_page` returns no row for an unknown or inactive slug, so
            without this branch the page rendered blank. -->
-    <div v-else-if="!link" class="card card-pad text-center">
+    <div v-else-if="!page" class="card card-pad text-center">
       <AppIcon name="link" :size="28" class="mx-auto mb-3 text-stone-400" />
       <h1 class="text-xl font-semibold text-stone-900">{{ t('customer.notFound.title') }}</h1>
       <MarkdownBody :source="t('customer.notFound.body')" class="mt-2 text-sm text-stone-600" />
@@ -251,8 +251,8 @@
               </h2>
               <dl class="mt-3 space-y-2 text-sm">
                 <div class="flex justify-between gap-4">
-                  <dt class="text-stone-500">{{ t('customer.paywall.summaryLink') }}</dt>
-                  <dd class="text-right font-medium text-stone-900">{{ linkTitle }}</dd>
+                  <dt class="text-stone-500">{{ t('customer.paywall.summaryPage') }}</dt>
+                  <dd class="text-right font-medium text-stone-900">{{ pageTitle }}</dd>
                 </div>
                 <div class="flex justify-between gap-4">
                   <dt class="text-stone-500">{{ t('customer.paywall.summaryAmount') }}</dt>
@@ -260,11 +260,11 @@
                 </div>
               </dl>
 
-              <div v-if="linkCta || ctaUrl" class="mt-5 border-t border-stone-100 pt-4">
+              <div v-if="pageCta || ctaUrl" class="mt-5 border-t border-stone-100 pt-4">
                 <p class="text-sm font-medium text-stone-700">
                   {{ t('customer.paywall.deliverable') }}
                 </p>
-                <p class="mt-1 text-sm text-stone-600">{{ linkCta }}</p>
+                <p class="mt-1 text-sm text-stone-600">{{ pageCta }}</p>
                 <a
                   v-if="ctaUrl"
                   :href="ctaUrl"
@@ -367,7 +367,8 @@ const supportContact = computed(() => settings.value.contact)
  * A gateway as the paywall publishes it: an id, a kind, a name, the provider slug and a
  * sort order. The account number, instructions, reference prompt and evidence fields that
  * used to be here are not withheld for lack of translation but because they describe an
- * order, not a link - they come back from `my_order_status` once there is one.
+ * order, not a link - they come back from `my_order_status` once there is one. (Wording
+ * predates the rename; the fields describe an order, which is still true.)
  */
 interface Gateway {
   id: string
@@ -417,7 +418,7 @@ interface Page {
 
 const amountHintId = 'amount-hint'
 
-const link = ref<Page | null>(null)
+const page = ref<Page | null>(null)
 const gateways = ref<Gateway[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -433,13 +434,13 @@ const { setStandalone, isStandalone } = usePageStandalone()
  * template-shaped about the render — which layout, which config, which
  * component — comes from this one lookup.
  */
-const template = computed(() => templateFor(link.value?.template))
+const template = computed(() => templateFor(page.value?.template))
 const templateConfig = computed(() =>
-  normalizeConfig(template.value.id, link.value?.template_config),
+  normalizeConfig(template.value.id, page.value?.template_config),
 )
 // The v-else branch guarantees a page at render time; this alias records that
 // guarantee in one place instead of a non-null assertion in the markup.
-const renderPage = computed(() => link.value as Page)
+const renderPage = computed(() => page.value as Page)
 
 /**
  * bKash lands the customer back here with `?paid=1` after the return leg settled
@@ -469,7 +470,7 @@ let polling: ReturnType<typeof useOrderPolling> | null = null
 
 /** The open order's gateway, matched against this page's published methods. */
 const orderGateway = computed(() =>
-  existingOrder.value && link.value
+  existingOrder.value && page.value
     ? gateways.value.find((g) => g.kind === existingOrder.value!.gateway_kind)
     : undefined,
 )
@@ -691,22 +692,22 @@ const loadExistingOrder = async (): Promise<void> => {
   }
 }
 
-const linkTitle = computed(() =>
-  link.value ? pick({ bn: link.value.title_bn, en: link.value.title_en }) : '',
+const pageTitle = computed(() =>
+  page.value ? pick({ bn: page.value.title_bn, en: page.value.title_en }) : '',
 )
-const linkCta = computed(() =>
-  link.value
-    ? pick({ bn: link.value.unlock_cta_label_bn, en: link.value.unlock_cta_label_en })
+const pageCta = computed(() =>
+  page.value
+    ? pick({ bn: page.value.unlock_cta_label_bn, en: page.value.unlock_cta_label_en })
     : '',
 )
 
-const ctaUrl = computed(() => link.value?.unlock_cta_url || '')
+const ctaUrl = computed(() => page.value?.unlock_cta_url || '')
 
 // The unlocked body is deliberately absent from `get_public_page`; it is served
 // per-order once the order is approved, so it is never rendered from this page.
-const effectiveMin = computed(() => link.value?.min_amount ?? 0)
+const effectiveMin = computed(() => page.value?.min_amount ?? 0)
 
-const hideMin = computed(() => link.value?.min_hidden === true)
+const hideMin = computed(() => page.value?.min_hidden === true)
 
 /**
  * The operator's price chips, ready to tap: whole numbers only, deduped and
@@ -715,7 +716,7 @@ const hideMin = computed(() => link.value?.min_hidden === true)
  * of them filtered, and the plain input is all there is.
  */
 const amountPresets = computed(() => {
-  const raw = (link.value?.amount_presets ?? []) as unknown as number[]
+  const raw = (page.value?.amount_presets ?? []) as unknown as number[]
   const floor = hideMin.value ? 0 : effectiveMin.value
   return [...new Set(raw.map(Number).filter((n) => Number.isFinite(n) && n >= floor))].sort(
     (a, b) => a - b,
@@ -781,23 +782,23 @@ const describeRefusal = (code?: string): string => {
 
 onMounted(async () => {
   try {
-    const { data: linkData, error: linkError } = await rpc<PublicPageDetail>('get_public_page', {
+    const { data: pageData, error: pageError } = await rpc<PublicPageDetail>('get_public_page', {
       p_slug: slug.value,
     })
 
-    if (linkError) {
-      error.value = linkError.message
+    if (pageError) {
+      error.value = pageError.message
       return
     }
 
-    link.value = linkData as unknown as Page
+    page.value = pageData as unknown as Page
 
     // A hidden page is standalone: no way back to the index, anywhere.
-    setStandalone(link.value.is_listed === false)
+    setStandalone(page.value.is_listed === false)
 
     // `get_public_page` already returns the active payment methods nested in the
     // same payload, filtered to `is_active` server side.
-    const raw = linkData as unknown as { gateways?: unknown }
+    const raw = pageData as unknown as { gateways?: unknown }
     gateways.value = Array.isArray(raw?.gateways) ? (raw.gateways as Gateway[]) : []
 
     // Preselect when there is only one choice; with several, let the customer
@@ -815,7 +816,7 @@ onMounted(async () => {
     // The customer's own state on this page, after the page itself is known.
     void loadExistingOrder()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load link'
+    error.value = err instanceof Error ? err.message : 'Failed to load page'
   } finally {
     loading.value = false
   }
@@ -892,7 +893,7 @@ const ensureSession = async (): Promise<boolean> => {
 }
 
 const createOrder = async (): Promise<void> => {
-  if (!link.value || !selectedKind.value || !isAmountValid.value) {
+  if (!page.value || !selectedKind.value || !isAmountValid.value) {
     return
   }
 
@@ -960,7 +961,7 @@ const createOrder = async (): Promise<void> => {
  * customer just filled in is on this page, and so is what replaces it.
  */
 const createManualOrder = async (evidence: Record<string, unknown>): Promise<void> => {
-  if (!link.value || !selectedKind.value || !isAmountValid.value) {
+  if (!page.value || !selectedKind.value || !isAmountValid.value) {
     return
   }
 

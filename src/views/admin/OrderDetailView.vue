@@ -183,6 +183,9 @@ interface AdminOrderRow {
   reject_reason_en: string | null
   reject_reason_bn: string | null
   gateway: { name_en: string | null; name_bn: string | null } | null
+  // `link` is the jsonb field name `admin_order_detail` returns (the orders
+  // table still calls its FK link_id); renaming it means SQL churn for zero
+  // visible effect, so the view maps it as-is.
   link: { slug: string; title_en: string | null; title_bn: string | null } | null
   evidence: Record<string, unknown>[]
   duplicates: Record<string, unknown>[]

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   LINK_BRIEF_COLUMNS,
-  LINK_BRIEF_FIELDS,
-  linkFormDefaults,
+  PAGE_BRIEF_FIELDS,
+  pageFormDefaults,
   type BriefField,
 } from '@/config/linkBriefFields'
 
-const byKey = (key: string): BriefField | undefined => LINK_BRIEF_FIELDS.find((f) => f.key === key)
+const byKey = (key: string): BriefField | undefined => PAGE_BRIEF_FIELDS.find((f) => f.key === key)
 
 /**
  * The invariants here are the ones whose failure is invisible until a customer sees it.
@@ -15,19 +15,19 @@ const byKey = (key: string): BriefField | undefined => LINK_BRIEF_FIELDS.find((f
  * here and not there produces a field that is filled on screen and blank in the database - or the
  * reverse, and the save writes an empty string over copy the operator wrote themselves.
  */
-describe('LINK_BRIEF_FIELDS', () => {
+describe('PAGE_BRIEF_FIELDS', () => {
   it('covers exactly the columns a draft answers with', () => {
-    expect(LINK_BRIEF_FIELDS.map((f) => f.key).sort()).toEqual([...LINK_BRIEF_COLUMNS].sort())
+    expect(PAGE_BRIEF_FIELDS.map((f) => f.key).sort()).toEqual([...LINK_BRIEF_COLUMNS].sort())
   })
 
   it('has no duplicate columns', () => {
-    expect(new Set(LINK_BRIEF_FIELDS.map((f) => f.key)).size).toBe(LINK_BRIEF_FIELDS.length)
+    expect(new Set(PAGE_BRIEF_FIELDS.map((f) => f.key)).size).toBe(PAGE_BRIEF_FIELDS.length)
   })
 
   it('has no duplicate form fields', () => {
     // Two columns writing one input would mean the second silently overwrote the first, which for
     // the EN/BN pairs would show up as Bangla appearing in the English box.
-    expect(new Set(LINK_BRIEF_FIELDS.map((f) => f.form)).size).toBe(LINK_BRIEF_FIELDS.length)
+    expect(new Set(PAGE_BRIEF_FIELDS.map((f) => f.form)).size).toBe(PAGE_BRIEF_FIELDS.length)
   })
 
   /**
@@ -35,15 +35,15 @@ describe('LINK_BRIEF_FIELDS', () => {
    * into nothing: the operator sees no change and the token spent was worth nothing.
    */
   it('maps every column onto a form field the link form initialises', () => {
-    for (const field of LINK_BRIEF_FIELDS) {
-      expect(Object.keys(linkFormDefaults())).toContain(field.form)
+    for (const field of PAGE_BRIEF_FIELDS) {
+      expect(Object.keys(pageFormDefaults())).toContain(field.form)
     }
   })
 
   it('covers every form field a draft writes', () => {
-    const formKeys = Object.keys(linkFormDefaults())
-    expect(LINK_BRIEF_FIELDS.map((f) => f.form).sort()).toEqual(
-      formKeys.filter((k) => LINK_BRIEF_FIELDS.some((f) => f.form === k)).sort(),
+    const formKeys = Object.keys(pageFormDefaults())
+    expect(PAGE_BRIEF_FIELDS.map((f) => f.form).sort()).toEqual(
+      formKeys.filter((k) => PAGE_BRIEF_FIELDS.some((f) => f.form === k)).sort(),
     )
   })
 
@@ -70,7 +70,7 @@ describe('LINK_BRIEF_FIELDS', () => {
       expect(byKey(`${base}_en`), base).toBeDefined()
       expect(byKey(`${base}_bn`), base).toBeDefined()
     }
-    expect(LINK_BRIEF_FIELDS.length).toBe(bases.length * 2)
+    expect(PAGE_BRIEF_FIELDS.length).toBe(bases.length * 2)
   })
 
   /**
@@ -87,12 +87,12 @@ describe('LINK_BRIEF_FIELDS', () => {
       'is_listed',
       'sort_order',
     ]) {
-      expect(LINK_BRIEF_FIELDS.map((f) => f.key)).not.toContain(forbidden)
+      expect(PAGE_BRIEF_FIELDS.map((f) => f.key)).not.toContain(forbidden)
     }
   })
 
   it("labels every field, since the labels are the operator's map of the proposal", () => {
-    for (const field of LINK_BRIEF_FIELDS) {
+    for (const field of PAGE_BRIEF_FIELDS) {
       expect(field.label.trim(), field.key).not.toBe('')
     }
   })

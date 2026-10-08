@@ -41,7 +41,6 @@
     "amountAny": "Enter the amount you sent",
     "amountError": "The amount must be at least {amount}",
     "summary": "Summary",
-    "summaryLink": "Report",
     "summaryAmount": "Amount",
     "submit": "I have paid — create order",
     "submitting": "Creating order…",
@@ -55,7 +54,8 @@
     "openOrderExpired": "Your previous order for this report has expired. You can start a new one now.",
     "accountNumber": "Account / wallet number",
     "accountName": "Account name",
-    "custom": "Custom"
+    "custom": "Custom",
+    "summaryPage": "Report"
   },
   "order": {
     "title": "Order status",

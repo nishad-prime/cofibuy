@@ -307,6 +307,137 @@ const fillFields = computed(() => {
       { key: 'subtitle_bn', label: 'Hero subtitle (Bangla)', hint: 'one sentence under the title' },
     )
   }
+
+  // The selling templates own their whole page: the paragraph fills every
+  // section's words. Their arrays (benefits, steps, FAQ rows) stay out - the
+  // model writes strings, and those rows are edited one by one in the form.
+  if (form.value.template === 'sales-landing') {
+    fields.push(
+      {
+        key: 'hero_eyebrow_en',
+        label: 'Eyebrow (English)',
+        hint: 'two or three words above the title',
+      },
+      {
+        key: 'hero_eyebrow_bn',
+        label: 'Eyebrow (Bangla)',
+        hint: 'two or three words above the title',
+      },
+      {
+        key: 'hero_title_en',
+        label: 'Hero title (English)',
+        hint: 'the promise, at most a few words',
+      },
+      {
+        key: 'hero_title_bn',
+        label: 'Hero title (Bangla)',
+        hint: 'the promise, at most a few words',
+      },
+      {
+        key: 'hero_subtitle_en',
+        label: 'Hero subtitle (English)',
+        hint: 'one or two sentences under the title',
+      },
+      {
+        key: 'hero_subtitle_bn',
+        label: 'Hero subtitle (Bangla)',
+        hint: 'one or two sentences under the title',
+      },
+      { key: 'hero_cta_en', label: 'Hero button (English)', hint: 'two or three words' },
+      { key: 'hero_cta_bn', label: 'Hero button (Bangla)', hint: 'two or three words' },
+      {
+        key: 'problem_heading_en',
+        label: 'Problem heading (English)',
+        hint: 'the problem the buyer has, as a short sentence',
+      },
+      {
+        key: 'problem_heading_bn',
+        label: 'Problem heading (Bangla)',
+        hint: 'the problem the buyer has, as a short sentence',
+      },
+      {
+        key: 'problem_body_en',
+        label: 'Problem body (English)',
+        hint: 'two or three sentences of plain prose',
+      },
+      {
+        key: 'problem_body_bn',
+        label: 'Problem body (Bangla)',
+        hint: 'two or three sentences of plain prose',
+      },
+      {
+        key: 'included_heading_en',
+        label: 'Included heading (English)',
+        hint: 'a few words naming what the buyer receives',
+      },
+      {
+        key: 'included_heading_bn',
+        label: 'Included heading (Bangla)',
+        hint: 'a few words naming what the buyer receives',
+      },
+      {
+        key: 'how_heading_en',
+        label: 'How it works heading (English)',
+        hint: 'a few words naming the steps',
+      },
+      {
+        key: 'how_heading_bn',
+        label: 'How it works heading (Bangla)',
+        hint: 'a few words naming the steps',
+      },
+      {
+        key: 'checkout_heading_en',
+        label: 'Checkout heading (English)',
+        hint: 'an invitation to pay, a few words',
+      },
+      {
+        key: 'checkout_heading_bn',
+        label: 'Checkout heading (Bangla)',
+        hint: 'an invitation to pay, a few words',
+      },
+      {
+        key: 'checkout_note_en',
+        label: 'Checkout note (English)',
+        hint: 'one sentence beside the payment form',
+      },
+      {
+        key: 'checkout_note_bn',
+        label: 'Checkout note (Bangla)',
+        hint: 'one sentence beside the payment form',
+      },
+    )
+  }
+
+  if (form.value.template === 'minimal-product') {
+    fields.push(
+      {
+        key: 'hero_title_en',
+        label: 'Title override (English)',
+        hint: 'leave empty to keep the page title',
+      },
+      {
+        key: 'hero_title_bn',
+        label: 'Title override (Bangla)',
+        hint: 'leave empty to keep the page title',
+      },
+      {
+        key: 'hero_subtitle_en',
+        label: 'Subtitle (English)',
+        hint: 'one sentence under the title',
+      },
+      { key: 'hero_subtitle_bn', label: 'Subtitle (Bangla)', hint: 'one sentence under the title' },
+      {
+        key: 'checkout_note_en',
+        label: 'Checkout note (English)',
+        hint: 'one sentence beside the payment form',
+      },
+      {
+        key: 'checkout_note_bn',
+        label: 'Checkout note (Bangla)',
+        hint: 'one sentence beside the payment form',
+      },
+    )
+  }
   return fields
 })
 
@@ -327,9 +458,17 @@ const fillForm = async (): Promise<void> => {
     if (!values) throw new Error('The fill came back empty.')
 
     // A key the form does not have is ignored rather than invented into state.
+    // The selling templates' words live inside the template config, so their
+    // keys land there; the rest are ordinary form fields.
+    const inConfig = ['sales-landing', 'minimal-product'].includes(form.value.template)
     for (const field of fillFields.value) {
       const value = values[field.key]
-      if (typeof value === 'string' && value !== '') form.value[field.key] = value
+      if (typeof value !== 'string' || value === '') continue
+      if (inConfig) {
+        ;(form.value.template_config as Record<string, unknown>)[field.key] = value
+      } else {
+        form.value[field.key] = value
+      }
     }
   } catch (err) {
     const failure = await describeEdgeFailure(err, 'The fill did not come back.')

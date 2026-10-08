@@ -139,6 +139,9 @@ const visibleItems = computed(() => ITEMS.filter((item) => !item.ownerOnly || is
 // Exact match for the index routes, prefix match for nested ones such as
 // /admin/pages/:id/edit, so the parent stays highlighted while editing.
 function isActive(to: string): boolean {
+  // The dashboard owns exactly `/admin`. A prefix match would keep it lit on
+  // every page in the panel, since all of them start there.
+  if (to === '/admin') return route.path === '/admin'
   return route.path === to || route.path.startsWith(`${to}/`)
 }
 

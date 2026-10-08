@@ -118,6 +118,7 @@ interface NavItem {
 }
 
 const ITEMS: NavItem[] = [
+  { to: '/admin', label: 'Dashboard', icon: 'wallet' },
   { to: '/admin/queue', label: 'Order queue', icon: 'queue' },
   { to: '/admin/pages', label: 'Pages', icon: 'link' },
   { to: '/admin/gateways', label: 'Gateways', icon: 'card' },

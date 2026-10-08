@@ -164,5 +164,26 @@
     "delete": "Delete",
     "publishBlocked": "A page needs a title and an unlocked body in at least one language before it can go live.",
     "preview": "Preview"
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "subtitle": "The shop at a glance: what sold, what is waiting, and what it added up to.",
+    "revenue30": "Revenue (30 days)",
+    "allTime": "All time",
+    "awaitingReview": "Awaiting review",
+    "awaitingReviewHint": "Orders a human has to decide on",
+    "orders30": "Orders (30 days)",
+    "livePages": "Live pages",
+    "customers": "Customers",
+    "trend": "The last {days} days",
+    "ordersCreated": "Orders created",
+    "revenuePerDay": "Revenue per day",
+    "topPages": "Top pages",
+    "page": "Page",
+    "orders": "Orders",
+    "revenue": "Revenue",
+    "noSales": "Nothing has been approved yet.",
+    "recentOrders": "Recent orders",
+    "noOrders": "No orders yet."
   }
 }

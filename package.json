@@ -35,9 +35,11 @@
     "@fontsource-variable/noto-sans-bengali": "5.3.0",
     "@supabase/supabase-js": "2.117.2",
     "@vueuse/core": "15.0.0",
+    "chart.js": "^4.5.1",
     "dompurify": "3.4.16",
     "marked": "18.0.14",
     "vue": "3.5.43",
+    "vue-chartjs": "^5.3.4",
     "vue-i18n": "11.4.12",
     "vue-router": "5.3.1"
   },

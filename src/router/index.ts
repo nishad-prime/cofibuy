@@ -60,7 +60,8 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        redirect: '/admin/queue',
+        name: 'admin-dashboard',
+        component: () => import('@/views/admin/DashboardView.vue'),
       },
       {
         path: 'queue',

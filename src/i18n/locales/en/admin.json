@@ -189,5 +189,14 @@
     "noSales": "Nothing has been approved yet.",
     "recentOrders": "Recent orders",
     "noOrders": "No orders yet."
+  },
+  "images": {
+    "assignedOf": "image slots assigned",
+    "recommended": "Recommended",
+    "briefEn": "What should this image show? (EN)",
+    "briefBn": "What should this image show? (BN)",
+    "altEn": "Alt text (EN)",
+    "altBn": "Alt text (BN)",
+    "noSlots": "This template has no image slots."
   }
 }

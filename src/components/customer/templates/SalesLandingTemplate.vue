@@ -20,9 +20,9 @@
           {{ config.hero_subtitle }}
         </p>
         <img
-          v-if="config.hero_image_url"
-          :src="config.hero_image_url"
-          :alt="heroImageAlt ?? undefined"
+          v-if="heroImg"
+          :src="heroImg.url"
+          :alt="heroImg.alt"
           class="mt-8 w-full rounded-2xl object-cover shadow-lg"
         />
         <button
@@ -39,12 +39,25 @@
     <!-- The problem: why the product exists. -->
     <section v-if="config.problem_heading || config.problem_body" class="section-block bg-white">
       <div class="page-section-inner">
-        <h2 class="text-3xl font-bold tracking-tight text-stone-900">
-          {{ config.problem_heading }}
-        </h2>
-        <p v-if="config.problem_body" class="mt-4 max-w-xl text-lg leading-relaxed text-stone-600">
-          {{ config.problem_body }}
-        </p>
+        <div class="grid items-center gap-8 lg:grid-cols-2">
+          <div>
+            <h2 class="text-3xl font-bold tracking-tight text-stone-900">
+              {{ config.problem_heading }}
+            </h2>
+            <p v-if="config.problem_body" class="mt-4 text-lg leading-relaxed text-stone-600">
+              {{ config.problem_body }}
+            </p>
+            <button type="button" class="btn-secondary mt-8" @click="scrollToCheckout">
+              {{ t('customer.page.getStarted') }}
+            </button>
+          </div>
+          <img
+            v-if="problemImg"
+            :src="problemImg.url"
+            :alt="problemImg.alt"
+            class="w-full rounded-2xl object-cover shadow-md"
+          />
+        </div>
         <button type="button" class="btn-secondary mt-8" @click="scrollToCheckout">
           {{ t('customer.page.getStarted') }}
         </button>
@@ -60,7 +73,13 @@
             :key="index"
             class="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm"
           >
-            <span v-if="item.icon" class="text-3xl" aria-hidden="true">{{ item.icon }}</span>
+            <img
+              v-if="slotImage('benefits', index)"
+              :src="slotImage('benefits', index)!.url"
+              :alt="slotImage('benefits', index)!.alt"
+              class="mb-3 h-40 w-full rounded-xl object-cover"
+            />
+            <span v-else-if="item.icon" class="text-3xl" aria-hidden="true">{{ item.icon }}</span>
             <h3 class="mt-3 font-semibold text-stone-900">{{ item.title }}</h3>
             <p class="mt-2 text-sm leading-relaxed text-stone-600">{{ item.body }}</p>
           </div>
@@ -83,7 +102,13 @@
             :key="index"
             class="flex items-start gap-3 rounded-xl bg-stone-50 p-4"
           >
-            <AppIcon name="check" :size="20" class="mt-0.5 shrink-0 text-emerald-600" />
+            <img
+              v-if="slotImage('included', index)"
+              :src="slotImage('included', index)!.url"
+              :alt="slotImage('included', index)!.alt"
+              class="h-20 w-20 shrink-0 rounded-lg object-cover"
+            />
+            <AppIcon v-else name="check" :size="20" class="mt-0.5 shrink-0 text-emerald-600" />
             <div>
               <p class="font-semibold text-stone-900">{{ item.title }}</p>
               <p class="mt-1 text-sm text-stone-600">{{ item.body }}</p>
@@ -182,7 +207,11 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppIcon from '@/components/AppIcon.vue'
 import { useContent } from '@/composables/useContent'
-import { scrollToCheckout, type SalesLandingConfig } from '@/pages/templates/registry'
+import {
+  scrollToCheckout,
+  type PageImageMap,
+  type SalesLandingConfig,
+} from '@/pages/templates/registry'
 
 const { t } = useI18n()
 const { pick } = useContent()
@@ -195,7 +224,25 @@ const props = defineProps<{
     teaser_md_bn: string | null
   }
   config: SalesLandingConfig
+  /** Assigned images by slot; empty when nothing has been uploaded yet. */
+  images?: PageImageMap
 }>()
+
+/** The assigned image for a slot, falling back to the config's legacy URL. */
+const slotImage = (key: string, index = 0): { url: string; alt: string } | null => {
+  const direct = props.images?.[index === 0 ? key : `${key}.${index}`]
+  const fallbackAlt = heroImageAlt.value ?? ''
+  if (direct?.url) {
+    return {
+      url: direct.url,
+      alt: (index === 0 ? fallbackAlt : '') || direct.alt_en || direct.alt_bn || '',
+    }
+  }
+  if (index === 0 && props.config.hero_image_url) {
+    return { url: props.config.hero_image_url, alt: fallbackAlt }
+  }
+  return null
+}
 
 /**
  * The hero's title is the template config's own, falling back to the page
@@ -212,6 +259,9 @@ const heroImageAlt = computed(
     pick({ bn: props.config.hero_image_alt_bn, en: props.config.hero_image_alt_en }) ||
     heroTitle.value,
 )
+const heroImg = computed(() => slotImage('hero'))
+const problemImg = computed(() => slotImage('problem'))
+
 const heroCta = computed(
   () =>
     pick({ bn: props.config.hero_cta_bn, en: props.config.hero_cta_en }) ||

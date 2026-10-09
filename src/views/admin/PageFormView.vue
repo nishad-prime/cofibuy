@@ -196,6 +196,14 @@
         {{ saving ? 'Saving...' : 'Save' }}
       </button>
 
+      <router-link
+        v-if="isEdit"
+        :to="`/admin/pages/${pageId}/images`"
+        class="rounded-md border border-blue-600 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
+      >
+        Manage images
+      </router-link>
+
       <div v-if="error" class="rounded-lg bg-red-50 p-4 text-red-800">
         {{ error }}
       </div>
@@ -405,6 +413,36 @@ const fillFields = computed(() => {
         label: 'Checkout note (Bangla)',
         hint: 'one sentence beside the payment form',
       },
+      {
+        key: 'image_brief_hero_en',
+        label: 'Hero image brief (English)',
+        hint: 'one sentence describing the hero picture',
+      },
+      {
+        key: 'image_brief_hero_bn',
+        label: 'Hero image brief (Bangla)',
+        hint: 'one sentence describing the hero picture',
+      },
+      {
+        key: 'image_brief_problem_en',
+        label: 'Problem image brief (English)',
+        hint: 'one sentence describing the problem picture',
+      },
+      {
+        key: 'image_brief_problem_bn',
+        label: 'Problem image brief (Bangla)',
+        hint: 'one sentence describing the problem picture',
+      },
+      {
+        key: 'image_brief_how_en',
+        label: 'Steps image brief (English)',
+        hint: 'one sentence describing the how-it-works visual',
+      },
+      {
+        key: 'image_brief_how_bn',
+        label: 'Steps image brief (Bangla)',
+        hint: 'one sentence describing the how-it-works visual',
+      },
     )
   }
 
@@ -464,6 +502,37 @@ const fillForm = async (): Promise<void> => {
     for (const field of fillFields.value) {
       const value = values[field.key]
       if (typeof value !== 'string' || value === '') continue
+
+      // Image briefs become page_assets rows - url-less placeholders the
+      // images page shows as "what this picture should contain". The page
+      // must exist for them to attach to, so on a brand-new page they land
+      // after the first save.
+      if (field.key.startsWith('image_brief_')) {
+        const parts = field.key.split('_')
+        const slot = parts[2]
+        const lang = parts[3]
+        if (!pageId.value) continue
+        const existing = (
+          await rpc<{ slot_key: string; brief_en: string | null; brief_bn: string | null }[]>(
+            'admin_page_assets',
+            { p_page_id: pageId.value },
+          )
+        ).data?.find((a) => a.slot_key === slot)
+
+        await rpc('admin_upsert_page_asset', {
+          p_page_id: pageId.value,
+          p_slot_key: slot,
+          p_item_index: 0,
+          p_storage_path: null,
+          p_public_url: null,
+          p_alt_en: null,
+          p_alt_bn: null,
+          p_brief_en: lang === 'en' ? value : (existing?.brief_en ?? null),
+          p_brief_bn: lang === 'bn' ? value : (existing?.brief_bn ?? null),
+        })
+        continue
+      }
+
       if (inConfig) {
         ;(form.value.template_config as Record<string, unknown>)[field.key] = value
       } else {

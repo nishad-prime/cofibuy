@@ -143,6 +143,113 @@ export function scrollToCheckout(): void {
   target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
 }
 
+/**
+ * One image slot a template declares: a named place in the page with the
+ * guidance the images-assignment screen shows the operator. The database
+ * stores slots without interpreting them; this list is the contract.
+ */
+export interface PageImageSlot {
+  /** The `page_assets.slot_key` value. */
+  key: string
+  label: string
+  /** Where the image appears on the rendered page. */
+  location: string
+  /** What the operator should put there. */
+  purpose: string
+  required: boolean
+  recommendedWidth: number
+  recommendedHeight: number
+  /** Present when the slot repeats per item of a config array. */
+  perItemConfigKey?: 'benefits' | 'included' | 'testimonials'
+}
+
+/** Slot lists, named so templates can share a shape without sharing content. */
+const SLOTS_SALES: PageImageSlot[] = [
+  {
+    key: 'hero',
+    label: 'Hero image',
+    location: 'Top of the page, under the main title and promise',
+    purpose:
+      'Show the product or its strongest visual: the cover, a clean product shot, or one representative frame.',
+    required: true,
+    recommendedWidth: 1600,
+    recommendedHeight: 1000,
+  },
+  {
+    key: 'problem',
+    label: 'Problem image',
+    location: 'Beside the problem section, as a visual of the frustration',
+    purpose: 'A picture of the mess the buyer is stuck in — cluttered, generic, low quality.',
+    required: false,
+    recommendedWidth: 1200,
+    recommendedHeight: 900,
+  },
+  {
+    key: 'benefits',
+    label: 'Benefit images',
+    location: 'One optional image inside each benefit card',
+    purpose: 'A small visual that makes each benefit concrete at a glance.',
+    required: false,
+    recommendedWidth: 800,
+    recommendedHeight: 600,
+    perItemConfigKey: 'benefits',
+  },
+  {
+    key: 'included',
+    label: 'Included item images',
+    location: 'One optional image beside each included deliverable',
+    purpose: 'Show the actual deliverable: the cover, a sample page, a file preview.',
+    required: false,
+    recommendedWidth: 800,
+    recommendedHeight: 600,
+    perItemConfigKey: 'included',
+  },
+  {
+    key: 'testimonials',
+    label: 'Testimonial photos',
+    location: 'One optional avatar beside each testimonial quote',
+    purpose: 'A face or initials-style photo for the person quoted. Use only with permission.',
+    required: false,
+    recommendedWidth: 400,
+    recommendedHeight: 400,
+    perItemConfigKey: 'testimonials',
+  },
+]
+
+const SLOTS_MINIMAL: PageImageSlot[] = [
+  {
+    key: 'hero',
+    label: 'Product image',
+    location: 'Top of the page, above the title',
+    purpose: 'The product cover or its clearest single shot.',
+    required: true,
+    recommendedWidth: 1600,
+    recommendedHeight: 1000,
+  },
+  {
+    key: 'included',
+    label: 'Included item images',
+    location: 'One optional image beside each included deliverable',
+    purpose: 'A preview of each item the buyer receives.',
+    required: false,
+    recommendedWidth: 800,
+    recommendedHeight: 600,
+    perItemConfigKey: 'included',
+  },
+]
+
+/**
+ * One assigned image, as the public payload delivers it: keyed by slot (and
+ * item index for repeating slots, as `benefits.2`).
+ */
+export interface PageImage {
+  url: string | null
+  alt_en: string | null
+  alt_bn: string | null
+}
+
+export type PageImageMap = Record<string, PageImage>
+
 export interface PageTemplate {
   /** The `pages.template` value. Stable across releases: rows in the wild keep it. */
   id: string
@@ -150,6 +257,8 @@ export interface PageTemplate {
   defaultConfig: Record<string, unknown>
   adminForm: Component
   renderer: Component
+  /** The image slots this template renders. Empty for text-only layouts. */
+  imageSlots: PageImageSlot[]
 }
 
 const SALES_DEFAULT: SalesLandingConfig = {
@@ -217,6 +326,7 @@ export const PAGE_TEMPLATES: readonly PageTemplate[] = [
     defaultConfig: {},
     adminForm: markRaw(StandardConfigForm),
     renderer: markRaw(StandardTemplate),
+    imageSlots: [],
   },
   {
     id: 'landing',
@@ -224,6 +334,7 @@ export const PAGE_TEMPLATES: readonly PageTemplate[] = [
     defaultConfig: LANDING_DEFAULT as unknown as Record<string, unknown>,
     adminForm: markRaw(LandingConfigForm),
     renderer: markRaw(LandingTemplate),
+    imageSlots: [],
   },
   {
     id: 'sales-landing',
@@ -231,6 +342,7 @@ export const PAGE_TEMPLATES: readonly PageTemplate[] = [
     defaultConfig: SALES_DEFAULT as unknown as Record<string, unknown>,
     adminForm: markRaw(SalesLandingConfigForm),
     renderer: markRaw(SalesLandingTemplate),
+    imageSlots: SLOTS_SALES,
   },
   {
     id: 'minimal-product',
@@ -238,6 +350,7 @@ export const PAGE_TEMPLATES: readonly PageTemplate[] = [
     defaultConfig: MINIMAL_DEFAULT as unknown as Record<string, unknown>,
     adminForm: markRaw(MinimalProductConfigForm),
     renderer: markRaw(MinimalProductTemplate),
+    imageSlots: SLOTS_MINIMAL,
   },
 ]
 

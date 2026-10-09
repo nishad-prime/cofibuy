@@ -55,6 +55,12 @@ import { usePageAssetUpload } from '@/composables/usePageAssetUpload'
  * the template config. Replacing an image uploads a new object rather than
  * overwriting, so a CDN-cached old image can never show through.
  */
+const props = defineProps<{
+  /** When set, the upload lands under a structured per-page, per-slot path. */
+  pageId?: string
+  slotKey?: string
+}>()
+
 const imageUrl = defineModel<string>('imageUrl', { required: true })
 
 const { upload, uploading } = usePageAssetUpload()
@@ -66,7 +72,7 @@ const onPick = async (event: Event): Promise<void> => {
   if (!file) return
 
   error.value = null
-  const url = await upload(file)
+  const url = await upload(file, props.pageId ?? '', props.slotKey ?? '')
   if (!url) {
     error.value = 'The image could not be uploaded. Try a smaller file.'
     return

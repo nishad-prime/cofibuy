@@ -5,13 +5,18 @@ import { ref } from 'vue'
  *
  * The bucket is world-readable - page art is the thing the customer's browser
  * loads - but writes are staff-only, enforced by the bucket's storage
- * policies. The path is flat and derived from the original filename so an
- * operator replacing an image can find it again.
+ * policies. Paths are structured (`{pageId}/{slotKey}/{file}`) so an asset's
+ * storage location says which page and slot it belongs to, and cleanup can
+ * list a page's files without parsing names.
+ *
+ * A replaced image is uploaded as a new object rather than overwriting, so a
+ * CDN-cached old image can never show through; the caller deletes the old
+ * object after the new upload lands.
  */
 export function usePageAssetUpload() {
   const uploading = ref(false)
 
-  const upload = async (file: File): Promise<string | null> => {
+  const upload = async (file: File, pageId: string, slotKey: string): Promise<string | null> => {
     uploading.value = true
     try {
       const { getSupabase } = await import('@/lib/supabase')
@@ -24,7 +29,7 @@ export function usePageAssetUpload() {
         .replace(/[^a-z0-9-]+/g, '-')
         .replace(/^-+|-+$/g, '')
         .slice(0, 40)
-      const path = `${Date.now()}-${safe || 'image'}.${ext}`
+      const path = `${pageId}/${slotKey}/${Date.now()}-${safe || 'image'}.${ext}`
 
       const { error } = await supabase.storage.from('page-assets').upload(path, file, {
         contentType: file.type,

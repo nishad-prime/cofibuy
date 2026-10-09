@@ -27,7 +27,12 @@
     <template v-else>
       <!-- The template owns the page's selling content; the checkout section
            is placed by the template, wherever the template's flow ends. -->
-      <component :is="template.renderer" :page="renderPage" :config="templateConfig">
+      <component
+        :is="template.renderer"
+        :page="renderPage"
+        :config="templateConfig"
+        :images="pageImages"
+      >
         <template #purchase>
           <PageCheckoutSection :page="checkoutPage" />
         </template>
@@ -95,6 +100,14 @@ const templateConfig = computed(() =>
 // The v-else branch guarantees a page at render time; this alias records that
 // guarantee in one place instead of a non-null assertion in the markup.
 const renderPage = computed(() => page.value as Page)
+
+/**
+ * The assigned images, keyed by slot as the public payload delivers them.
+ * Templates render what is assigned and collapse what is not.
+ */
+const pageImages = computed(
+  () => (page.value as unknown as { images?: Record<string, unknown> })?.images ?? {},
+)
 
 /**
  * The checkout reads exactly the slice of the page it needs - gateways,

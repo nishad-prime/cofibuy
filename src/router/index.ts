@@ -103,6 +103,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/admin/PageFormView.vue'),
       },
       {
+        path: 'pages/:id/images',
+        name: 'admin-page-images',
+        component: () => import('@/views/admin/PageImagesView.vue'),
+        meta: { requiresOwner: true },
+      },
+      {
         path: 'gateways',
         name: 'admin-gateways',
         component: () => import('@/views/admin/GatewaysView.vue'),

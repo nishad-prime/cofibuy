@@ -4,9 +4,9 @@
     <section class="section-block bg-white">
       <div class="page-section-inner">
         <img
-          v-if="config.hero_image_url"
-          :src="config.hero_image_url"
-          :alt="heroImageAlt ?? undefined"
+          v-if="heroImg"
+          :src="heroImg.url"
+          :alt="heroImg.alt"
           class="w-full rounded-2xl object-cover shadow-lg"
         />
         <h1 class="mt-8 text-4xl font-extrabold tracking-tight text-stone-900">
@@ -64,7 +64,11 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppIcon from '@/components/AppIcon.vue'
 import { useContent } from '@/composables/useContent'
-import { scrollToCheckout, type MinimalProductConfig } from '@/pages/templates/registry'
+import {
+  scrollToCheckout,
+  type MinimalProductConfig,
+  type PageImageMap,
+} from '@/pages/templates/registry'
 
 const { t } = useI18n()
 const { pick } = useContent()
@@ -77,6 +81,8 @@ const props = defineProps<{
     teaser_md_bn: string | null
   }
   config: MinimalProductConfig
+  /** Assigned images by slot; empty when nothing has been uploaded yet. */
+  images?: PageImageMap
 }>()
 
 const heroTitle = computed(
@@ -89,6 +95,15 @@ const heroImageAlt = computed(
     pick({ bn: props.config.hero_image_alt_bn, en: props.config.hero_image_alt_en }) ||
     heroTitle.value,
 )
+
+const heroImg = computed(() => {
+  const direct = props.images?.hero
+  if (direct?.url) return { url: direct.url, alt: heroImageAlt.value ?? '' }
+  if (props.config.hero_image_url) {
+    return { url: props.config.hero_image_url, alt: heroImageAlt.value ?? '' }
+  }
+  return null
+})
 
 const config = computed(() => ({
   ...props.config,

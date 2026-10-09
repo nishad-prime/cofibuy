@@ -36,3 +36,8 @@ selenium_tests/venv/
 
 # debugging output from the browser tests, not fixtures
 selenium_tests/screenshots/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

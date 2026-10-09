@@ -75,7 +75,8 @@ grants all look fine.
 
 `api.admin_set_staff` refuses anyone who is not already an owner, so the first
 owner cannot be created through the API. Use `supabase/seed.sql`, which creates
-the first owner plus a demo gateway and a demo link:
+the first owner - everything else (payment methods, pages) you configure in the
+admin panel afterwards:
 
 - Local: `npx supabase db reset` runs it automatically
 - Hosted: paste it into the dashboard's SQL editor, after changing the
@@ -137,7 +138,7 @@ src/                    Vue 3 + Tailwind 4 app
 supabase/
   config.toml           CLI config, including the exposed schema list
   migrations/           the schema, and every rule, in SQL
-  seed.sql              first owner + demo gateway + demo page
+  seed.sql              the first owner; a fresh deployment starts empty
   tests/                the database suite
 scripts/
   bootstrap.mjs         pre-flight check

@@ -89,6 +89,20 @@ export type Database = {
         }
         Returns: Json[]
       }
+      admin_page_assets: {
+        Args: {
+          p_page_id: string
+          slot_key?: string
+          item_index?: number
+          storage_path?: string
+          public_url?: string
+          alt_en?: string
+          alt_bn?: string
+          brief_en?: string
+          brief_bn?: string
+        }
+        Returns: Json[]
+      }
       admin_page_performance: {
         Args: {
           p_limit?: number
@@ -101,6 +115,14 @@ export type Database = {
         Returns: Json[]
       }
       admin_pages: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      admin_remove_page_asset: {
+        Args: {
+          p_page_id: string
+          p_slot_key: string
+          p_item_index: number
+        }
+        Returns: string
+      }
       admin_remove_staff: {
         Args: {
           p_user_id: string
@@ -144,6 +166,20 @@ export type Database = {
       admin_upsert_page: {
         Args: {
           p_page: Json
+        }
+        Returns: Json
+      }
+      admin_upsert_page_asset: {
+        Args: {
+          p_page_id: string
+          p_slot_key: string
+          p_item_index: number
+          p_storage_path: string
+          p_public_url: string
+          p_alt_en: string
+          p_alt_bn: string
+          p_brief_en: string
+          p_brief_bn: string
         }
         Returns: Json
       }

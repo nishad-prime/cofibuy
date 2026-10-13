@@ -1,6 +1,14 @@
 -- Remove fields that no template or customer surface renders.
--- Views depending on the dropped columns are dropped and recreated.
+-- Functions and views depending on the dropped columns are dropped first,
+-- then the columns, then everything is recreated.
 
+drop function if exists api.list_public_pages();
+drop function if exists api.public_page_payload_v1(text);
+drop function if exists api.public_page_payload(text);
+drop function if exists api.admin_upsert_page(jsonb);
+drop function if exists api.admin_upsert_gateway(jsonb);
+drop function if exists api.get_unlocked_page(text);
+drop function if exists api.my_order_status(uuid);
 drop view if exists public.pages_public;
 
 alter table public.pages
@@ -11,6 +19,24 @@ alter table public.payment_gateways
   drop column if exists reference_prompt_en,
   drop column if exists reference_prompt_bn,
   drop column if exists supports_reference;
+
+-- The column-level grants on the base tables reference the dropped columns.
+-- Stale grants would make invoker-side reads fail. Revoke and re-grant.
+revoke select on public.pages from anon, authenticated;
+revoke select on public.payment_gateways from anon, authenticated;
+
+grant select (id, slug, title_en, title_bn,
+              unlock_cta_label_en, unlock_cta_label_bn, unlock_cta_url,
+              template, template_config,
+              amount_presets, fixed_amount,
+              sort_order, is_active, is_listed)
+  on public.pages to anon, authenticated;
+
+grant select (id, kind, account_number, account_name, name_en, name_bn,
+              instructions_md_en, instructions_md_bn, evidence_fields,
+              country, is_primary_for_country, banner_url, banner_small_url,
+              sort_order, is_active)
+  on public.payment_gateways to anon, authenticated;
 
 create view public.pages_public
 with (security_invoker = true)
@@ -77,9 +103,11 @@ as $function$
     'unlock_cta_url', r.unlock_cta_url,
     'template', r.template,
     'template_config', r.template_config,
+    'is_listed', r.is_listed,
     'min_amount', case when r.hide_min then null else r.min_amount end,
     'min_hidden', r.hide_min,
     'fixed_amount', r.fixed_amount,
+    'amount_presets', coalesce(r.amount_presets, '[]'::jsonb),
     'gateways', coalesce(
       (
         select jsonb_agg(
@@ -90,6 +118,7 @@ as $function$
             'account_name', g.account_name,
             'name_en', g.name_en,
             'name_bn', g.name_bn,
+            'provider', g.provider,
             'instructions_md_en', g.instructions_md_en,
             'instructions_md_bn', g.instructions_md_bn,
             'evidence_fields', g.evidence_fields,
@@ -119,29 +148,7 @@ create or replace function api.public_page_payload(p_slug text)
  stable security definer
  set search_path to ''
 as $function$
-  select case
-    when base.doc is null then null
-    else jsonb_set(base.doc, '{gateways}', coalesce((
-      select jsonb_agg(
-        jsonb_build_object(
-          'id', g.id,
-          'kind', g.kind,
-          'name_en', g.name_en,
-          'name_bn', g.name_bn,
-          'provider', g.provider,
-          'sort_order', g.sort_order,
-          'country', g.country,
-          'is_primary_for_country', g.is_primary_for_country,
-          'banner_url', g.banner_url,
-          'banner_small_url', g.banner_small_url
-        )
-        order by g.sort_order, g.name_en
-      )
-      from public.payment_gateways g
-      where g.is_active
-    ), '[]'::jsonb))
-  end
-  from (select api.public_page_payload_v1(p_slug) as doc) base
+  select api.public_page_payload_v1(p_slug)
 $function$;
 
 revoke all on function api.public_page_payload(p_slug text) from public, anon, authenticated;
@@ -357,6 +364,9 @@ create or replace function api.get_unlocked_page(p_slug text)
  set search_path to ''
 as $function$
   select jsonb_build_object(
+    'slug', l.slug,
+    'title_en', l.title_en,
+    'title_bn', l.title_bn,
     'unlock_body_md_en', l.unlock_body_md_en,
     'unlock_body_md_bn', l.unlock_body_md_bn,
     'unlock_cta_label_en', l.unlock_cta_label_en,

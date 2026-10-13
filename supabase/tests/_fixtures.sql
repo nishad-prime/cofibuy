@@ -198,11 +198,11 @@ declare
   v_link public.pages;
 begin
   insert into public.pages (
-    slug, title_en, title_bn, teaser_md_en, teaser_md_bn,
+    slug, title_en, title_bn,
     unlock_body_md_en, unlock_body_md_bn, min_amount_override, hide_min_override, is_active
   )
   values (
-    p_slug, 'Field Guide', 'ফিল্ড গাইড', 'Teaser text.', 'টিজার লেখা।',
+    p_slug, 'Field Guide', 'ফিল্ড গাইড',
     'The full guide.', 'পূর্ণ গাইড।', p_min, p_hide_min, p_active
   )
   returning * into v_link;
@@ -227,7 +227,7 @@ declare
 begin
   insert into public.payment_gateways (
     kind, name_en, name_bn, account_number, account_name,
-    supports_reference, evidence_fields, is_active
+    evidence_fields, is_active
   )
   values (
     p_kind,
@@ -235,7 +235,6 @@ begin
     case p_kind when 'nagad' then 'নগদ' when 'bank' then 'ব্যাংক' else 'বিকাশ' end,
     '01700000000',
     'Cofibuy',
-    true,
     coalesce(
       p_fields,
       '[{"key":"sender_number","type":"text","label_en":"Sender number","required":true,"validate":"bd_phone","max_len":20},
@@ -329,9 +328,12 @@ begin
     public.customer_contacts,
     public.access_grants,
     public.order_evidence,
+    public.telegram_invites,
+    public.telegram_invite_errors,
     public.orders,
     public.pages,
     public.payment_gateways,
+    public.telegram_chats,
     public.staff,
     public.site_settings
   restart identity cascade;

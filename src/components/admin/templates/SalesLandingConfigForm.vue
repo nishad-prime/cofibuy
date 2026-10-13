@@ -60,46 +60,6 @@
     </CollapsibleSection>
 
     <CollapsibleSection
-      panel-id="video"
-      :open="openSections['video'] ?? false"
-      @update:open="openSections['video'] = $event"
-      title="Video"
-    >
-      <div class="space-y-4">
-        <div>
-          <label class="label">Video URL</label>
-          <input v-model="config.video_url" class="field" placeholder="https://…/video.mp4" />
-        </div>
-        <div class="grid gap-4 md:grid-cols-2">
-          <div>
-            <label class="label">Section heading (EN)</label>
-            <input v-model="config.video_heading_en" class="field" />
-          </div>
-          <div>
-            <label class="label">Section heading (BN)</label>
-            <input v-model="config.video_heading_bn" class="field" />
-          </div>
-          <div>
-            <label class="label">Hero secondary button (EN)</label>
-            <input v-model="config.hero_video_cta_en" class="field" />
-          </div>
-          <div>
-            <label class="label">Hero secondary button (BN)</label>
-            <input v-model="config.hero_video_cta_bn" class="field" />
-          </div>
-        </div>
-        <p class="hint">
-          Portrait video (576×1280) hosted on Cloudflare R2. Upload with
-          <code
-            >wrangler r2 object put &lt;bucket&gt;/videos/&lt;name&gt;.mp4 --file video.mp4</code
-          >
-          and paste the object's public URL above. Leaving the URL empty hides the video section and
-          the hero's secondary button.
-        </p>
-      </div>
-    </CollapsibleSection>
-
-    <CollapsibleSection
       panel-id="the-problem"
       :open="openSections['the-problem'] ?? false"
       @update:open="openSections['the-problem'] = $event"

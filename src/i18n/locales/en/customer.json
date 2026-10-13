@@ -23,7 +23,10 @@
     "heading": "What would you like to read?",
     "subheading": "Pick a report, pay once, and read it straight away.",
     "empty": "No reports have been published yet.",
-    "browse": "See all reports"
+    "browse": "See all reports",
+    "stepPick": "Pick your report",
+    "stepPay": "Pay by bKash",
+    "stepUnlock": "Unlock instantly"
   },
   "notFound": {
     "title": "Page not found",
@@ -55,7 +58,18 @@
     "accountNumber": "Account / wallet number",
     "accountName": "Account name",
     "custom": "Custom",
-    "summaryPage": "Report"
+    "summaryPage": "Report",
+    "payNow": "Pay now",
+    "autoHint": "Taken automatically when you pay",
+    "manualHint": "You send it, then send proof",
+    "continue": "Continue",
+    "sendStep": "Send & confirm",
+    "changeMethod": "Change method",
+    "stepAmount": "Choose the amount",
+    "stepSend": "Send the money",
+    "stepConfirm": "Confirm with proof",
+    "sendExact": "Send the exact amount shown above, then confirm below.",
+    "sendExactReference": "Send exactly {amount} to the account below, then confirm with your transaction id."
   },
   "order": {
     "title": "Order status",
@@ -90,7 +104,10 @@
     "payOnlineTestDone": "That was a test payment, so nothing was charged and the order stays unpaid.",
     "payOnlineFailed": "The payment did not go through.",
     "payOnlineRetry": "Try the payment again",
-    "completeBy": "Complete by"
+    "completeBy": "Complete by",
+    "joinTelegram": "Join on Telegram",
+    "invitePreparing": "Preparing your invite…",
+    "inviteRevoked": "This invite link has reached its limit. Please contact support."
   },
   "evidence": {
     "required": "required",
@@ -119,7 +136,20 @@
     "whatYouGet": "What you get",
     "faq": "Questions and answers",
     "getStarted": "Get started",
-    "watchVideo": "Watch the video"
+    "adultsOnly": "18+ · Adults only",
+    "privateCheckout": "Private checkout · <strong>Instant access</strong> after approval",
+    "whyExists": "Why this exists",
+    "adultDiscretion": "Made for adults who value discretion",
+    "benefitsPitch": "A better way to get <strong>exactly what you came for</strong>.",
+    "insidePurchase": "Inside your purchase",
+    "simpleByDesign": "Simple by design",
+    "howPitch": "From curious to <strong>confident</strong> in a few minutes.",
+    "trustedBy": "Trusted by people like you",
+    "testimonialsPitch": "A private experience people <strong>come back to</strong>.",
+    "beforeDecide": "Before you decide",
+    "questionsAnswered": "Questions, answered <strong>privately</strong>.",
+    "readyWhen": "Ready when you are",
+    "marquee": "18+ only · Discreet by design · Instant access after approval · Nothing explicit on your statement"
   },
   "errors": {
     "transport": "Could not reach the payment service. Check your connection, then try again. If you are on a VPN or a strict network, that can block the request.",

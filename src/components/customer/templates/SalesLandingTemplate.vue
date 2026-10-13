@@ -1,6 +1,21 @@
 <template>
   <div class="bg-stone-950 text-white">
     <!--
+      Telegram support bubble: fixed bottom-right, page-specific chat link.
+      Hidden when the operator hasn't set a support URL.
+    -->
+    <a
+      v-if="config.telegram_support_url"
+      :href="config.telegram_support_url"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="fixed bottom-6 right-6 z-40 flex size-12 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg shadow-black/30 transition-transform hover:scale-110"
+      :aria-label="t('customer.page.tgSupport')"
+    >
+      <Send :size="20" aria-hidden="true" />
+    </a>
+
+    <!--
       Sticky marquee: fills the chrome-free top of a standalone sales page
       with the pitch, and keeps a CTA pinned at the right edge on every
       screen. The scrolling track is decorative (aria-hidden); screen readers
@@ -486,6 +501,7 @@ import {
   PackageOpen,
   Play,
   Sparkles,
+  Send,
   Star,
 } from 'lucide-vue-next'
 import TemplatePlaceholder from '@/components/customer/TemplatePlaceholder.vue'

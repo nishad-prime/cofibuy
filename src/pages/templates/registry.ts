@@ -100,6 +100,7 @@ export interface SalesLandingConfig {
   video_heading_bn: string
   hero_video_cta_en: string
   hero_video_cta_bn: string
+  telegram_support_url: string
 }
 
 /**
@@ -242,6 +243,7 @@ const SALES_DEFAULT: SalesLandingConfig = {
   video_heading_bn: '',
   hero_video_cta_en: '',
   hero_video_cta_bn: '',
+  telegram_support_url: '',
 }
 
 /**

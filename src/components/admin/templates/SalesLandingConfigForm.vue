@@ -465,6 +465,14 @@
             </select>
           </div>
         </div>
+        <div>
+          <label class="label">Support chat URL (shows a floating TG bubble on the page)</label>
+          <input
+            v-model="config.telegram_support_url"
+            class="field"
+            placeholder="https://t.me/yourusername"
+          />
+        </div>
         <p class="hint mt-2">
           No chats discovered yet. Add the bot to a channel or group and it will appear here.
         </p>

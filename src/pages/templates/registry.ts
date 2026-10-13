@@ -95,6 +95,11 @@ export interface SalesLandingConfig {
   /** The Telegram chat the page delivers to (bot must be admin there). */
   telegram_chat_id: string
   telegram_chat_type: string
+  video_url: string
+  video_heading_en: string
+  video_heading_bn: string
+  hero_video_cta_en: string
+  hero_video_cta_bn: string
 }
 
 /**
@@ -232,6 +237,11 @@ const SALES_DEFAULT: SalesLandingConfig = {
   faq: [],
   telegram_chat_id: '',
   telegram_chat_type: 'channel',
+  video_url: '',
+  video_heading_en: '',
+  video_heading_bn: '',
+  hero_video_cta_en: '',
+  hero_video_cta_bn: '',
 }
 
 /**

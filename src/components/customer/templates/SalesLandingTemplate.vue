@@ -104,6 +104,50 @@
       </div>
     </section>
 
+    <!-- Video: a portrait demo the operator hosts on R2 or any CDN. -->
+    <section
+      v-if="config.video_url"
+      id="page-video"
+      class="flex min-h-[85svh] items-center bg-stone-900 py-16 sm:py-24"
+    >
+      <div v-reveal class="mx-auto w-full max-w-3xl px-5 sm:px-6">
+        <p class="flex items-center gap-2 text-xs font-semibold text-brand-300">
+          <Play :size="16" aria-hidden="true" />
+          {{ t('customer.page.videoKicker') }}
+        </p>
+        <h2
+          v-if="config.video_heading"
+          class="copy-accent-dark mt-5 text-3xl font-bold leading-tight tracking-tight sm:text-5xl"
+        >
+          {{ config.video_heading }}
+        </h2>
+        <div
+          class="mx-auto mt-10 max-w-sm overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/40"
+        >
+          <video
+            ref="videoEl"
+            :src="config.video_url"
+            controls
+            preload="metadata"
+            playsinline
+            class="aspect-[9/16] w-full object-cover"
+          />
+        </div>
+        <button
+          type="button"
+          class="btn-primary cta-glow group mt-10 w-full bg-brand-500 py-3.5 text-base text-stone-950 hover:bg-brand-400 sm:w-auto sm:px-10"
+          @click="openCheckout"
+        >
+          {{ heroCta }}
+          <ArrowRight
+            :size="18"
+            aria-hidden="true"
+            class="transition-transform group-hover:translate-x-0.5"
+          />
+        </button>
+      </div>
+    </section>
+
     <!-- Problem / desire: sell the transformation, not a feature list. -->
     <section
       v-if="config.problem_heading || config.problem_body"
@@ -440,6 +484,7 @@ import {
   Lock,
   MessageCircleQuestion,
   PackageOpen,
+  Play,
   Sparkles,
   Star,
 } from 'lucide-vue-next'
@@ -542,6 +587,7 @@ const heroCta = computed(
 const config = computed(() => ({
   ...props.config,
   hero_subtitle: pick({ bn: props.config.hero_subtitle_bn, en: props.config.hero_subtitle_en }),
+  video_heading: pick({ bn: props.config.video_heading_bn, en: props.config.video_heading_en }),
   problem_heading: pick({
     bn: props.config.problem_heading_bn,
     en: props.config.problem_heading_en,

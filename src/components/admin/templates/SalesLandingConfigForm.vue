@@ -60,6 +60,39 @@
     </CollapsibleSection>
 
     <CollapsibleSection
+      panel-id="video"
+      :open="openSections['video'] ?? false"
+      @update:open="openSections['video'] = $event"
+      title="Video"
+    >
+      <p class="hint mb-3">
+        A portrait demo video (9:16) hosted on Cloudflare R2 or any CDN. Paste the public URL.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="label">Video URL</label>
+          <input v-model="config.video_url" class="field" placeholder="https://…" />
+        </div>
+        <div>
+          <label class="label">Secondary CTA label (EN)</label>
+          <input v-model="config.hero_video_cta_en" class="field" placeholder="Watch the demo" />
+        </div>
+        <div>
+          <label class="label">Section heading (EN)</label>
+          <input v-model="config.video_heading_en" class="field" />
+        </div>
+        <div>
+          <label class="label">Section heading (BN)</label>
+          <input v-model="config.video_heading_bn" class="field" lang="bn" />
+        </div>
+        <div>
+          <label class="label">Secondary CTA label (BN)</label>
+          <input v-model="config.hero_video_cta_bn" class="field" lang="bn" />
+        </div>
+      </div>
+    </CollapsibleSection>
+
+    <CollapsibleSection
       panel-id="the-problem"
       :open="openSections['the-problem'] ?? false"
       @update:open="openSections['the-problem'] = $event"

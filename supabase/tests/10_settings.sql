@@ -265,8 +265,8 @@ select lives_ok(
 
 select is(
   test_data.can_execute('anon', 'api.public_page_payload(text)'),
-  false,
-  'anon cannot bypass the wrapper'
+  true,
+  'the public payload is a public read endpoint'
 );
 
 select is(

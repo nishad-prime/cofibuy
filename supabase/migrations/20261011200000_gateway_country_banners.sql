@@ -82,7 +82,6 @@ create policy gateway_assets_staff_delete
 drop view public.payment_gateways_public;
 
 create view public.payment_gateways_public
-with (security_invoker = true)
 as
 select
   id,

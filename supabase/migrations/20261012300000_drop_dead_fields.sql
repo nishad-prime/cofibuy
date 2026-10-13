@@ -20,26 +20,7 @@ alter table public.payment_gateways
   drop column if exists reference_prompt_bn,
   drop column if exists supports_reference;
 
--- The column-level grants on the base tables reference the dropped columns.
--- Stale grants would make invoker-side reads fail. Revoke and re-grant.
-revoke select on public.pages from anon, authenticated;
-revoke select on public.payment_gateways from anon, authenticated;
-
-grant select (id, slug, title_en, title_bn,
-              unlock_cta_label_en, unlock_cta_label_bn, unlock_cta_url,
-              template, template_config,
-              amount_presets, fixed_amount,
-              sort_order, is_active, is_listed)
-  on public.pages to anon, authenticated;
-
-grant select (id, kind, account_number, account_name, name_en, name_bn,
-              instructions_md_en, instructions_md_bn, evidence_fields,
-              country, is_primary_for_country, banner_url, banner_small_url,
-              sort_order, is_active)
-  on public.payment_gateways to anon, authenticated;
-
 create view public.pages_public
-with (security_invoker = true)
 as
 select
   id,
@@ -116,6 +97,7 @@ as $function$
             'kind', g.kind,
             'account_number', g.account_number,
             'account_name', g.account_name,
+            'account_fields', g.account_fields,
             'name_en', g.name_en,
             'name_bn', g.name_bn,
             'provider', g.provider,
@@ -399,7 +381,7 @@ declare
 begin
   select * into v_order from public.orders where id = p_order_id and user_id = auth.uid();
   if not found then
-    return null;
+    raise exception 'order not found' using errcode = 'P0002';
   end if;
 
   select * into v_gateway from public.payment_gateways where id = v_order.gateway_id;

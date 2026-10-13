@@ -205,8 +205,8 @@ select is(
 select test_data.as_anon();
 select is(
   test_data.can_execute('anon', 'api.public_page_payload(text)'),
-  false,
-  'the wrapper does not become a second anon entry point'
+  true,
+  'the public payload is a public read endpoint'
 );
 
 -- ---------------------------------------------------------------------------

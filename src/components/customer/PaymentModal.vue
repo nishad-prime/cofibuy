@@ -370,12 +370,7 @@
                 </p>
 
                 <!-- Rejected: the reason, and the form to try again with. -->
-                <template
-                  v-if="
-                    !checkout.orderPaysOnline.value &&
-                    checkout.existingOrder.value.status === 'rejected'
-                  "
-                >
+                <template v-if="checkout.existingOrder.value.status === 'rejected'">
                   <p class="alert-error mt-4" role="alert">
                     {{ t('customer.order.rejectReason') }}:
                     {{
@@ -385,7 +380,10 @@
                       })
                     }}
                   </p>
-                  <div class="mt-4">
+                  <div
+                    v-if="!checkout.orderPaysOnline.value && orderAcceptsEvidence"
+                    class="mt-4"
+                  >
                     <h3 class="text-sm font-semibold text-stone-900">
                       {{ t('customer.order.submitEvidence') }}
                     </h3>
@@ -396,6 +394,23 @@
                       @submit="submitExistingEvidence"
                     />
                   </div>
+
+                  <!--
+                    The way out of a refusal: the database detaches the order
+                    from the customer, and the gateway banners come back.
+                  -->
+                  <button
+                    type="button"
+                    class="btn-secondary mt-4 w-full"
+                    :disabled="checkout.detaching.value"
+                    @click="startAnotherOrder"
+                  >
+                    {{
+                      checkout.detaching.value
+                        ? t('customer.paywall.submitting')
+                        : t('customer.order.startAnother')
+                    }}
+                  </button>
                 </template>
 
                 <!-- Under review is a manual-payment state: an automatic payment
@@ -523,7 +538,8 @@ const busy = computed(
   () =>
     checkout.value.creating.value ||
     checkout.value.submittingEvidence.value ||
-    checkout.value.paying.value,
+    checkout.value.paying.value ||
+    (checkout.value.detaching?.value ?? false),
 )
 
 const checkout = computed(() => props.checkout)
@@ -674,6 +690,18 @@ async function submitExistingEvidence(evidence: Record<string, unknown>): Promis
     return
   }
   phaseAfterSubmission()
+}
+
+/**
+ * Leaves the rejected order behind: the database detaches it from the
+ * customer, and the modal walks back to the gateway banners as if the
+ * customer had never ordered. An error leaves the status page up, with the
+ * reason on it.
+ */
+async function startAnotherOrder(): Promise<void> {
+  await checkout.value.startAnotherOrder()
+  if (checkout.value.error.value) return
+  phase.value = 'gateway'
 }
 
 /** A fresh manual submission becomes the order: the status page is the answer. */

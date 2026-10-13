@@ -78,9 +78,11 @@
         <p v-if="checkout.error.value" class="alert-error mt-4" role="alert">
           {{ checkout.error.value }}
         </p>
+
         <button type="button" class="btn-primary mt-4 w-full" @click="modalOpen = true">
           {{ payCtaLabel }}
         </button>
+
       </div>
     </template>
 

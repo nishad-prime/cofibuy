@@ -829,6 +829,41 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
     }
   }
 
+  /**
+   * Leaves a rejected order behind: the database detaches it from the user,
+   * so it stops being theirs and stops being in any new order's way, and the
+   * panel steps aside for the gateway banners again. Only a rejected order
+   * detaches - every other status is either still actionable or is ownership.
+   */
+  const detaching = ref(false)
+
+  const startAnotherOrder = async (): Promise<void> => {
+    const order = existingOrder.value
+    if (!order || detaching.value) return
+
+    detaching.value = true
+    error.value = null
+    try {
+      const { error: detachError } = await supabase.rpc('detach_order', {
+        p_order_id: order.id,
+      })
+
+      if (detachError) {
+        error.value = detachError.message
+        return
+      }
+
+      polling?.stopPolling()
+      polling = null
+      existingOrder.value = null
+      orderDetails.value = null
+      selectedKind.value = null
+      preselectKind()
+    } finally {
+      detaching.value = false
+    }
+  }
+
   const init = (): void => {
     void loadCustomerCountry()
     preselectKind()
@@ -850,6 +885,7 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
     paying,
     submittingEvidence,
     customerCountry,
+    detaching,
     justPaid: computed(() => route.query?.paid === '1'),
     telegramInvite,
     // computeds
@@ -886,6 +922,7 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
     init,
     payExisting,
     submitEvidence,
+    startAnotherOrder,
     createOrder,
     createManualOrder,
   }

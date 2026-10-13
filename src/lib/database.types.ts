@@ -302,6 +302,12 @@ export type Database = {
         }
         Returns: Json
       }
+      detach_order: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
       gateway_credential_bundle: {
         Args: {
           p_gateway_id: string
@@ -652,7 +658,7 @@ export type Database = {
       orders: {
         Row: {
           id: string
-          user_id: string
+          user_id: string | null
           link_id: string
           gateway_id: string
           status:
@@ -682,7 +688,6 @@ export type Database = {
           reject_reason_bn: string | null
         }
         Insert: {
-          user_id: string
           link_id: string
           gateway_id: string
           reference_code: string
@@ -690,6 +695,7 @@ export type Database = {
           min_amount_snapshot: number
           expires_at: string
           id?: string
+          user_id?: string | null
           status?:
             | 'draft'
             | 'awaiting_proof'
@@ -714,7 +720,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          user_id?: string
+          user_id?: string | null
           link_id?: string
           gateway_id?: string
           status?:

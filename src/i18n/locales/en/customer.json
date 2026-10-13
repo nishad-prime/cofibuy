@@ -94,6 +94,7 @@
     "expired": "This order has expired. Please create a new one.",
     "locked": "This order is locked. Please try again later or create a new one.",
     "newOrder": "Create a new order",
+    "startAnother": "Start another order",
     "reminder": "Payment reminder",
     "reminderBody": "Finish this order by sending the payment to the account below.",
     "payOnline": "Pay with bKash",

@@ -25,14 +25,46 @@
           :alt="heroImg.alt"
           class="mt-8 w-full rounded-2xl object-cover shadow-lg"
         />
-        <button
-          v-if="heroCta"
-          type="button"
-          class="btn-primary mt-8 w-full py-3 text-base sm:w-auto sm:px-10"
-          @click="scrollToCheckout"
-        >
-          {{ heroCta }}
-        </button>
+        <div v-if="heroCta || heroVideoCta" class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <button
+            v-if="heroCta"
+            type="button"
+            class="btn-primary w-full py-3 text-base sm:w-auto sm:px-10"
+            @click="scrollToCheckout"
+          >
+            {{ heroCta }}
+          </button>
+          <button
+            v-if="heroVideoCta"
+            type="button"
+            class="btn-secondary w-full py-3 text-base sm:w-auto sm:px-10"
+            @click="scrollToSection('page-video')"
+          >
+            {{ heroVideoCta }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!--
+      The video: a portrait demo the operator hosts on R2. It starts playing
+      (muted, autoplay-policy safe) when scrolled into view and pauses on the
+      way out; the controls stay available either way.
+    -->
+    <section v-if="videoUrl" id="page-video" class="section-block bg-white scroll-mt-16">
+      <div class="page-section-inner">
+        <h2 v-if="config.video_heading" class="text-3xl font-bold tracking-tight text-stone-900">
+          {{ config.video_heading }}
+        </h2>
+        <video
+          ref="videoEl"
+          :src="videoUrl"
+          class="mx-auto mt-8 w-full max-w-[360px] rounded-2xl shadow-lg"
+          playsinline
+          controls
+          muted
+          preload="metadata"
+        ></video>
       </div>
     </section>
 
@@ -203,12 +235,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useIntersectionObserver } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import AppIcon from '@/components/AppIcon.vue'
 import { useContent } from '@/composables/useContent'
 import {
   scrollToCheckout,
+  scrollToSection,
   type PageImageMap,
   type SalesLandingConfig,
 } from '@/pages/templates/registry'
@@ -268,10 +302,37 @@ const heroCta = computed(
     t('customer.page.getStarted'),
 )
 
+/** The hero's secondary CTA: only rendered when a video exists to scroll to. */
+const heroVideoCta = computed(() => {
+  if (!props.config.video_url) return ''
+  return (
+    pick({ bn: props.config.hero_video_cta_bn, en: props.config.hero_video_cta_en }) ||
+    t('customer.page.watchVideo')
+  )
+})
+
+const videoUrl = computed(() => props.config.video_url)
+
+/**
+ * Autoplays the video while its section is on screen. `muted` + `playsinline`
+ * let the browser autoplay; the catch covers the browsers that still refuse.
+ */
+const videoEl = ref<HTMLVideoElement | null>(null)
+useIntersectionObserver(videoEl, ([entry]) => {
+  const video = videoEl.value
+  if (!video) return
+  if (entry?.isIntersecting) {
+    void video.play().catch(() => {})
+  } else {
+    video.pause()
+  }
+})
+
 const config = computed(() => ({
   ...props.config,
   hero_eyebrow: pick({ bn: props.config.hero_eyebrow_bn, en: props.config.hero_eyebrow_en }),
   hero_subtitle: pick({ bn: props.config.hero_subtitle_bn, en: props.config.hero_subtitle_en }),
+  video_heading: pick({ bn: props.config.video_heading_bn, en: props.config.video_heading_en }),
   problem_heading: pick({
     bn: props.config.problem_heading_bn,
     en: props.config.problem_heading_en,

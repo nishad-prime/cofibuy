@@ -95,6 +95,11 @@ export interface SalesLandingConfig {
   hero_image_alt_bn: string
   hero_cta_en: string
   hero_cta_bn: string
+  hero_video_cta_en: string
+  hero_video_cta_bn: string
+  video_url: string
+  video_heading_en: string
+  video_heading_bn: string
   problem_heading_en: string
   problem_heading_bn: string
   problem_body_en: string
@@ -136,11 +141,15 @@ export interface MinimalProductConfig {
  * template page ends here - a CTA that navigates would break the one-page
  * checkout, and one that did nothing would break the sales flow.
  */
-export function scrollToCheckout(): void {
-  const target = document.getElementById('page-checkout')
+export function scrollToSection(id: string): void {
+  const target = document.getElementById(id)
   if (!target) return
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+}
+
+export function scrollToCheckout(): void {
+  scrollToSection('page-checkout')
 }
 
 /**
@@ -273,6 +282,11 @@ const SALES_DEFAULT: SalesLandingConfig = {
   hero_image_alt_bn: '',
   hero_cta_en: '',
   hero_cta_bn: '',
+  hero_video_cta_en: '',
+  hero_video_cta_bn: '',
+  video_url: '',
+  video_heading_en: '',
+  video_heading_bn: '',
   problem_heading_en: '',
   problem_heading_bn: '',
   problem_body_en: '',
@@ -387,6 +401,7 @@ export function normalizeConfig(templateId: string, raw: unknown): Record<string
       ...SALES_DEFAULT,
       ...s,
       hero_image_url: typeof s.hero_image_url === 'string' ? s.hero_image_url : '',
+      video_url: typeof s.video_url === 'string' ? s.video_url : '',
       benefits: (Array.isArray(s.benefits) ? s.benefits : []).map((item) => ({
         icon: item?.icon ?? '',
         title_en: item?.title_en ?? '',

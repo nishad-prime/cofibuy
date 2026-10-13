@@ -445,9 +445,6 @@ describe('the page as the whole checkout', () => {
     })
     await flushPromises()
 
-    const fs2 = await import('node:fs')
-    fs2.writeFileSync('.tmp/debug2.html', wrapper.html())
-
     // A broken lookup must not take the form away: the customer can still try.
     expect(wrapper.find('#amount').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('permission denied')

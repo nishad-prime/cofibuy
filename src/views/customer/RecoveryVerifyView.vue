@@ -2,7 +2,11 @@
   <main class="mx-auto max-w-md px-4 py-12 sm:px-6">
     <h1 class="page-title">{{ t('customer.recovery.title') }}</h1>
 
-    <form v-if="!verified" class="card card-pad mt-8 space-y-5" @submit.prevent="submitVerify">
+    <form
+      v-if="!verified"
+      class="card card-pad rounded-2xl shadow-sm mt-8 space-y-5"
+      @submit.prevent="submitVerify"
+    >
       <div>
         <label class="label" for="phone">{{ t('customer.recovery.phone') }}</label>
         <input
@@ -42,7 +46,7 @@
         {{ t('customer.recovery.sent') }}
       </div>
 
-      <div v-if="grantedPages.length > 0" class="card card-pad">
+      <div v-if="grantedPages.length > 0" class="card card-pad rounded-2xl shadow-sm">
         <ul class="space-y-2">
           <li v-for="page in grantedPages" :key="page.slug">
             <router-link

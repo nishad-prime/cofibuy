@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import { useLocale } from '@/composables/useLocale'
 import { useI18n } from 'vue-i18n'
+import { usePageShell } from '@/composables/usePageShell'
 
 const { locale, otherLocale, toggle } = useLocale()
 const { t } = useI18n()
+const { isFullBleed } = usePageShell()
 </script>
 
 <template>
   <button
     type="button"
-    class="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
+    class="rounded-lg border px-3 py-1.5 text-sm font-medium"
+    :class="
+      isFullBleed
+        ? 'border-white/25 text-stone-200 hover:bg-white/10'
+        : 'border-stone-300 text-stone-700 hover:bg-stone-100'
+    "
     :aria-label="t('customer.lang.label')"
     @click="toggle"
   >

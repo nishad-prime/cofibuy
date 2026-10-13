@@ -30,7 +30,8 @@
     "functions:deploy": "supabase functions deploy --import-map supabase/functions/deno.json",
     "bootstrap": "node scripts/bootstrap.mjs",
     "db:types:check": "node scripts/generate-types.mjs --check",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:bot": "wrangler deploy --config bot/wrangler.toml"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans-bengali": "5.3.0",
@@ -38,6 +39,7 @@
     "@vueuse/core": "15.0.0",
     "chart.js": "^4.5.1",
     "dompurify": "3.4.16",
+    "lucide-vue-next": "^1.0.0",
     "marked": "18.0.14",
     "vue": "3.5.43",
     "vue-chartjs": "^5.3.4",

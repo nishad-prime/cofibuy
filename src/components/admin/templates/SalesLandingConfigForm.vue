@@ -13,16 +13,6 @@
       <div class="space-y-4">
         <div class="grid gap-4 md:grid-cols-2">
           <div>
-            <label class="label">Eyebrow (EN)</label>
-            <input v-model="config.hero_eyebrow_en" class="field" />
-          </div>
-          <div>
-            <label class="label">Eyebrow (BN)</label>
-            <input v-model="config.hero_eyebrow_bn" class="field" />
-          </div>
-        </div>
-        <div class="grid gap-4 md:grid-cols-2">
-          <div>
             <label class="label">Hero title (EN)</label>
             <input v-model="config.hero_title_en" class="field" />
           </div>
@@ -65,7 +55,7 @@
             <input v-model="config.hero_cta_bn" class="field" />
           </div>
         </div>
-        <p class="hint">Every button on the page scrolls the customer to the checkout.</p>
+        <p class="hint">Every button on the page opens the payment modal.</p>
       </div>
     </CollapsibleSection>
 
@@ -203,6 +193,20 @@
       @update:open="openSections['what-is-included'] = $event"
       title="What is included"
     >
+      <p class="hint mb-3">
+        Each item renders as a card with its own image. Assign the pictures on the page's image
+        screen; an item without a picture shows the store's placeholder.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="label">Heading (EN)</label>
+          <input v-model="config.included_heading_en" class="field" />
+        </div>
+        <div>
+          <label class="label">Heading (BN)</label>
+          <input v-model="config.included_heading_bn" class="field" />
+        </div>
+      </div>
       <div
         v-for="(item, index) in config.included"
         :key="index"
@@ -434,33 +438,44 @@
     </CollapsibleSection>
 
     <CollapsibleSection
-      panel-id="checkout"
-      :open="openSections['checkout'] ?? false"
-      @update:open="openSections['checkout'] = $event"
-      title="Checkout"
+      panel-id="telegram"
+      :open="openSections['telegram'] ?? false"
+      @update:open="onTelegramOpen"
+      title="Telegram delivery"
     >
-      <div class="grid gap-4 md:grid-cols-2">
-        <div>
-          <label class="label">Checkout heading (EN)</label>
-          <input v-model="config.checkout_heading_en" class="field" />
-        </div>
-        <div>
-          <label class="label">Checkout heading (BN)</label>
-          <input v-model="config.checkout_heading_bn" class="field" />
-        </div>
-        <div>
-          <label class="label">Checkout note (EN)</label>
-          <textarea v-model="config.checkout_note_en" rows="2" class="field"></textarea>
-        </div>
-        <div>
-          <label class="label">Checkout note (BN)</label>
-          <textarea v-model="config.checkout_note_bn" rows="2" class="field"></textarea>
-        </div>
-      </div>
-      <p class="hint mt-3">
-        The payment methods, prices and proof form are configured on this page's other fields - this
-        section is only the words around them.
+      <p class="hint mb-3">
+        When set, the checkout's post-payment button becomes a Telegram invite link (2 uses). The
+        bot must be an admin in the target chat. Leave empty for non-Telegram pages.
       </p>
+
+      <!-- Dropdown from the bot's discovered chats, falling back to a manual input. -->
+      <template v-if="telegramChats.length > 0">
+        <label class="label">Chat</label>
+        <select :value="config.telegram_chat_id" class="field" @change="onChatSelect($event)">
+          <option value="">— Select a chat —</option>
+          <option v-for="c in telegramChats" :key="c.chat_id" :value="c.chat_id">
+            {{ c.title }} ({{ c.type === 'supergroup' ? 'group' : c.type }})
+          </option>
+        </select>
+      </template>
+      <template v-else>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="label">Chat ID</label>
+            <input v-model="config.telegram_chat_id" class="field" placeholder="-1001234567890" />
+          </div>
+          <div>
+            <label class="label">Chat type</label>
+            <select v-model="config.telegram_chat_type" class="field">
+              <option value="channel">Channel</option>
+              <option value="group">Group</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint mt-2">
+          No chats discovered yet. Add the bot to a channel or group and it will appear here.
+        </p>
+      </template>
     </CollapsibleSection>
   </div>
 </template>
@@ -469,6 +484,7 @@
 import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
 import PageImageUpload from '@/components/admin/PageImageUpload.vue'
 import { ref } from 'vue'
+import { rpc } from '@/lib/rpc'
 import type { SalesLandingConfig } from '@/pages/templates/registry'
 
 const openSections = ref<Record<string, boolean>>({
@@ -476,4 +492,34 @@ const openSections = ref<Record<string, boolean>>({
 })
 
 const config = defineModel<SalesLandingConfig>({ required: true })
+
+interface TgChat {
+  chat_id: string
+  title: string
+  type: string
+}
+
+const telegramChats = ref<TgChat[]>([])
+const chatsLoaded = ref(false)
+
+async function onTelegramOpen(): Promise<void> {
+  openSections.value['telegram'] = !(openSections.value['telegram'] ?? false)
+  if (!chatsLoaded.value) {
+    const { data } = await rpc<TgChat[]>('telegram_chats')
+    if (Array.isArray(data)) {
+      telegramChats.value = data
+    }
+    chatsLoaded.value = true
+  }
+}
+
+/** Selecting from the dropdown sets both the chat id and the type. */
+function onChatSelect(event: Event): void {
+  const chatId = (event.target as HTMLSelectElement).value
+  config.value.telegram_chat_id = chatId
+  const chat = telegramChats.value.find((c) => c.chat_id === chatId)
+  if (chat) {
+    config.value.telegram_chat_type = chat.type === 'supergroup' ? 'group' : chat.type
+  }
+}
 </script>

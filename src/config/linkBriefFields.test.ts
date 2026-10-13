@@ -52,7 +52,7 @@ describe('PAGE_BRIEF_FIELDS', () => {
    * operator edits it, the browser does not reflow it, and the storefront renders a wall of text.
    */
   it('gives the markdown bodies a textarea and the short fields an input', () => {
-    for (const key of ['teaser_md_en', 'teaser_md_bn', 'unlock_body_md_en', 'unlock_body_md_bn']) {
+    for (const key of ['unlock_body_md_en', 'unlock_body_md_bn']) {
       expect(byKey(key)?.kind).toBe('textarea')
     }
     for (const key of ['title_en', 'title_bn', 'unlock_cta_label_en', 'unlock_cta_label_bn']) {
@@ -65,7 +65,7 @@ describe('PAGE_BRIEF_FIELDS', () => {
    * exists to catch: Bangla shows the model's words while English falls back to empty.
    */
   it('pairs every field with its other language', () => {
-    const bases = ['title', 'teaser_md', 'unlock_body_md', 'unlock_cta_label']
+    const bases = ['title', 'unlock_body_md', 'unlock_cta_label']
     for (const base of bases) {
       expect(byKey(`${base}_en`), base).toBeDefined()
       expect(byKey(`${base}_bn`), base).toBeDefined()

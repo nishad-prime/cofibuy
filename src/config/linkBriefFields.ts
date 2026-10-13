@@ -21,22 +21,10 @@ export interface BriefField {
   kind: 'input' | 'textarea'
 }
 
-/** The eight values a draft returns, in the order the form should show them. */
+/** The values a draft returns, in the order the form should show them. */
 export const PAGE_BRIEF_FIELDS: BriefField[] = [
   { key: 'title_en', form: 'title_en', label: 'Title (EN)', kind: 'input' },
   { key: 'title_bn', form: 'title_bn', label: 'Title (BN)', kind: 'input' },
-  {
-    key: 'teaser_md_en',
-    form: 'teaser_en',
-    label: 'Teaser, shown before payment (EN)',
-    kind: 'textarea',
-  },
-  {
-    key: 'teaser_md_bn',
-    form: 'teaser_bn',
-    label: 'Teaser, shown before payment (BN)',
-    kind: 'textarea',
-  },
   {
     key: 'unlock_body_md_en',
     form: 'body_en',
@@ -74,8 +62,6 @@ export const PAGE_BRIEF_FIELDS: BriefField[] = [
 export const LINK_BRIEF_COLUMNS = [
   'title_en',
   'title_bn',
-  'teaser_md_en',
-  'teaser_md_bn',
   'unlock_body_md_en',
   'unlock_body_md_bn',
   'unlock_cta_label_en',
@@ -90,12 +76,18 @@ export const LINK_BRIEF_COLUMNS = [
  * nothing, because renaming one in the form would leave both copies agreeing with each other.
  * One object, used by the form and asserted here.
  */
-export const pageFormDefaults = (): Record<string, string | boolean | number | null> => ({
+export const pageFormDefaults = (): Record<
+  string,
+  string | number | boolean | null | Record<string, unknown>
+> => ({
+  // One template exists; the form no longer offers a choice. The config
+  // object must exist from the first render: the template's admin form reads
+  // its fields immediately, before a loaded row replaces it.
+  template: 'sales-landing',
+  template_config: {},
   slug: '',
   title_en: '',
   title_bn: '',
-  teaser_en: '',
-  teaser_bn: '',
   body_en: '',
   body_bn: '',
   cta_label_en: '',
@@ -106,4 +98,5 @@ export const pageFormDefaults = (): Record<string, string | boolean | number | n
   sort_order: 0,
   min_override: null,
   hide_min: false,
+  fixed_amount: null,
 })

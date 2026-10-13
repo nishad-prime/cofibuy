@@ -198,6 +198,21 @@
         </label>
       </CollapsibleSection>
 
+      <CollapsibleSection
+        panel-id="region"
+        title="Country & banners"
+        :open="openSection === 'region'"
+        @update:open="toggleSection('region')"
+      >
+        <GatewayRegionBanners
+          v-model:country="form.country"
+          v-model:primary="form.is_primary_for_country"
+          v-model:banner-url="form.banner_url"
+          v-model:banner-small-url="form.banner_small_url"
+          :gateway-id="gatewayId"
+        />
+      </CollapsibleSection>
+
       <div v-if="error" class="card border-red-200 bg-red-50 p-4 text-sm text-red-800">
         {{ error }}
       </div>
@@ -220,6 +235,7 @@ import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
 import CredentialFieldEditor, {
   type ProviderField,
 } from '@/components/admin/CredentialFieldEditor.vue'
+import GatewayRegionBanners from '@/components/admin/GatewayRegionBanners.vue'
 
 /** A row of `api.admin_auto_providers()`. */
 interface AutoProvider {
@@ -238,6 +254,10 @@ interface Gateway {
   environment: 'sandbox' | 'live' | null
   is_active: boolean
   sort_order: number | null
+  country: string | null
+  is_primary_for_country: boolean
+  banner_url: string | null
+  banner_small_url: string | null
   weight: number | null
 }
 
@@ -270,6 +290,10 @@ const form = ref({
   is_active: true,
   sort_order: 0,
   weight: 1,
+  country: '' as string | null,
+  is_primary_for_country: false,
+  banner_url: null as string | null,
+  banner_small_url: null as string | null,
 })
 
 /**
@@ -342,6 +366,10 @@ onMounted(async () => {
       is_active: gateway.is_active,
       sort_order: gateway.sort_order ?? 0,
       weight: gateway.weight ?? 1,
+      country: gateway.country ?? '',
+      is_primary_for_country: gateway.is_primary_for_country,
+      banner_url: gateway.banner_url,
+      banner_small_url: gateway.banner_small_url,
     }
     const { data: stored } = await supabase.rpc('admin_gateway_has_credentials', {
       //  above is exactly the presence of this id.
@@ -395,6 +423,10 @@ const save = async (): Promise<void> => {
         is_active: form.value.is_active,
         sort_order: form.value.sort_order ?? 0,
         weight: form.value.weight ?? 1,
+        country: form.value.country || null,
+        is_primary_for_country: form.value.is_primary_for_country,
+        banner_url: form.value.banner_url,
+        banner_small_url: form.value.banner_small_url,
         evidence_fields: [],
         account_fields: [],
         credential_bundle: credentialDraft.value,

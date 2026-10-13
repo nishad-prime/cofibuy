@@ -83,6 +83,21 @@
       </CollapsibleSection>
 
       <CollapsibleSection
+        panel-id="region"
+        title="Country & banners"
+        :open="openSection === 'region'"
+        @update:open="toggleSection('region')"
+      >
+        <GatewayRegionBanners
+          v-model:country="form.country"
+          v-model:primary="form.is_primary_for_country"
+          v-model:banner-url="form.banner_url"
+          v-model:banner-small-url="form.banner_small_url"
+          :gateway-id="gatewayId"
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection
         panel-id="accounts"
         title="Account details"
         :open="openSection === 'accounts'"
@@ -108,34 +123,9 @@
             <span class="mb-1 block text-sm font-medium text-stone-700">Instructions (BN)</span>
             <textarea v-model="form.instructions_bn" rows="3" class="field" lang="bn" />
           </label>
-          <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Reference prompt (EN)</span>
-            <input v-model="form.reference_prompt_en" class="field" />
-          </label>
-          <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Reference prompt (BN)</span>
-            <input v-model="form.reference_prompt_bn" class="field" lang="bn" />
-          </label>
         </div>
 
-        <p class="mt-3 text-xs text-stone-500">
-          Markdown is supported in the instruction boxes. The reference prompt is the short line
-          shown next to the amount field.
-        </p>
-
-        <label class="mt-4 flex items-start gap-2">
-          <input
-            v-model="form.supports_reference"
-            type="checkbox"
-            class="mt-0.5 rounded border-stone-300"
-          />
-          <span>
-            <span class="block text-sm font-medium text-stone-800">Ask for a reference</span>
-            <span class="block text-xs text-stone-500">
-              Adds a reference box to checkout, for methods that need one.
-            </span>
-          </span>
-        </label>
+        <p class="mt-3 text-xs text-stone-500">Markdown is supported in the instruction boxes.</p>
       </CollapsibleSection>
 
       <CollapsibleSection
@@ -168,6 +158,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import EvidenceFieldEditor, { type FieldDraft } from '@/components/admin/EvidenceFieldEditor.vue'
 import AccountFieldEditor, { type AccountDraft } from '@/components/admin/AccountFieldEditor.vue'
+import GatewayRegionBanners from '@/components/admin/GatewayRegionBanners.vue'
 import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
 import { rpc, rpcList } from '@/lib/rpc'
 
@@ -185,13 +176,15 @@ interface Gateway {
   account_fields: Partial<AccountDraft>[] | null
   instructions_md_en: string | null
   instructions_md_bn: string | null
-  reference_prompt_en: string | null
-  reference_prompt_bn: string | null
-  supports_reference: boolean
+
   is_active: boolean
   sort_order: number
   weight: number | null
   evidence_fields: Partial<FieldDraft>[] | null
+  country: string | null
+  is_primary_for_country: boolean
+  banner_url: string | null
+  banner_small_url: string | null
 }
 
 const props = defineProps<{
@@ -221,12 +214,14 @@ const form = ref({
   name_bn: '',
   instructions_en: '',
   instructions_bn: '',
-  reference_prompt_en: '',
-  reference_prompt_bn: '',
-  supports_reference: false,
+
   is_active: true,
   sort_order: 0,
   weight: 1,
+  country: '' as string | null,
+  is_primary_for_country: false,
+  banner_url: null as string | null,
+  banner_small_url: null as string | null,
 })
 
 /**
@@ -240,7 +235,7 @@ const form = ref({
  */
 const openSection = ref<string | null>('basics')
 
-const MANUAL_SECTIONS = ['basics', 'accounts', 'instructions', 'evidence'] as const
+const MANUAL_SECTIONS = ['basics', 'region', 'accounts', 'instructions', 'evidence'] as const
 
 function toggleSection(id: string): void {
   openSection.value = openSection.value === id ? null : id
@@ -300,12 +295,14 @@ onMounted(async () => {
     name_bn: gateway.name_bn ?? '',
     instructions_en: gateway.instructions_md_en ?? '',
     instructions_bn: gateway.instructions_md_bn ?? '',
-    reference_prompt_en: gateway.reference_prompt_en ?? '',
-    reference_prompt_bn: gateway.reference_prompt_bn ?? '',
-    supports_reference: gateway.supports_reference,
+
     is_active: gateway.is_active,
     sort_order: gateway.sort_order ?? 0,
     weight: gateway.weight ?? 1,
+    country: gateway.country ?? '',
+    is_primary_for_country: gateway.is_primary_for_country,
+    banner_url: gateway.banner_url,
+    banner_small_url: gateway.banner_small_url,
   }
   fields.value = (gateway.evidence_fields ?? []).map(toDraft)
   accountFields.value = (gateway.account_fields ?? []).map(toAccountDraft)
@@ -345,12 +342,14 @@ const save = async (): Promise<void> => {
         name_bn: form.value.name_bn || null,
         instructions_md_en: form.value.instructions_en || null,
         instructions_md_bn: form.value.instructions_bn || null,
-        reference_prompt_en: form.value.reference_prompt_en || null,
-        reference_prompt_bn: form.value.reference_prompt_bn || null,
-        supports_reference: form.value.supports_reference,
+
         is_active: form.value.is_active,
         sort_order: form.value.sort_order ?? 0,
         weight: form.value.weight ?? 1,
+        country: form.value.country || null,
+        is_primary_for_country: form.value.is_primary_for_country,
+        banner_url: form.value.banner_url,
+        banner_small_url: form.value.banner_small_url,
         evidence_fields: editor.value?.payload ?? [],
         account_fields: accountEditor.value?.payload ?? [],
       },

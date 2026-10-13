@@ -25,6 +25,18 @@
     text-size-adjust: 100%;
   }
 
+  /*
+   * Bengali conjuncts and brand terms must never break mid-word: hyphenation
+   * is off everywhere, and line breaks happen at word boundaries only.
+   */
+  html,
+  body {
+    hyphens: manual;
+    -webkit-hyphens: manual;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+
   body {
     @apply bg-stone-50 text-stone-800 antialiased;
     font-family: var(--font-sans);
@@ -214,6 +226,55 @@
     padding-inline: 1.25rem;
   }
 
+  /*
+   * Scroll-reveal, driven by the `v-reveal` directive: elements start slightly
+   * translated and transparent, and settle once they enter the viewport. One
+   * shared pair of classes so every surface that reveals moves the same way.
+   */
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .reveal-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /*
+   * The sales page's top marquee: one track, two copies of the text, moving
+   * left until the seam meets the start. Width is `max-content` so the
+   * translate distance is exactly one copy.
+   */
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .marquee-track {
+    animation: marquee 32s linear infinite;
+  }
+
+  /*
+   * Operator copy is plain text, so emphasis in sales headings is authored as
+   * <strong> inside the i18n string and colored here - one accent for dark
+   * surfaces, one for light.
+   */
+  .copy-accent-dark strong {
+    @apply font-extrabold text-brand-300;
+  }
+
+  .copy-accent-light strong {
+    @apply font-extrabold text-brand-700;
+  }
+
   @media (min-width: 640px) {
     .page-section-inner {
       padding-inline: 1.5rem;
@@ -238,4 +299,312 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* Revealed content must not sit translated or invisible while waiting. */
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* A frozen marquee at an arbitrary frame still shows text; stopping it
+     outright keeps the first copy readable from the left edge. */
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/*
+   * The payment modal's dark theme. The modal composes existing light-styled
+   * components (evidence form, account details, badges), so instead of
+   * restyling each one, the shell declares `.payment-dark` and these rules
+   * flip the shared primitives underneath it. The stone-text overrides are
+   * deliberate: the child components hard-code light-mode grays.
+   */
+.payment-dark .card {
+  @apply border-white/10 bg-white/5;
+}
+
+.payment-dark .field {
+  @apply border-white/15 bg-white/5 text-stone-100 focus:border-brand-400 focus:ring-white/10 placeholder:text-stone-500;
+}
+
+.payment-dark .label {
+  @apply text-stone-300;
+}
+
+.payment-dark .hint {
+  @apply text-stone-400;
+}
+
+.payment-dark .btn-secondary {
+  @apply border-white/15 bg-transparent text-stone-200 hover:bg-white/10;
+}
+
+.payment-dark .alert-error {
+  @apply border-red-500/30 bg-red-500/10 text-red-300;
+}
+
+.payment-dark .alert-success {
+  @apply border-emerald-500/30 bg-emerald-500/10 text-emerald-300;
+}
+
+.payment-dark .alert-info {
+  @apply border-brand-400/30 bg-brand-400/10 text-brand-200;
+}
+
+.payment-dark .empty-state {
+  @apply text-stone-400;
+}
+
+.payment-dark .text-stone-900 {
+  color: var(--color-stone-100);
+}
+
+.payment-dark .text-stone-800,
+.payment-dark .text-stone-700 {
+  color: var(--color-stone-300);
+}
+
+.payment-dark .text-stone-600,
+.payment-dark .text-stone-500 {
+  color: var(--color-stone-400);
+}
+
+.payment-dark .bg-white {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.payment-dark .bg-stone-50,
+.payment-dark .bg-stone-100 {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.payment-dark .border-stone-200,
+.payment-dark .border-stone-300 {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.payment-dark .bg-brand-50 {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.payment-dark .text-brand-800,
+.payment-dark .text-brand-700 {
+  color: var(--color-brand-300);
+}
+
+.payment-dark .badge-ok {
+  @apply border border-emerald-500/30 bg-emerald-500/10 text-emerald-300;
+}
+
+.payment-dark .badge-warn {
+  @apply border border-amber-500/30 bg-amber-500/10 text-amber-300;
+}
+
+.payment-dark .badge-danger {
+  @apply border border-red-500/30 bg-red-500/10 text-red-300;
+}
+
+.payment-dark .badge-muted {
+  @apply border border-white/15 bg-white/5 text-stone-300;
+}
+
+/* ---------------------------------------------------------------------------
+ * Sales-landing polish. Subtle by design: transform/opacity only, every
+ * animation silenced under prefers-reduced-motion, nothing layout-affecting.
+ * -------------------------------------------------------------------------- */
+
+/* Ambient glow blobs behind the hero. Position + opacity drift, very slowly. */
+.ambient-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.14;
+  pointer-events: none;
+  animation: drift 60s ease-in-out infinite alternate;
+}
+
+.ambient-blob-2 {
+  animation-duration: 75s;
+  animation-delay: -30s;
+  opacity: 0.12;
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(4rem, -3rem, 0) scale(1.12);
+  }
+}
+
+/* Brand CTA: a barely-perceptible breathing glow; hover deepens it. */
+.cta-glow {
+  animation: cta-breathe 2.5s ease-in-out infinite alternate;
+}
+
+.cta-glow:hover {
+  animation-play-state: paused;
+}
+
+@keyframes cta-breathe {
+  from {
+    box-shadow: 0 0 18px 0 rgba(217, 119, 6, 0.18);
+  }
+  to {
+    box-shadow: 0 0 30px 2px rgba(217, 119, 6, 0.32);
+  }
+}
+
+/* Staggered reveal: children of a revealed container cascade in. The delay
+   list is capped so long lists do not crawl. */
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-stagger.reveal-visible > * {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal-stagger.reveal-visible > *:nth-child(2) {
+  transition-delay: 0.08s;
+}
+.reveal-stagger.reveal-visible > *:nth-child(3) {
+  transition-delay: 0.16s;
+}
+.reveal-stagger.reveal-visible > *:nth-child(4) {
+  transition-delay: 0.24s;
+}
+.reveal-stagger.reveal-visible > *:nth-child(5) {
+  transition-delay: 0.32s;
+}
+.reveal-stagger.reveal-visible > *:nth-child(n + 6) {
+  transition-delay: 0.4s;
+}
+
+/* A gradient seam between dark sections: lighter than a hard color butt. */
+.hairline {
+  position: relative;
+}
+
+.hairline::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+  pointer-events: none;
+}
+
+/* Premium image treatment: slow zoom on hover. */
+.img-hover img,
+.img-hover .img-hover-target {
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.img-hover:hover img,
+.img-hover:hover .img-hover-target {
+  transform: scale(1.03);
+}
+
+/* Card lift for the repeated-content cards. */
+.card-lift {
+  transition:
+    transform 0.2s ease-out,
+    box-shadow 0.2s ease-out;
+}
+
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.25);
+}
+
+/* The marquee reads better when it lets you read: pause on hover. */
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob,
+  .cta-glow {
+    animation: none;
+  }
+
+  .reveal-stagger > * {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .img-hover img,
+  .img-hover .img-hover-target,
+  .card-lift {
+    transition: none;
+  }
+
+  .card-lift:hover {
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Prose on dark surfaces: MarkdownBody hard-codes light-mode colors, so the
+ * payment-dark shell overrides the primitives it composes. Unlayered, and
+ * higher specificity (0,2,1) than the prose rules (0,1,1).
+ * -------------------------------------------------------------------------- */
+.payment-dark .prose-en :is(h1, h2, h3) {
+  color: var(--color-stone-100);
+}
+
+.payment-dark .prose-en a {
+  color: var(--color-brand-300);
+}
+
+.payment-dark .prose-en a:hover {
+  color: var(--color-brand-200);
+}
+
+.payment-dark .prose-en blockquote {
+  color: var(--color-stone-300);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.payment-dark .prose-en code {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.payment-dark .prose-en th {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.payment-dark .prose-en :is(th, td),
+.payment-dark .prose-en hr {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------------------------------------------------------------------------
+ * Home index polish.
+ * -------------------------------------------------------------------------- */
+
+/* Subtle dot-grid backdrop behind the index hero. */
+.dot-grid {
+  background-image: radial-gradient(rgba(120, 113, 108, 0.18) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
+}
+
+/* Brand gradient text accent. */
+.text-brand-gradient {
+  background: linear-gradient(120deg, var(--color-brand-500), var(--color-brand-700));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

@@ -111,3 +111,13 @@ verify_jwt = false
 # JWT, so platform verification is redundant with the database guard - and the
 # guard answers with a useful error body instead of a bare gateway 401.
 verify_jwt = false
+
+[functions.geo-country]
+# Country from the edge's own request metadata - nothing to verify, nothing to
+# read from the database, and the caller is an anonymous storefront.
+verify_jwt = false
+
+[functions.telegram-request-invite]
+# The function verifies staff via admin_pages through the caller's own JWT,
+# and the bot authenticates the proxy call with a shared secret.
+verify_jwt = false

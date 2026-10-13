@@ -52,6 +52,10 @@ Deno.serve(async (request) => {
 
   const admin = serviceClient()
 
+  // Hoisted so the catch can echo a masked hint about which credentials were in
+  // play when bKash declined. Two characters and a length are not a secret.
+  let held: { username?: unknown; password?: unknown } | null = null
+
   try {
     const body = await readJson<CreatePaymentBody>(request)
 
@@ -126,7 +130,23 @@ Deno.serve(async (request) => {
     // The only secret read in this function, and it is read with the service-role client
     // because both halves of the credential path are revoked from anon and authenticated.
     const { bundleId, credentials } = await readCredentials(admin, start.gateway_id as string)
+    held = { username: credentials.username, password: credentials.password }
     const idToken = await bkashIdToken(admin, bundleId, environment, credentials)
+
+    // Debug aid for bare-400 declines: the callback origin is what bKash refuses
+    // when it is not whitelisted. No secrets are in these fields.
+    const mask = (v: unknown) =>
+      typeof v === 'string' && v.length > 0 ? `${v.slice(0, 2)}…(len ${v.length})` : 'MISSING'
+    console.error('bkash create request', {
+      environment,
+      amount: Number(start.amount),
+      currency: String(start.currency),
+      callbackUrl,
+      username: mask(credentials.username),
+      password: mask(credentials.password),
+      app_key: mask(credentials.app_key),
+      app_secret: mask(credentials.app_secret),
+    })
 
     const created = await createPayment(environment, idToken, credentials, {
       amount: Number(start.amount),
@@ -175,7 +195,12 @@ Deno.serve(async (request) => {
       return errorResponse('token_unavailable', cause.message, 503)
     }
     if (cause instanceof BkashError) {
-      return errorResponse('bkash_declined', cause.message, 502)
+      const mask = (v: unknown) =>
+        typeof v === 'string' && v.length > 0 ? `${v.slice(0, 2)}…(len ${v.length})` : 'MISSING'
+      const hint = held
+        ? ` [sending username=${mask(held.username)} password=${mask(held.password)}]`
+        : ''
+      return errorResponse('bkash_declined', cause.message + hint, 502)
     }
     if (cause instanceof BkashTransportError) {
       return errorResponse('bkash_unreachable', cause.message, 502)

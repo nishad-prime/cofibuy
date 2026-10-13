@@ -45,6 +45,9 @@
         <div class="mt-3 flex flex-wrap items-center gap-2">
           <span v-if="gw.provider" class="badge-ok">Automatic</span>
           <span v-else class="badge-muted">Manual</span>
+          <span v-if="gw.country" class="badge-info ltr-value">{{ gw.country }}</span>
+          <span v-else class="badge-muted">International</span>
+          <span v-if="gw.is_primary_for_country" class="badge-warn">Primary</span>
           <!-- Which bKash this row's credentials belong to. Shown because a sandbox
                method silently never settles, and "it is active but nothing happens" is
                the symptom an operator would otherwise have to guess at. -->
@@ -141,6 +144,8 @@ interface GatewayRow {
   account_name: string | null
   evidence_fields: { key: string }[] | null
   is_active: boolean
+  country: string | null
+  is_primary_for_country: boolean
   /**
    * Present only for an automatic gateway, and deliberately defaulted rather than left
    * possibly-undefined: `admin_upsert_gateway` coalesces a blank to 'sandbox', so a row saved

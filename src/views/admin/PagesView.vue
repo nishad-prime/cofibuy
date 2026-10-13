@@ -44,11 +44,8 @@
                 </p>
               </td>
               <td class="td">
-                <router-link
-                  :to="`/l/${page.slug}`"
-                  class="ltr-value text-brand-700 hover:underline"
-                >
-                  /l/{{ page.slug }}
+                <router-link :to="`/${page.slug}`" class="ltr-value text-brand-700 hover:underline">
+                  /{{ page.slug }}
                 </router-link>
               </td>
               <td class="td">

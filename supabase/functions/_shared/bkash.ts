@@ -89,18 +89,41 @@ async function bkashFetch(
   }
 
   let payload: Record<string, unknown>
+  let text = ''
   try {
-    payload = (await response.json()) as Record<string, unknown>
+    text = await response.text()
+    payload = JSON.parse(text) as Record<string, unknown>
   } catch {
+    // bKash's bare 400s (unwhitelisted callbackURL, malformed amount) answer with a
+    // non-JSON body or an empty one. The first 512 characters are logged so the
+    // portal-side cause is visible; error bodies carry no token material.
+    console.error(
+      `bkash ${path} answered ${response.status} with a non-JSON body:`,
+      text.slice(0, 512),
+    )
     throw new BkashTransportError(
       `bkash ${path} answered ${response.status} with a body that is not JSON`,
     )
   }
 
   if (payload.statusCode !== '0000') {
+    if (typeof payload.statusMessage !== 'string') {
+      // A 400 whose JSON body lacks `statusMessage` is otherwise undiagnosable.
+      // Log the body and surface a snippet to the caller; only error-shaped
+      // payloads reach this branch, so no token material can be exposed.
+      const snippet = JSON.stringify(payload).slice(0, 512)
+      console.error(
+        `bkash ${path} answered ${response.status} with no statusMessage; body:`,
+        snippet,
+      )
+      throw new BkashError(
+        typeof payload.statusCode === 'string' ? payload.statusCode : String(response.status),
+        `no reason given; body: ${snippet}`,
+      )
+    }
     throw new BkashError(
       typeof payload.statusCode === 'string' ? payload.statusCode : String(response.status),
-      typeof payload.statusMessage === 'string' ? payload.statusMessage : 'no reason given',
+      payload.statusMessage,
     )
   }
 
@@ -112,11 +135,12 @@ export async function grantToken(
   environment: BkashEnvironment,
   credentials: BkashCredentials,
 ): Promise<{ idToken: string; refreshToken: string; expiresIn: number }> {
-  const basic = btoa(`${credentials.app_key}:${credentials.app_secret}`)
-
   const payload = await bkashFetch(environment, '/token/grant', {
     headers: {
-      authorization: `Basic ${basic}`,
+      // bKash's token endpoints take the merchant username and password as headers;
+      // there is no Basic auth in the Tokenized Checkout API.
+      username: credentials.username,
+      password: credentials.password,
       'content-type': 'application/json',
       'x-app-key': credentials.app_key,
     },
@@ -147,11 +171,10 @@ export async function refreshToken_(
   credentials: BkashCredentials,
   refreshToken: string,
 ): Promise<{ idToken: string; refreshToken: string; expiresIn: number }> {
-  const basic = btoa(`${credentials.app_key}:${credentials.app_secret}`)
-
   const payload = await bkashFetch(environment, '/token/refresh', {
     headers: {
-      authorization: `Basic ${basic}`,
+      username: credentials.username,
+      password: credentials.password,
       'content-type': 'application/json',
       'x-app-key': credentials.app_key,
     },
@@ -200,6 +223,10 @@ export async function createPayment(
       authorization: `Bearer ${idToken}`,
       'content-type': 'application/json',
       'x-app-key': credentials.app_key,
+      // /create and /execute want the merchant credentials as headers, unlike
+      // the token endpoints which take them in the Basic auth or the body.
+      username: credentials.username,
+      password: credentials.password,
     },
     body: {
       // `mode` 0011 is Tokenized Checkout, and `callbackURL` is mandatory with it.
@@ -249,6 +276,8 @@ export async function executePayment(
       authorization: `Bearer ${idToken}`,
       'content-type': 'application/json',
       'x-app-key': credentials.app_key,
+      username: credentials.username,
+      password: credentials.password,
     },
     body: { paymentID: paymentId },
   })

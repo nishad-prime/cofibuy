@@ -192,9 +192,6 @@ interface OrderGateway {
   account_name: string | null
   instructions_md_en: string | null
   instructions_md_bn: string | null
-  reference_prompt_en: string | null
-  reference_prompt_bn: string | null
-  supports_reference: boolean
   evidence_fields: EvidenceField[] | null
 }
 

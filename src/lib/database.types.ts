@@ -834,6 +834,7 @@ export type Database = {
           template: string
           template_config: Json
           amount_presets: Json
+          fixed_amount: number | null
         }
         Insert: {
           slug: string
@@ -857,6 +858,7 @@ export type Database = {
           template?: string
           template_config?: Json
           amount_presets?: Json
+          fixed_amount?: number | null
         }
         Update: {
           id?: string
@@ -880,6 +882,7 @@ export type Database = {
           template?: string
           template_config?: Json
           amount_presets?: Json
+          fixed_amount?: number | null
         }
         Relationships: []
       }
@@ -905,6 +908,10 @@ export type Database = {
           account_fields: Json
           environment: string
           weight: number
+          country: string | null
+          is_primary_for_country: boolean
+          banner_url: string | null
+          banner_small_url: string | null
         }
         Insert: {
           kind: string
@@ -927,6 +934,10 @@ export type Database = {
           account_fields?: Json
           environment?: string
           weight?: number
+          country?: string | null
+          is_primary_for_country?: boolean
+          banner_url?: string | null
+          banner_small_url?: string | null
         }
         Update: {
           id?: string
@@ -949,6 +960,10 @@ export type Database = {
           account_fields?: Json
           environment?: string
           weight?: number
+          country?: string | null
+          is_primary_for_country?: boolean
+          banner_url?: string | null
+          banner_small_url?: string | null
         }
         Relationships: []
       }
@@ -1145,6 +1160,10 @@ export type Database = {
           name_en: string | null
           name_bn: string | null
           sort_order: number | null
+          country: string | null
+          is_primary_for_country: boolean | null
+          banner_url: string | null
+          banner_small_url: string | null
         }
         Relationships: []
       }

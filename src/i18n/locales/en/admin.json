@@ -135,7 +135,8 @@
     "indexSubBn": "Index subheading (BN)"
   },
   "common": {
-    "close": "Close"
+    "close": "Close",
+    "loading": "Loading…"
   },
   "errors": {
     "generic": "Something went wrong. Try again.",
@@ -193,10 +194,26 @@
   "images": {
     "assignedOf": "image slots assigned",
     "recommended": "Recommended",
+    "recommendedDims": "Recommended {w} × {h}px",
     "briefEn": "What should this image show? (EN)",
     "briefBn": "What should this image show? (BN)",
     "altEn": "Alt text (EN)",
     "altBn": "Alt text (BN)",
-    "noSlots": "This template has no image slots."
+    "noSlots": "This template has no image slots.",
+    "assigned": "Assigned",
+    "missing": "Missing",
+    "upload": "Upload image",
+    "replace": "Replace image",
+    "dropHere": "Drop an image here, or click to choose",
+    "uploading": "Uploading…",
+    "details": "Details",
+    "detailsHint": "Briefs guide the AI; alt text is read to screen readers.",
+    "detailsDirty": "Unsaved changes",
+    "saveDetails": "Save details",
+    "detailsSaved": "Saved",
+    "remove": "Remove",
+    "removeConfirm": "Remove this image?",
+    "legacyHero": "Assigned from the page form's hero image field",
+    "perItemCaveat": "Images for list items attach by position. If you add, remove or reorder items on the page form, check these assignments afterwards."
   }
 }

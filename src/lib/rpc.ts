@@ -56,10 +56,13 @@ export interface PublicGateway {
   account_name: string | null
   instructions_md_en: string | null
   instructions_md_bn: string | null
-  reference_prompt_en: string | null
-  reference_prompt_bn: string | null
-  supports_reference: boolean
   evidence_fields: unknown[]
+  /** NULL = International catch-all; otherwise an ISO-3166 alpha-2 code. */
+  country: string | null
+  is_primary_for_country: boolean
+  /** Big banner (3:1) and normal banner (1.5:1); either may be unassigned. */
+  banner_url: string | null
+  banner_small_url: string | null
 }
 
 /** One page as the index lists it. */
@@ -130,9 +133,6 @@ export interface MyOrderStatus {
   gateway_name_bn: string | null
   instructions_md_en: string | null
   instructions_md_bn: string | null
-  reference_prompt_en: string | null
-  reference_prompt_bn: string | null
-  supports_reference: boolean
   evidence_fields: unknown[]
   reject_reason_en: string | null
   reject_reason_bn: string | null

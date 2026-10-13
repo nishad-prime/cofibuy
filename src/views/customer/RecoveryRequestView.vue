@@ -7,7 +7,7 @@
       {{ t('customer.recovery.disabled') }}
     </section>
 
-    <section v-else-if="submitted" class="card card-pad text-center">
+    <section v-else-if="submitted" class="card card-pad rounded-2xl shadow-sm text-center">
       <AppIcon name="check" :size="28" class="mx-auto mb-3 text-emerald-600" />
       <p class="text-sm text-stone-700">{{ t('customer.recovery.sent') }}</p>
       <router-link to="/recover/verify" class="btn-primary mt-6">
@@ -15,7 +15,11 @@
       </router-link>
     </section>
 
-    <form v-else class="card card-pad space-y-5" @submit.prevent="submitRequest">
+    <form
+      v-else
+      class="card card-pad rounded-2xl shadow-sm space-y-5"
+      @submit.prevent="submitRequest"
+    >
       <div>
         <label class="label" for="phone">{{ t('customer.recovery.phone') }}</label>
         <input

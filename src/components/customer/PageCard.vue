@@ -1,21 +1,34 @@
 <template>
-  <article class="card card-pad flex flex-col transition hover:-translate-y-0.5 hover:shadow-md">
-    <h3 class="text-lg font-semibold text-stone-900">{{ title }}</h3>
-
+  <article
+    class="card card-lift group flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md"
+  >
     <!--
-      The teaser is admin-authored Markdown, so a heading at the start would
-      render a block element where the surrounding card expects inline text.
-      Render it properly when it is block content, strip the markers when not.
+      Cover: the page's own hero image (sales pages store it in the template
+      config), or a branded gradient placeholder. The strip is the card's
+      identity - text-only cards read as stubs next to it.
     -->
-    <div v-if="isBlockTeaser" class="mt-3 border-t border-stone-100 pt-1">
-      <MarkdownBody :source="teaser" />
+    <div class="img-hover group relative aspect-[16/9] w-full overflow-hidden bg-stone-100">
+      <img v-if="coverUrl" :src="coverUrl" :alt="title" class="h-full w-full object-cover" />
+      <div
+        v-else
+        class="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-100 via-brand-50 to-white"
+      >
+        <span class="text-2xl font-black text-brand-700/70 ltr-value">C</span>
+      </div>
     </div>
-    <p v-else-if="teaser" class="mt-2 text-sm text-stone-600">{{ plainTeaser }}</p>
 
-    <router-link :to="`/${slug}`" class="btn-primary mt-5 self-start">
-      {{ ctaLabel || 'View' }}
-      <AppIcon name="arrowLeft" :size="16" class="rotate-180" />
-    </router-link>
+    <div class="card-pad flex flex-1 flex-col">
+      <h3 class="text-lg font-semibold text-stone-900">{{ title }}</h3>
+
+      <router-link :to="`/${slug}`" class="btn-primary group/cta mt-5 self-start">
+        {{ ctaLabel || 'View' }}
+        <AppIcon
+          name="arrowLeft"
+          :size="16"
+          class="rotate-180 transition-transform group-hover/cta:translate-x-0.5"
+        />
+      </router-link>
+    </div>
   </article>
 </template>
 
@@ -23,30 +36,29 @@
 import { computed } from 'vue'
 import { useContent } from '@/composables/useContent'
 import AppIcon from '@/components/AppIcon.vue'
-import MarkdownBody from '@/components/MarkdownBody.vue'
 
 const props = defineProps<{
   slug: string
   titleBn: string | null
   titleEn: string | null
-  teaserMdBn: string | null
-  teaserMdEn: string | null
   ctaLabelBn: string | null
   ctaLabelEn: string | null
+  templateConfig?: Record<string, unknown>
 }>()
 
 const { pick } = useContent()
 
 const title = computed(() => pick({ bn: props.titleBn, en: props.titleEn }) || '')
-const teaser = computed(() => pick({ bn: props.teaserMdBn, en: props.teaserMdEn }) || '')
 const ctaLabel = computed(() => pick({ bn: props.ctaLabelBn, en: props.ctaLabelEn }) || '')
 
-const isBlockTeaser = computed(() => /(^|\n)\s*(#{1,6}\s|[-*]\s|>\s|\|)/.test(teaser.value))
-
-const plainTeaser = computed(() =>
-  teaser.value
-    .replace(/[#*_`>[\]]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim(),
-)
+/**
+ * The sales template stores its hero image on the page's template config,
+ * which the public index payload already carries - so the index can show a
+ * real cover without touching the database.
+ */
+const coverUrl = computed(() => {
+  const config = props.templateConfig as { hero_image_url?: unknown } | undefined
+  const url = config?.hero_image_url
+  return typeof url === 'string' && url !== '' ? url : null
+})
 </script>

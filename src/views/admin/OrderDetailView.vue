@@ -169,6 +169,7 @@ import { useAdminI18n } from '@/i18n/admin'
 import AppIcon from '@/components/AppIcon.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 import { rpc } from '@/lib/rpc'
+import { getSupabase } from '@/lib/supabase'
 
 const route = useRoute()
 const { isStaff } = useStaffRole()
@@ -311,6 +312,13 @@ const approve = async (): Promise<void> => {
       actionError.value = rpcError.message
       return
     }
+    // Fire-and-forget: the telegram bot's cron is the safety net if this
+    // fails, but the customer sees the invite faster when it lands.
+    void getSupabase()
+      .functions.invoke('telegram-request-invite', { body: { orderId: orderId.value } })
+      .then(({ error: fnError }) => {
+        if (fnError) console.warn('[telegram-invite]', fnError)
+      })
     await loadOrder()
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : 'Failed to approve'

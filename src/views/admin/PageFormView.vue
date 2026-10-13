@@ -55,6 +55,24 @@
         </div>
       </div>
 
+      <div>
+        <label for="fixed-amount" class="block text-sm font-medium text-gray-700">
+          Fixed amount (optional)
+        </label>
+        <input
+          id="fixed-amount"
+          v-model="form.fixed_amount"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="Leave empty to let customers choose"
+          class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 md:w-64"
+        />
+        <p class="mt-1 text-xs text-gray-500">
+          When set, the checkout shows this exact price and the customer cannot change it.
+        </p>
+      </div>
+
       <div class="grid gap-6 md:grid-cols-2">
         <div>
           <label class="block text-sm font-medium text-gray-700">Title (EN)</label>
@@ -305,32 +323,11 @@ const fillFields = computed(() => {
     { key: 'cta_label_bn', label: 'Pay button label (Bangla)', hint: 'two or three words' },
   ]
 
-  if (form.value.template === 'landing') {
-    fields.push(
-      {
-        key: 'subtitle_en',
-        label: 'Hero subtitle (English)',
-        hint: 'one sentence under the title',
-      },
-      { key: 'subtitle_bn', label: 'Hero subtitle (Bangla)', hint: 'one sentence under the title' },
-    )
-  }
-
   // The selling templates own their whole page: the paragraph fills every
   // section's words. Their arrays (benefits, steps, FAQ rows) stay out - the
   // model writes strings, and those rows are edited one by one in the form.
   if (form.value.template === 'sales-landing') {
     fields.push(
-      {
-        key: 'hero_eyebrow_en',
-        label: 'Eyebrow (English)',
-        hint: 'two or three words above the title',
-      },
-      {
-        key: 'hero_eyebrow_bn',
-        label: 'Eyebrow (Bangla)',
-        hint: 'two or three words above the title',
-      },
       {
         key: 'hero_title_en',
         label: 'Hero title (English)',
@@ -394,26 +391,6 @@ const fillFields = computed(() => {
         hint: 'a few words naming the steps',
       },
       {
-        key: 'checkout_heading_en',
-        label: 'Checkout heading (English)',
-        hint: 'an invitation to pay, a few words',
-      },
-      {
-        key: 'checkout_heading_bn',
-        label: 'Checkout heading (Bangla)',
-        hint: 'an invitation to pay, a few words',
-      },
-      {
-        key: 'checkout_note_en',
-        label: 'Checkout note (English)',
-        hint: 'one sentence beside the payment form',
-      },
-      {
-        key: 'checkout_note_bn',
-        label: 'Checkout note (Bangla)',
-        hint: 'one sentence beside the payment form',
-      },
-      {
         key: 'image_brief_hero_en',
         label: 'Hero image brief (English)',
         hint: 'one sentence describing the hero picture',
@@ -446,36 +423,6 @@ const fillFields = computed(() => {
     )
   }
 
-  if (form.value.template === 'minimal-product') {
-    fields.push(
-      {
-        key: 'hero_title_en',
-        label: 'Title override (English)',
-        hint: 'leave empty to keep the page title',
-      },
-      {
-        key: 'hero_title_bn',
-        label: 'Title override (Bangla)',
-        hint: 'leave empty to keep the page title',
-      },
-      {
-        key: 'hero_subtitle_en',
-        label: 'Subtitle (English)',
-        hint: 'one sentence under the title',
-      },
-      { key: 'hero_subtitle_bn', label: 'Subtitle (Bangla)', hint: 'one sentence under the title' },
-      {
-        key: 'checkout_note_en',
-        label: 'Checkout note (English)',
-        hint: 'one sentence beside the payment form',
-      },
-      {
-        key: 'checkout_note_bn',
-        label: 'Checkout note (Bangla)',
-        hint: 'one sentence beside the payment form',
-      },
-    )
-  }
   return fields
 })
 
@@ -498,7 +445,7 @@ const fillForm = async (): Promise<void> => {
     // A key the form does not have is ignored rather than invented into state.
     // The selling templates' words live inside the template config, so their
     // keys land there; the rest are ordinary form fields.
-    const inConfig = ['sales-landing', 'minimal-product'].includes(form.value.template)
+    const inConfig = PAGE_TEMPLATES.some((t) => t.id === form.value.template)
     for (const field of fillFields.value) {
       const value = values[field.key]
       if (typeof value !== 'string' || value === '') continue
@@ -559,8 +506,6 @@ onMounted(async () => {
         slug: row.slug ?? '',
         title_en: row.title_en ?? '',
         title_bn: row.title_bn ?? '',
-        teaser_en: row.teaser_md_en ?? '',
-        teaser_bn: row.teaser_md_bn ?? '',
         body_en: row.unlock_body_md_en ?? '',
         body_bn: row.unlock_body_md_bn ?? '',
         cta_label_en: row.unlock_cta_label_en ?? '',
@@ -571,6 +516,7 @@ onMounted(async () => {
         sort_order: row.sort_order ?? 0,
         min_override: row.min_amount_override ?? null,
         hide_min: row.hide_min_override ?? false,
+        fixed_amount: row.fixed_amount ?? null,
         template: row.template ?? 'standard',
         template_config: normalizeConfig(row.template as string, row.template_config),
       })
@@ -593,8 +539,6 @@ const save = async (): Promise<void> => {
         slug: form.value.slug,
         title_en: form.value.title_en,
         title_bn: form.value.title_bn,
-        teaser_md_en: form.value.teaser_en,
-        teaser_md_bn: form.value.teaser_bn,
         unlock_body_md_en: form.value.body_en,
         unlock_body_md_bn: form.value.body_bn,
         unlock_cta_label_en: form.value.cta_label_en,
@@ -607,6 +551,7 @@ const save = async (): Promise<void> => {
         sort_order: form.value.sort_order,
         min_amount_override: form.value.min_override,
         hide_min_override: form.value.hide_min,
+        fixed_amount: form.value.fixed_amount,
         template: form.value.template,
         template_config: form.value.template_config,
         amount_presets: presetsPreview.value,

@@ -31,10 +31,12 @@ export interface CheckoutGateway {
   account_fields: AccountField[] | null
   instructions_md_en: string | null
   instructions_md_bn: string | null
-  reference_prompt_en: string | null
-  reference_prompt_bn: string | null
-  supports_reference: boolean
   evidence_fields: EvidenceField[]
+  /** NULL = International catch-all; otherwise an ISO-3166 alpha-2 code. */
+  country: string | null
+  is_primary_for_country: boolean
+  banner_url: string | null
+  banner_small_url: string | null
 }
 
 /** The slice of the page the checkout reads. */
@@ -48,7 +50,22 @@ export interface CheckoutPage {
   min_amount: number | null
   min_hidden: boolean
   amount_presets: number[] | null
+  /** When set, the customer cannot choose: this exact figure is charged. */
+  fixed_amount: number | null
   gateways: CheckoutGateway[]
+}
+
+/**
+ * One banner card on the gateway step: a kind, its best placement, its art.
+ * Module scope because the modal renders it and the composable builds it.
+ */
+export interface GatewayBanner {
+  kind: string
+  name: string
+  provider: string | null
+  /** Null when no banner image was uploaded: the card renders as text. */
+  bannerUrl: string | null
+  size: 'big' | 'normal' | 'foreign'
 }
 
 /**
@@ -90,6 +107,7 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
   const existingOrder = ref<MyOrder | null>(null)
   const orderDetails = ref<MyOrderStatus | null>(null)
   const unlockedBody = ref<string | null>(null)
+  const telegramInvite = ref<{ url: string; chatType: string; revoked: boolean } | null>(null)
   const paying = ref(false)
   const submittingEvidence = ref(false)
   const fileUpload = useFileUpload()
@@ -184,15 +202,43 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
     )
   })
 
-  /** Which chip the customer tapped; custom reveals the typing field. */
-  const amountMode = ref<'preset' | 'custom'>('preset')
+  /**
+   * A fixed-amount page names the price: no chips, no typing, and the send
+   * step hides the selector entirely.
+   */
+  const fixedAmount = computed<number | null>(() => {
+    const value = (page.value as { fixed_amount?: number | null } | null)?.fixed_amount
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+  })
 
   const selectPreset = (preset: number): void => {
-    amountMode.value = 'preset'
     amount.value = preset
   }
 
+  /**
+   * The send step must never open on an empty amount: a fixed price, else
+   * the first preset, else the effective minimum, is what the customer
+   * starts from. A figure they already chose survives, because overwriting
+   * it would silently change what they read in the summary.
+   */
+  const applyDefaultAmount = (): void => {
+    if (fixedAmount.value !== null) {
+      amount.value = fixedAmount.value
+      return
+    }
+    if (amount.value > 0) return
+    const first = amountPresets.value[0]
+    if (first !== undefined) {
+      amount.value = first
+      return
+    }
+    if (effectiveMin.value > 0) {
+      amount.value = effectiveMin.value
+    }
+  }
+
   const isAmountValid = computed(() => {
+    if (fixedAmount.value !== null) return amount.value === fixedAmount.value
     if (effectiveMin.value > 0) return amount.value >= effectiveMin.value
     return amount.value >= 0
   })
@@ -251,6 +297,49 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
         en: data.unlock_body_md_en,
       } as unknown as LocalizedPair)
     }
+    await fetchTelegramInvite()
+  }
+
+  // -- Telegram invite delivery ---------------------------------------------
+  //
+  // When the page targets a Telegram chat, the approved order's invite link
+  // replaces the static CTA in the modal's status phase. The invite is
+  // created by the bot (bkash-execute fires it instantly; the cron catches
+  // manual approvals within a minute), so the client polls briefly.
+
+  let invitePolling: ReturnType<typeof setInterval> | null = null
+  let inviteAttempts = 0
+
+  const stopInvitePolling = (): void => {
+    if (invitePolling) {
+      clearInterval(invitePolling)
+      invitePolling = null
+    }
+  }
+
+  const fetchTelegramInvite = async (): Promise<void> => {
+    const order = existingOrder.value
+    if (!order || order.status !== 'approved' || telegramInvite.value) return
+
+    const { data } = await rpc<{ url: string; chat_type: string; revoked: boolean } | null>(
+      'get_telegram_invite',
+      { p_order_id: order.id },
+    )
+    if (data?.url) {
+      telegramInvite.value = { url: data.url, chatType: data.chat_type, revoked: data.revoked }
+      stopInvitePolling()
+    }
+  }
+
+  const startInvitePolling = (): void => {
+    if (invitePolling) return
+    inviteAttempts = 0
+    void fetchTelegramInvite()
+    invitePolling = setInterval(async () => {
+      inviteAttempts += 1
+      await fetchTelegramInvite()
+      if (telegramInvite.value || inviteAttempts >= 24) stopInvitePolling()
+    }, 5000)
   }
 
   /**
@@ -463,6 +552,123 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
     gateways.value.some((g) => g.kind === selectedKind.value && g.provider !== null),
   )
 
+  // -- Customer country and the banner layout that follows from it ----------
+
+  const customerCountry = ref<string | null>(null)
+  let countryRequested = false
+
+  /**
+   * The customer's country. Sources, in order:
+   *
+   * 1. `?country=XX` on the URL - lets an operator verify banner layouts
+   *    without a VPN.
+   * 2. `window.__COFIBUY_GEO__` - stamped into the HTML by the storefront
+   *    Worker, which is the only layer that sees Cloudflare's geo context
+   *    for the visitor.
+   * 3. The `geo-country` edge function - answers null on Supabase's runtime,
+   *    which simply does not have the value; kept as a portability fallback.
+   *
+   * One call per checkout instance; a failure leaves null and the banner
+   * layout falls through to the International catch-all.
+   */
+  const loadCustomerCountry = async (): Promise<void> => {
+    if (countryRequested) return
+    countryRequested = true
+
+    const fromParam = new URLSearchParams(window.location.search).get('country')
+    if (fromParam && /^[A-Za-z]{2}$/.test(fromParam)) {
+      customerCountry.value = fromParam.toUpperCase()
+      return
+    }
+
+    // Same-origin endpoint served by the storefront Worker - the
+    // authoritative source. It answers from the visitor's own request with
+    // no-store, so it cannot be stale the way an HTML document can.
+    try {
+      const response = await fetch('/api/geo', { cache: 'no-store' })
+      if (response.ok) {
+        const data = (await response.json()) as { country?: unknown }
+        if (typeof data.country === 'string' && /^[A-Z]{2}$/.test(data.country)) {
+          customerCountry.value = data.country
+          console.debug('[geo] country from /api/geo:', data.country)
+          return
+        }
+      }
+    } catch {
+      // Same-origin endpoint missing (plain static host) - fall through.
+    }
+
+    // Belt: the value the Worker also injects into the HTML at serve time.
+    const injected = (window as unknown as { __COFIBUY_GEO__?: unknown }).__COFIBUY_GEO__
+    if (typeof injected === 'string' && /^[A-Z]{2}$/.test(injected)) {
+      customerCountry.value = injected
+      console.debug('[geo] country from worker injection:', injected)
+      return
+    }
+
+    try {
+      const { getSupabase } = await import('@/lib/supabase')
+      const { data, error } = await getSupabase().functions.invoke('geo-country', { body: {} })
+      const country = (data as { country?: unknown } | null)?.country
+      if (!error && typeof country === 'string' && /^[A-Z]{2}$/.test(country)) {
+        customerCountry.value = country
+      }
+    } catch {
+      // Geo is an enhancement; the international rules are the correct
+      // fallback, not an error state.
+    }
+  }
+
+  const gatewayBanners = computed<GatewayBanner[]>(() => {
+    const country = customerCountry.value
+    // The customer's own gateways, or - when nothing matches - the
+    // International catch-all group takes the primary and preferred roles.
+    const matched = country !== null ? gateways.value.filter((g) => g.country === country) : []
+    const home = matched.length > 0 ? matched : gateways.value.filter((g) => g.country === null)
+    const primaryIds = new Set(home.filter((g) => g.is_primary_for_country).map((g) => g.id))
+    const homeIds = new Set(home.map((g) => g.id))
+    const rank = (g: CheckoutGateway): number =>
+      primaryIds.has(g.id) ? 0 : homeIds.has(g.id) ? 1 : 2
+
+    // One banner per kind, since orders route by kind: the representative is
+    // the kind's best-placed gateway - primary, then home, then foreign, then
+    // the operator's sort order.
+    const byKind = new Map<string, CheckoutGateway[]>()
+    for (const gateway of gateways.value) {
+      const list = byKind.get(gateway.kind) ?? []
+      list.push(gateway)
+      byKind.set(gateway.kind, list)
+    }
+
+    const entries: GatewayBanner[] = []
+    for (const [kind, list] of byKind) {
+      const sorted = [...list].sort(
+        (a, b) => rank(a) - rank(b) || (a.sort_order ?? 0) - (b.sort_order ?? 0),
+      )
+      const rep = sorted[0]
+      if (!rep) continue
+      const placement = rank(rep)
+      const size: GatewayBanner['size'] =
+        placement === 0 ? 'big' : placement === 1 ? 'normal' : 'foreign'
+      // Each size prefers its own art and degrades to the other rather than
+      // an empty card.
+      const bannerUrl =
+        size === 'big'
+          ? (rep.banner_url ?? rep.banner_small_url)
+          : (rep.banner_small_url ?? rep.banner_url)
+      entries.push({
+        kind,
+        name: pick({ bn: rep.name_bn, en: rep.name_en }) || kind,
+        provider: rep.provider,
+        bannerUrl,
+        size,
+      })
+    }
+
+    const order = { big: 0, normal: 1, foreign: 2 } as const
+    return entries.sort((a, b) => order[a.size] - order[b.size])
+  })
+
   /**
    * Orders belong to a user, so an anonymous sign-in is the floor of every
    * submission path. Checking the stored session is cheaper and safer than
@@ -624,6 +830,7 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
   }
 
   const init = (): void => {
+    void loadCustomerCountry()
     preselectKind()
     void loadExistingOrder()
   }
@@ -642,8 +849,9 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
     unlockedBody,
     paying,
     submittingEvidence,
-    amountMode,
+    customerCountry,
     justPaid: computed(() => route.query?.paid === '1'),
+    telegramInvite,
     // computeds
     orderGateway,
     orderPaysOnline,
@@ -660,15 +868,20 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
     effectiveMin,
     hideMin,
     amountPresets,
+    fixedAmount,
     isAmountValid,
     amountHint,
     amountError,
     kindPaysOnline,
+    gatewayBanners,
     // helpers
     pick,
     money,
     formatExpiry,
     selectPreset,
+    applyDefaultAmount,
+    startInvitePolling,
+    stopInvitePolling,
     // actions
     init,
     payExisting,

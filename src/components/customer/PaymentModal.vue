@@ -380,10 +380,7 @@
                       })
                     }}
                   </p>
-                  <div
-                    v-if="!checkout.orderPaysOnline.value && orderAcceptsEvidence"
-                    class="mt-4"
-                  >
+                  <div v-if="!checkout.orderPaysOnline.value && orderAcceptsEvidence" class="mt-4">
                     <h3 class="text-sm font-semibold text-stone-900">
                       {{ t('customer.order.submitEvidence') }}
                     </h3>

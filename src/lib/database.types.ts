@@ -321,6 +321,12 @@ export type Database = {
         Returns: Json
       }
       get_public_settings: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_telegram_invite: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
       get_unlocked_page: {
         Args: {
           p_slug: string
@@ -404,6 +410,20 @@ export type Database = {
           p_order_id: string
           p_fields: Json
           p_files?: Json
+        }
+        Returns: Json
+      }
+      telegram_chats: { Args: Record<PropertyKey, never>; Returns: Json }
+      telegram_invite_failed: {
+        Args: {
+          p_order_id: string
+          p_error: string
+        }
+        Returns: Json
+      }
+      telegram_invite_used: {
+        Args: {
+          p_invite_url: string
         }
         Returns: Json
       }
@@ -823,8 +843,6 @@ export type Database = {
           slug: string
           title_en: string | null
           title_bn: string | null
-          teaser_md_en: string | null
-          teaser_md_bn: string | null
           unlock_body_md_en: string | null
           unlock_body_md_bn: string | null
           unlock_cta_label_en: string | null
@@ -847,8 +865,6 @@ export type Database = {
           id?: string
           title_en?: string | null
           title_bn?: string | null
-          teaser_md_en?: string | null
-          teaser_md_bn?: string | null
           unlock_body_md_en?: string | null
           unlock_body_md_bn?: string | null
           unlock_cta_label_en?: string | null
@@ -871,8 +887,6 @@ export type Database = {
           slug?: string
           title_en?: string | null
           title_bn?: string | null
-          teaser_md_en?: string | null
-          teaser_md_bn?: string | null
           unlock_body_md_en?: string | null
           unlock_body_md_bn?: string | null
           unlock_cta_label_en?: string | null
@@ -902,9 +916,6 @@ export type Database = {
           name_bn: string | null
           instructions_md_en: string | null
           instructions_md_bn: string | null
-          reference_prompt_en: string | null
-          reference_prompt_bn: string | null
-          supports_reference: boolean
           evidence_fields: Json
           is_active: boolean
           sort_order: number
@@ -928,9 +939,6 @@ export type Database = {
           name_bn?: string | null
           instructions_md_en?: string | null
           instructions_md_bn?: string | null
-          reference_prompt_en?: string | null
-          reference_prompt_bn?: string | null
-          supports_reference?: boolean
           evidence_fields?: Json
           is_active?: boolean
           sort_order?: number
@@ -954,9 +962,6 @@ export type Database = {
           name_bn?: string | null
           instructions_md_en?: string | null
           instructions_md_bn?: string | null
-          reference_prompt_en?: string | null
-          reference_prompt_bn?: string | null
-          supports_reference?: boolean
           evidence_fields?: Json
           is_active?: boolean
           sort_order?: number
@@ -1139,6 +1144,94 @@ export type Database = {
           },
         ]
       }
+      telegram_chats: {
+        Row: {
+          chat_id: string
+          title: string
+          type: string
+          added_at: string
+        }
+        Insert: {
+          chat_id: string
+          title?: string
+          type?: string
+          added_at?: string
+        }
+        Update: {
+          chat_id?: string
+          title?: string
+          type?: string
+          added_at?: string
+        }
+        Relationships: []
+      }
+      telegram_invite_errors: {
+        Row: {
+          order_id: string
+          attempts: number
+          last_error: string | null
+          last_attempt_at: string
+        }
+        Insert: {
+          order_id: string
+          attempts?: number
+          last_error?: string | null
+          last_attempt_at?: string
+        }
+        Update: {
+          order_id?: string
+          attempts?: number
+          last_error?: string | null
+          last_attempt_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'telegram_invite_errors_order_id_fkey'
+            columns: ['order_id']
+            isOneToOne: true
+            referencedRelation: 'orders'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      telegram_invites: {
+        Row: {
+          order_id: string
+          invite_url: string
+          chat_type: string
+          max_uses: number
+          uses_count: number
+          revoked: boolean
+          created_at: string
+        }
+        Insert: {
+          order_id: string
+          invite_url: string
+          chat_type?: string
+          max_uses?: number
+          uses_count?: number
+          revoked?: boolean
+          created_at?: string
+        }
+        Update: {
+          order_id?: string
+          invite_url?: string
+          chat_type?: string
+          max_uses?: number
+          uses_count?: number
+          revoked?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'telegram_invites_order_id_fkey'
+            columns: ['order_id']
+            isOneToOne: true
+            referencedRelation: 'orders'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       pages_public: {
@@ -1147,8 +1240,6 @@ export type Database = {
           slug: string | null
           title_en: string | null
           title_bn: string | null
-          teaser_md_en: string | null
-          teaser_md_bn: string | null
           unlock_cta_label_en: string | null
           unlock_cta_label_bn: string | null
           unlock_cta_url: string | null
@@ -1170,6 +1261,14 @@ export type Database = {
           is_primary_for_country: boolean | null
           banner_url: string | null
           banner_small_url: string | null
+        }
+        Relationships: []
+      }
+      telegram_pending_invites: {
+        Row: {
+          order_id: string | null
+          chat_id: string | null
+          chat_type: string | null
         }
         Relationships: []
       }

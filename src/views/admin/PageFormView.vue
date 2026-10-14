@@ -542,6 +542,23 @@ const save = async (): Promise<void> => {
   saving.value = true
   error.value = null
   try {
+    // Mirror of the database's `pages_publishable` check: an active page must
+    // have a title and a post-payment body in at least one language. Caught
+    // here so the operator sees what to fill, not a constraint name.
+    if (form.value.is_active) {
+      const missing: string[] = []
+      if (!`${form.value.title_en}`.trim() && !`${form.value.title_bn}`.trim()) {
+        missing.push('a title (EN or BN)')
+      }
+      if (!`${form.value.body_en}`.trim() && !`${form.value.body_bn}`.trim()) {
+        missing.push('a body — what the buyer receives (EN or BN)')
+      }
+      if (missing.length > 0) {
+        error.value = `This page cannot go active yet: it is missing ${missing.join(' and ')}.`
+        return
+      }
+    }
+
     // `api.admin_upsert_page` takes one jsonb argument; the keys must match the
     // names it reads out of that jsonb exactly.
     const { error: rpcError } = await rpc<Record<string, unknown>>('admin_upsert_page', {

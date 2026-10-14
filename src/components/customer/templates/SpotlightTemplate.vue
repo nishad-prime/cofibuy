@@ -30,7 +30,7 @@
 
       <div
         v-reveal
-        class="relative mx-auto w-full max-w-4xl px-5 py-24 text-center sm:px-6 sm:py-28"
+        class="relative mx-auto w-full max-w-4xl px-5 py-16 text-center sm:px-6 sm:py-20"
       >
         <span
           class="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-semibold text-stone-300 backdrop-blur"
@@ -40,27 +40,27 @@
         </span>
 
         <h1
-          class="copy-accent-dark mx-auto mt-8 max-w-3xl text-5xl font-black leading-[1.02] tracking-tight text-white sm:text-7xl"
+          class="copy-accent-dark mx-auto mt-6 max-w-3xl text-4xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl"
         >
           {{ heroTitle }}
         </h1>
 
         <div
-          class="mx-auto mt-8 h-1 w-24 rounded-full bg-gradient-to-r from-brand-400 to-brand-600"
+          class="mx-auto mt-6 h-1 w-24 rounded-full bg-gradient-to-r from-brand-400 to-brand-600"
           aria-hidden="true"
         />
 
         <p
           v-if="heroSubtitle"
-          class="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-stone-300 sm:text-xl"
+          class="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-stone-300 sm:text-lg"
         >
           {{ heroSubtitle }}
         </p>
 
-        <div class="mt-12 flex flex-col items-center gap-4 sm:flex-row">
+        <div class="mt-9 flex flex-col items-center gap-3.5 sm:flex-row">
           <button
             type="button"
-            class="btn-primary cta-glow group w-full bg-brand-500 py-4 text-lg text-stone-950 shadow-lg shadow-brand-900/40 hover:bg-brand-400 sm:w-auto sm:px-14"
+            class="btn-primary cta-glow group w-full bg-brand-500 py-3.5 text-base text-stone-950 shadow-lg shadow-brand-900/40 hover:bg-brand-400 sm:w-auto sm:px-14"
             @click="openCheckout"
           >
             {{ heroCta }}
@@ -72,7 +72,7 @@
           </button>
           <button
             type="button"
-            class="group inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur transition-colors hover:border-brand-400/50 hover:bg-white/10 sm:w-auto"
+            class="group inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/5 px-8 py-3.5 text-base font-semibold text-white backdrop-blur transition-colors hover:border-brand-400/50 hover:bg-white/10 sm:w-auto"
             @click="scrollToVideo"
           >
             <Play :size="18" aria-hidden="true" />
@@ -81,19 +81,19 @@
         </div>
         <!-- Our own locale string, so the emphasis markup is trusted content. -->
         <span
-          class="mt-4 block text-xs text-stone-400"
+          class="mt-3 block text-xs text-stone-400"
           v-html="rich(t('customer.page.privateCheckout'))"
         />
 
         <ul
           v-if="heroPoints.length > 0"
           v-reveal
-          class="reveal-stagger mx-auto mt-14 grid max-w-2xl gap-3 text-left sm:grid-cols-2"
+          class="reveal-stagger mx-auto mt-10 grid max-w-2xl gap-2.5 text-left sm:grid-cols-2"
         >
           <li
             v-for="(point, index) in heroPoints"
             :key="index"
-            class="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur"
+            class="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 backdrop-blur transition-colors hover:border-brand-400/30"
           >
             <Check :size="18" aria-hidden="true" class="mt-0.5 shrink-0 text-brand-400" />
             <span class="text-sm leading-relaxed text-stone-200">{{ point }}</span>
@@ -108,6 +108,12 @@
       >
         <ChevronDown :size="22" class="animate-bounce" />
       </div>
+
+      <!-- Seam: a hairline of brand light closing the hero's first screen. -->
+      <div
+        class="absolute bottom-0 left-1/2 h-px w-2/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-brand-500/40 to-transparent"
+        aria-hidden="true"
+      />
     </section>
 
     <!--
@@ -164,9 +170,15 @@
       <div class="ambient-blob -right-24 bottom-0 size-[30rem] bg-brand-700" aria-hidden="true" />
       <div class="dot-grid absolute inset-0 opacity-30" aria-hidden="true" />
 
+      <!-- Seam: the same hairline of brand light that closes the hero. -->
+      <div
+        class="absolute left-1/2 top-0 h-px w-2/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-brand-500/40 to-transparent"
+        aria-hidden="true"
+      />
+
       <div
         v-reveal
-        class="relative mx-auto w-full max-w-4xl px-5 py-24 text-center sm:px-6 sm:py-28"
+        class="relative mx-auto w-full max-w-4xl px-5 pb-28 pt-24 text-center sm:px-6 sm:pb-32 sm:pt-28"
       >
         <h2
           class="copy-accent-dark mx-auto max-w-3xl text-4xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl"

@@ -17,11 +17,14 @@
  *      in the app learns the list, so nothing else can fall out of step with
  *      it. (`/admin/gateways` follows the same idea with `auto_providers`.)
  *
- * The registry holds exactly one template: the dark, long-form sales page.
+ * The registry holds two templates: the long-form sales page and the
+ * three-section spotlight page.
  */
 import { markRaw, type Component } from 'vue'
 import SalesLandingTemplate from '@/components/customer/templates/SalesLandingTemplate.vue'
 import SalesLandingConfigForm from '@/components/admin/templates/SalesLandingConfigForm.vue'
+import SpotlightTemplate from '@/components/customer/templates/SpotlightTemplate.vue'
+import SpotlightConfigForm from '@/components/admin/templates/SpotlightConfigForm.vue'
 
 /** One feature row of the landing template. */
 export interface LandingItem {
@@ -100,6 +103,32 @@ export interface SalesLandingConfig {
   video_heading_bn: string
   hero_video_cta_en: string
   hero_video_cta_bn: string
+  telegram_support_url: string
+}
+
+/**
+ * The spotlight content: a three-section cinematic page (hero, video, ending)
+ * with almost no imagery. Every field is optional to the database; the
+ * renderer falls back to page titles and locale strings for empty ones.
+ */
+export interface SpotlightConfig {
+  hero_title_en: string
+  hero_title_bn: string
+  hero_subtitle_en: string
+  hero_subtitle_bn: string
+  hero_image_url: string
+  hero_image_alt_en: string
+  hero_image_alt_bn: string
+  hero_cta_en: string
+  hero_cta_bn: string
+  video_url: string
+  ending_title_en: string
+  ending_title_bn: string
+  ending_note_en: string
+  ending_note_bn: string
+  /** The Telegram chat the page delivers to (bot must be admin there). */
+  telegram_chat_id: string
+  telegram_chat_type: string
   telegram_support_url: string
 }
 
@@ -185,6 +214,20 @@ const SLOTS_SALES: PageImageSlot[] = [
   },
 ]
 
+/** Slot list: the spotlight page renders at most one image, and it is optional. */
+const SLOTS_SPOTLIGHT: PageImageSlot[] = [
+  {
+    key: 'hero',
+    label: 'Hero image (optional)',
+    location: 'In the hero, as a framed visual beside the title',
+    purpose:
+      'Optional. The page is fully typographic without it; add one only if the product has a single, strong cover-worthy visual.',
+    required: false,
+    recommendedWidth: 1600,
+    recommendedHeight: 1000,
+  },
+]
+
 /**
  * One assigned image, as the public payload delivers it: keyed by slot (and
  * item index for repeating slots, as `benefits.2`).
@@ -246,6 +289,26 @@ const SALES_DEFAULT: SalesLandingConfig = {
   telegram_support_url: '',
 }
 
+const SPOTLIGHT_DEFAULT: SpotlightConfig = {
+  hero_title_en: '',
+  hero_title_bn: '',
+  hero_subtitle_en: '',
+  hero_subtitle_bn: '',
+  hero_image_url: '',
+  hero_image_alt_en: '',
+  hero_image_alt_bn: '',
+  hero_cta_en: '',
+  hero_cta_bn: '',
+  video_url: '',
+  ending_title_en: '',
+  ending_title_bn: '',
+  ending_note_en: '',
+  ending_note_bn: '',
+  telegram_chat_id: '',
+  telegram_chat_type: 'channel',
+  telegram_support_url: '',
+}
+
 /**
  * The shipped templates. The sales page is currently the only one; the
  * legacy layouts (standard, landing, minimal-product) were removed as
@@ -260,6 +323,15 @@ export const PAGE_TEMPLATES: readonly PageTemplate[] = [
     adminForm: markRaw(SalesLandingConfigForm),
     renderer: markRaw(SalesLandingTemplate),
     imageSlots: SLOTS_SALES,
+    fullBleed: true,
+  },
+  {
+    id: 'spotlight',
+    label: 'Spotlight (short)',
+    defaultConfig: SPOTLIGHT_DEFAULT as unknown as Record<string, unknown>,
+    adminForm: markRaw(SpotlightConfigForm),
+    renderer: markRaw(SpotlightTemplate),
+    imageSlots: SLOTS_SPOTLIGHT,
     fullBleed: true,
   },
 ]
@@ -291,7 +363,17 @@ export function templateFor(id: string | null | undefined): PageTemplate {
 export function normalizeConfig(templateId: string, raw: unknown): Record<string, unknown> {
   const template = templateFor(templateId)
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
-  const s = source as Partial<SalesLandingConfig>
+  const s = source as Partial<SalesLandingConfig & SpotlightConfig>
+
+  if (template.id === 'spotlight') {
+    return {
+      ...SPOTLIGHT_DEFAULT,
+      ...s,
+      hero_image_url: typeof s.hero_image_url === 'string' ? s.hero_image_url : '',
+      telegram_chat_id: typeof s.telegram_chat_id === 'string' ? s.telegram_chat_id : '',
+      telegram_chat_type: s.telegram_chat_type === 'group' ? 'group' : 'channel',
+    } as unknown as Record<string, unknown>
+  }
 
   if (template.id === 'sales-landing') {
     return {

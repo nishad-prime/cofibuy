@@ -423,6 +423,53 @@ const fillFields = computed(() => {
     )
   }
 
+  if (form.value.template === 'spotlight') {
+    fields.push(
+      {
+        key: 'hero_title_en',
+        label: 'Hero title (English)',
+        hint: 'the promise, at most a few words',
+      },
+      {
+        key: 'hero_title_bn',
+        label: 'Hero title (Bangla)',
+        hint: 'the promise, at most a few words',
+      },
+      {
+        key: 'hero_subtitle_en',
+        label: 'Hero subtitle (English)',
+        hint: 'one or two sentences under the title',
+      },
+      {
+        key: 'hero_subtitle_bn',
+        label: 'Hero subtitle (Bangla)',
+        hint: 'one or two sentences under the title',
+      },
+      { key: 'hero_cta_en', label: 'Hero button (English)', hint: 'two or three words' },
+      { key: 'hero_cta_bn', label: 'Hero button (Bangla)', hint: 'two or three words' },
+      {
+        key: 'ending_title_en',
+        label: 'Closing title (English)',
+        hint: 'the final push, a few words',
+      },
+      {
+        key: 'ending_title_bn',
+        label: 'Closing title (Bangla)',
+        hint: 'the final push, a few words',
+      },
+      {
+        key: 'ending_note_en',
+        label: 'Closing note (English)',
+        hint: 'one sentence of reassurance under the closing title',
+      },
+      {
+        key: 'ending_note_bn',
+        label: 'Closing note (Bangla)',
+        hint: 'one sentence of reassurance under the closing title',
+      },
+    )
+  }
+
   return fields
 })
 

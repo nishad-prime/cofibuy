@@ -329,16 +329,6 @@ const fillFields = computed(() => {
   if (form.value.template === 'sales-landing') {
     fields.push(
       {
-        key: 'hero_title_en',
-        label: 'Hero title (English)',
-        hint: 'the promise, at most a few words',
-      },
-      {
-        key: 'hero_title_bn',
-        label: 'Hero title (Bangla)',
-        hint: 'the promise, at most a few words',
-      },
-      {
         key: 'hero_subtitle_en',
         label: 'Hero subtitle (English)',
         hint: 'one or two sentences under the title',
@@ -425,16 +415,6 @@ const fillFields = computed(() => {
 
   if (form.value.template === 'spotlight') {
     fields.push(
-      {
-        key: 'hero_title_en',
-        label: 'Hero title (English)',
-        hint: 'the promise, at most a few words',
-      },
-      {
-        key: 'hero_title_bn',
-        label: 'Hero title (Bangla)',
-        hint: 'the promise, at most a few words',
-      },
       {
         key: 'hero_subtitle_en',
         label: 'Hero subtitle (English)',

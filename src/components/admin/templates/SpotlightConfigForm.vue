@@ -11,16 +11,7 @@
       title="Hero"
     >
       <div class="space-y-4">
-        <div class="grid gap-4 md:grid-cols-2">
-          <div>
-            <label class="label">Hero title (EN)</label>
-            <input v-model="config.hero_title_en" class="field" />
-          </div>
-          <div>
-            <label class="label">Hero title (BN)</label>
-            <input v-model="config.hero_title_bn" class="field" />
-          </div>
-        </div>
+        <p class="hint">The hero title is the page's own title (set at the top of this form).</p>
         <div class="grid gap-4 md:grid-cols-2">
           <div>
             <label class="label">Subtitle (EN)</label>

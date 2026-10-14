@@ -112,11 +112,13 @@
 
     <!--
       Video: the page's centerpiece. A portrait frame with a hairline border
-      and a soft brand glow, floating over the ambient background.
+      and a soft brand glow, floating over the ambient background. The section
+      hugs its content (no full-screen height): the hero's Watch-demo button
+      scrolls here, and the heading must land at the top of the viewport.
     -->
     <section
       id="page-video"
-      class="relative flex min-h-[100svh] items-center overflow-hidden bg-stone-950 py-20 sm:py-24"
+      class="relative flex items-center overflow-hidden bg-stone-950 py-24 sm:py-32"
     >
       <div class="ambient-blob -left-24 top-1/4 size-[26rem] bg-brand-900" aria-hidden="true" />
       <div v-reveal class="relative mx-auto w-full max-w-3xl px-5 text-center sm:px-6">
@@ -127,7 +129,7 @@
         </p>
 
         <div
-          class="relative mx-auto mt-10 max-w-sm rounded-[2rem] border border-white/10 bg-stone-900 p-2 shadow-2xl shadow-brand-950/60 ring-1 ring-brand-500/10"
+          class="relative mx-auto mt-10 max-w-[min(24rem,calc(68svh*9/16))] rounded-[2rem] border border-white/10 bg-stone-900 p-2 shadow-2xl shadow-brand-950/60 ring-1 ring-brand-500/10"
         >
           <video
             ref="videoEl"

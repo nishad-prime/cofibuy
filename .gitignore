@@ -43,4 +43,4 @@ selenium_tests/screenshots/
 !.dev.vars.example
 
 # Local Netlify folder
-.netlify
+.vercel

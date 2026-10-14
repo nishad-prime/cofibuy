@@ -57,7 +57,7 @@
           {{ heroSubtitle }}
         </p>
 
-        <div class="mt-9 flex flex-col items-center gap-3.5 sm:flex-row">
+        <div class="mt-9 flex flex-col items-center gap-3.5 sm:flex-row sm:justify-center">
           <button
             type="button"
             class="btn-primary cta-glow group w-full bg-brand-500 py-3.5 text-base text-stone-950 shadow-lg shadow-brand-900/40 hover:bg-brand-400 sm:w-auto sm:px-14"
@@ -189,6 +189,10 @@
           {{ endingNote }}
         </p>
 
+        <!--
+          The image keeps its own aspect ratio: the operator's crop is their
+          decision, so it renders at natural size, capped to the viewport.
+        -->
         <div
           v-if="endingImg"
           class="img-hover group relative mx-auto mt-12 max-w-2xl overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/50"
@@ -196,7 +200,7 @@
           <img
             :src="endingImg.url"
             :alt="endingImg.alt"
-            class="aspect-[16/10] w-full object-cover"
+            class="mx-auto max-h-[75svh] w-auto max-w-full object-contain"
           />
         </div>
 

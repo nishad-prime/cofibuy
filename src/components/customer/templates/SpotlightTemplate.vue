@@ -57,7 +57,7 @@
           {{ heroSubtitle }}
         </p>
 
-        <div class="mt-12 flex flex-col items-center gap-4">
+        <div class="mt-12 flex flex-col items-center gap-4 sm:flex-row">
           <button
             type="button"
             class="btn-primary cta-glow group w-full bg-brand-500 py-4 text-lg text-stone-950 shadow-lg shadow-brand-900/40 hover:bg-brand-400 sm:w-auto sm:px-14"
@@ -70,16 +70,35 @@
               class="transition-transform group-hover:translate-x-0.5"
             />
           </button>
-          <!-- Our own locale string, so the emphasis markup is trusted content. -->
-          <span class="text-xs text-stone-400" v-html="rich(t('customer.page.privateCheckout'))" />
+          <button
+            type="button"
+            class="group inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur transition-colors hover:border-brand-400/50 hover:bg-white/10 sm:w-auto"
+            @click="scrollToVideo"
+          >
+            <Play :size="18" aria-hidden="true" />
+            {{ t('customer.page.watchDemo') }}
+          </button>
         </div>
+        <!-- Our own locale string, so the emphasis markup is trusted content. -->
+        <span
+          class="mt-4 block text-xs text-stone-400"
+          v-html="rich(t('customer.page.privateCheckout'))"
+        />
 
-        <div
-          v-if="heroImg"
-          class="img-hover group relative mx-auto mt-14 max-w-2xl overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/50"
+        <ul
+          v-if="heroPoints.length > 0"
+          v-reveal
+          class="reveal-stagger mx-auto mt-14 grid max-w-2xl gap-3 text-left sm:grid-cols-2"
         >
-          <img :src="heroImg.url" :alt="heroImg.alt" class="aspect-[16/10] w-full object-cover" />
-        </div>
+          <li
+            v-for="(point, index) in heroPoints"
+            :key="index"
+            class="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur"
+          >
+            <Check :size="18" aria-hidden="true" class="mt-0.5 shrink-0 text-brand-400" />
+            <span class="text-sm leading-relaxed text-stone-200">{{ point }}</span>
+          </li>
+        </ul>
       </div>
 
       <!-- Scroll cue: a slow pulse at the bottom edge, decorative. -->
@@ -156,6 +175,17 @@
           {{ endingNote }}
         </p>
 
+        <div
+          v-if="endingImg"
+          class="img-hover group relative mx-auto mt-12 max-w-2xl overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/50"
+        >
+          <img
+            :src="endingImg.url"
+            :alt="endingImg.alt"
+            class="aspect-[16/10] w-full object-cover"
+          />
+        </div>
+
         <button
           type="button"
           class="btn-primary cta-glow group mx-auto mt-12 flex w-full items-center justify-center bg-brand-500 py-4 text-lg text-stone-950 shadow-xl shadow-brand-900/50 hover:bg-brand-400 sm:w-auto sm:px-16"
@@ -198,7 +228,7 @@
 import { computed, type Directive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DOMPurify from 'dompurify'
-import { ArrowRight, ChevronDown, Lock, Play, Send, Sparkles } from 'lucide-vue-next'
+import { ArrowRight, Check, ChevronDown, Lock, Play, Send, Sparkles } from 'lucide-vue-next'
 import { useContent } from '@/composables/useContent'
 import { type PageImageMap, type SpotlightConfig } from '@/pages/templates/registry'
 import { useCheckoutModal } from '@/composables/useCheckoutModal'
@@ -271,6 +301,19 @@ const heroCta = computed(
     t('customer.page.getStarted'),
 )
 
+/** Hero bullets: one per line, blanks dropped. */
+const heroPoints = computed(() =>
+  (pick({ bn: props.config.hero_points_bn, en: props.config.hero_points_en }) ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== ''),
+)
+
+/** The hero's secondary button: a smooth glide to the video section. */
+const scrollToVideo = (): void => {
+  document.getElementById('page-video')?.scrollIntoView({ behavior: 'smooth' })
+}
+
 const endingTitle = computed(
   () =>
     pick({ bn: props.config.ending_title_bn, en: props.config.ending_title_en }) || heroTitle.value,
@@ -280,24 +323,24 @@ const endingNote = computed(
   () => pick({ bn: props.config.ending_note_bn, en: props.config.ending_note_en }) ?? '',
 )
 
-const heroImg = computed(() => {
-  const direct = props.images?.hero
+const endingImg = computed(() => {
+  const direct = props.images?.ending
   if (direct?.url) {
     return {
       url: direct.url,
       alt:
-        pick({ bn: props.config.hero_image_alt_bn, en: props.config.hero_image_alt_en }) ||
+        pick({ bn: props.config.ending_image_alt_bn, en: props.config.ending_image_alt_en }) ||
         direct.alt_en ||
         direct.alt_bn ||
-        heroTitle.value,
+        endingTitle.value,
     }
   }
-  if (props.config.hero_image_url) {
+  if (props.config.ending_image_url) {
     return {
-      url: props.config.hero_image_url,
+      url: props.config.ending_image_url,
       alt:
-        pick({ bn: props.config.hero_image_alt_bn, en: props.config.hero_image_alt_en }) ||
-        heroTitle.value,
+        pick({ bn: props.config.ending_image_alt_bn, en: props.config.ending_image_alt_en }) ||
+        endingTitle.value,
     }
   }
   return null

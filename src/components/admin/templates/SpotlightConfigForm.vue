@@ -33,20 +33,17 @@
           </div>
         </div>
 
-        <p class="hint">
-          Optional image. The page is fully typographic without one; assign it on the page's image
-          screen if you want a framed visual under the title.
-        </p>
         <div class="grid gap-4 md:grid-cols-2">
           <div>
-            <label class="label">Image alt (EN)</label>
-            <input v-model="config.hero_image_alt_en" class="field" />
+            <label class="label">Bullet points (EN) — one per line</label>
+            <textarea v-model="config.hero_points_en" rows="4" class="field"></textarea>
           </div>
           <div>
-            <label class="label">Image alt (BN)</label>
-            <input v-model="config.hero_image_alt_bn" class="field" />
+            <label class="label">Bullet points (BN) — one per line</label>
+            <textarea v-model="config.hero_points_bn" rows="4" class="field" lang="bn"></textarea>
           </div>
         </div>
+        <p class="hint">Each line renders as a checkmarked bullet under the hero buttons.</p>
       </div>
     </CollapsibleSection>
 
@@ -92,6 +89,19 @@
           </div>
         </div>
         <p class="hint">Leave the title empty to reuse the hero title.</p>
+
+        <label class="label">Ending image (optional)</label>
+        <PageImageUpload v-model:image-url="config.ending_image_url" />
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="label">Image alt (EN)</label>
+            <input v-model="config.ending_image_alt_en" class="field" />
+          </div>
+          <div>
+            <label class="label">Image alt (BN)</label>
+            <input v-model="config.ending_image_alt_bn" class="field" />
+          </div>
+        </div>
       </div>
     </CollapsibleSection>
 
@@ -145,6 +155,7 @@
 
 <script setup lang="ts">
 import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
+import PageImageUpload from '@/components/admin/PageImageUpload.vue'
 import { ref } from 'vue'
 import { rpc } from '@/lib/rpc'
 import type { SpotlightConfig } from '@/pages/templates/registry'

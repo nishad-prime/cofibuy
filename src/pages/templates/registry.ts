@@ -116,9 +116,9 @@ export interface SpotlightConfig {
   hero_title_bn: string
   hero_subtitle_en: string
   hero_subtitle_bn: string
-  hero_image_url: string
-  hero_image_alt_en: string
-  hero_image_alt_bn: string
+  /** Bullet lines, one per line; rendered as a checklist in the hero. */
+  hero_points_en: string
+  hero_points_bn: string
   hero_cta_en: string
   hero_cta_bn: string
   video_url: string
@@ -126,6 +126,9 @@ export interface SpotlightConfig {
   ending_title_bn: string
   ending_note_en: string
   ending_note_bn: string
+  ending_image_url: string
+  ending_image_alt_en: string
+  ending_image_alt_bn: string
   /** The Telegram chat the page delivers to (bot must be admin there). */
   telegram_chat_id: string
   telegram_chat_type: string
@@ -217,9 +220,9 @@ const SLOTS_SALES: PageImageSlot[] = [
 /** Slot list: the spotlight page renders at most one image, and it is optional. */
 const SLOTS_SPOTLIGHT: PageImageSlot[] = [
   {
-    key: 'hero',
-    label: 'Hero image (optional)',
-    location: 'In the hero, as a framed visual beside the title',
+    key: 'ending',
+    label: 'Ending image (optional)',
+    location: 'In the ending section, under the closing title',
     purpose:
       'Optional. The page is fully typographic without it; add one only if the product has a single, strong cover-worthy visual.',
     required: false,
@@ -294,9 +297,8 @@ const SPOTLIGHT_DEFAULT: SpotlightConfig = {
   hero_title_bn: '',
   hero_subtitle_en: '',
   hero_subtitle_bn: '',
-  hero_image_url: '',
-  hero_image_alt_en: '',
-  hero_image_alt_bn: '',
+  hero_points_en: '',
+  hero_points_bn: '',
   hero_cta_en: '',
   hero_cta_bn: '',
   video_url: '',
@@ -304,6 +306,9 @@ const SPOTLIGHT_DEFAULT: SpotlightConfig = {
   ending_title_bn: '',
   ending_note_en: '',
   ending_note_bn: '',
+  ending_image_url: '',
+  ending_image_alt_en: '',
+  ending_image_alt_bn: '',
   telegram_chat_id: '',
   telegram_chat_type: 'channel',
   telegram_support_url: '',
@@ -369,7 +374,7 @@ export function normalizeConfig(templateId: string, raw: unknown): Record<string
     return {
       ...SPOTLIGHT_DEFAULT,
       ...s,
-      hero_image_url: typeof s.hero_image_url === 'string' ? s.hero_image_url : '',
+      ending_image_url: typeof s.ending_image_url === 'string' ? s.ending_image_url : '',
       telegram_chat_id: typeof s.telegram_chat_id === 'string' ? s.telegram_chat_id : '',
       telegram_chat_type: s.telegram_chat_type === 'group' ? 'group' : 'channel',
     } as unknown as Record<string, unknown>

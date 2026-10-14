@@ -5,3 +5,4 @@ package-lock.json
 supabase/.temp
 .tmp
 supabase/seed.sql
+*.toml

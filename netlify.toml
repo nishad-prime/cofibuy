@@ -1,0 +1,40 @@
+# Netlify deployment for the cofibuy storefront.
+#
+# The site is the built SPA plus one edge function that reproduces what the
+# Cloudflare Worker did: stamp the visitor's country into every HTML response
+# (`window.__COFIBUY_GEO__`, read by the payment flow to pick the gateway
+# banner) and answer `/api/geo` from the request itself.
+#
+# Supabase (auth, database, edge functions, storage) and the Telegram bot
+# Worker are unaffected by this migration.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA routing: every unknown path renders the app shell.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Hashed build output never changes; cache it at the edge for a year.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The HTML shell is re-written per visitor (geo injection), so the CDN must
+# not serve one visitor's document to another.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# One edge function for the whole site: it answers /api/geo directly and
+# injects the geo stamp into HTML; everything else passes through untouched.
+[[edge_functions]]
+  function = "geo"
+  path = "/*"

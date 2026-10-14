@@ -73,31 +73,15 @@
         </p>
       </div>
 
-      <div class="grid gap-6 md:grid-cols-2">
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Title (EN)</label>
-          <input
-            v-model="form.title_en"
-            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Title (BN)</label>
-          <input
-            v-model="form.title_bn"
-            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-          />
-        </div>
-      </div>
-
       <!--
         The prose fields, rendered from one list.
 
         They were in the form's state and in its save payload long before they had inputs, so an
         operator could load a page, change its title, save, and silently write back every teaser,
         body and button label exactly as they found it - with no way to see or change any of it.
-        The list is the single place these eight fields are named, and the draft panel below reads
-        the same one, so a field that gains an input here cannot be missing there.
+        The list is the single place these fields are named, and the draft panel below reads
+        the same one, so a field that gains an input here cannot be missing there. The title
+        lives here too (the templates' heroes fall back to it), so it is asked for exactly once.
       -->
       <fieldset class="space-y-4 border-t border-gray-200 pt-4">
         <legend class="sr-only">Product copy</legend>

@@ -1,5 +1,5 @@
 <template>
-  <div class="grid min-h-screen lg:grid-cols-2">
+  <div class="admin-dark grid min-h-screen bg-stone-950 lg:grid-cols-2">
     <!-- Brand panel, hidden on small screens where it would just push the form down -->
     <div class="relative hidden flex-col justify-between bg-brand-800 p-12 text-white lg:flex">
       <div class="flex items-center gap-3">
@@ -20,7 +20,7 @@
       <p class="text-sm text-brand-200">Staff accounts are managed by the owner.</p>
     </div>
 
-    <div class="flex items-center justify-center bg-stone-50 p-6 sm:p-12">
+    <div class="flex items-center justify-center bg-stone-950 p-6 sm:p-12">
       <div class="w-full max-w-sm">
         <div class="mb-8 lg:hidden">
           <span

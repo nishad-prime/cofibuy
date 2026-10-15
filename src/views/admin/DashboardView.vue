@@ -7,7 +7,7 @@
       </div>
 
       <!-- The range: every chart and windowed number below follows it. -->
-      <div class="flex rounded-lg border border-stone-200 bg-white p-0.5">
+      <div class="flex rounded-lg border border-white/15 bg-white/5 p-0.5">
         <button
           v-for="range in RANGES"
           :key="range"
@@ -15,8 +15,8 @@
           class="rounded-md px-3 py-1.5 text-sm font-medium transition"
           :class="
             range === selectedRange
-              ? 'bg-stone-900 text-white'
-              : 'text-stone-500 hover:text-stone-900'
+              ? 'bg-stone-100 text-stone-900'
+              : 'text-stone-400 hover:text-stone-100'
           "
           @click="selectRange(range)"
         >
@@ -455,8 +455,19 @@ const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   scales: {
-    yOrders: { position: 'left' as const, beginAtZero: true, ticks: { precision: 0 } },
-    yRevenue: { position: 'right' as const, beginAtZero: true, grid: { drawOnChartArea: false } },
+    yOrders: {
+      position: 'left' as const,
+      beginAtZero: true,
+      ticks: { precision: 0, color: '#a8a29e' },
+      grid: { color: 'rgba(255, 255, 255, 0.06)' },
+    },
+    yRevenue: {
+      position: 'right' as const,
+      beginAtZero: true,
+      ticks: { color: '#a8a29e' },
+      grid: { drawOnChartArea: false },
+    },
+    x: { ticks: { color: '#a8a29e' }, grid: { display: false } },
   },
 }
 
@@ -496,7 +507,7 @@ const doughnutOptions = {
   responsive: true,
   maintainAspectRatio: false,
   cutout: '65%',
-  plugins: { legend: { position: 'right' as const } },
+  plugins: { legend: { position: 'right' as const, labels: { color: '#d6d3d1' } } },
 }
 
 const countryRows = computed(() => traffic.value?.countries ?? [])

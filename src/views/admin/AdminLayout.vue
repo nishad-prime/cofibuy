@@ -1,17 +1,17 @@
 <template>
-  <div class="min-h-screen bg-stone-50">
+  <div class="admin-dark min-h-screen bg-stone-950 text-stone-100">
     <!-- Desktop sidebar -->
     <aside
-      class="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-stone-200 bg-white lg:flex"
+      class="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-white/10 bg-stone-950/95 lg:flex"
     >
-      <div class="flex h-16 items-center gap-3 border-b border-stone-200 px-5">
+      <div class="flex h-16 items-center gap-3 border-b border-white/10 px-5">
         <span
-          class="grid h-9 w-9 place-items-center rounded-lg bg-brand-700 text-sm font-bold text-white"
+          class="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-sm font-bold text-stone-950"
         >
           C
         </span>
         <div class="leading-tight">
-          <p class="text-sm font-semibold text-stone-900">Cofibuy</p>
+          <p class="text-sm font-semibold text-stone-100">Cofibuy</p>
           <p class="text-xs text-stone-500">Admin</p>
         </div>
       </div>
@@ -24,8 +24,8 @@
           class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition"
           :class="
             isActive(item.to)
-              ? 'bg-brand-50 text-brand-800 ring-1 ring-brand-200'
-              : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+              ? 'bg-brand-500/10 text-brand-300 ring-1 ring-brand-500/30'
+              : 'text-stone-400 hover:bg-white/5 hover:text-stone-100'
           "
         >
           <AppIcon :name="item.icon" />
@@ -33,15 +33,15 @@
         </router-link>
       </nav>
 
-      <div class="border-t border-stone-200 p-3">
-        <div class="mb-2 flex items-center gap-3 rounded-lg bg-stone-50 p-3">
+      <div class="border-t border-white/10 p-3">
+        <div class="mb-2 flex items-center gap-3 rounded-lg bg-white/5 p-3">
           <span
-            class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-stone-200 text-xs font-semibold text-stone-700 uppercase"
+            class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-xs font-semibold text-stone-300 uppercase"
           >
             {{ initials }}
           </span>
           <div class="min-w-0 leading-tight">
-            <p class="truncate text-sm font-medium text-stone-800">{{ user?.email }}</p>
+            <p class="truncate text-sm font-medium text-stone-100">{{ user?.email }}</p>
             <p class="text-xs text-stone-500 capitalize">{{ roleLabel }}</p>
           </div>
         </div>
@@ -54,15 +54,15 @@
 
     <!-- Mobile top bar -->
     <header
-      class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-stone-200 bg-white px-4 lg:hidden"
+      class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-white/10 bg-stone-950/95 px-4 backdrop-blur lg:hidden"
     >
       <div class="flex items-center gap-2.5">
         <span
-          class="grid h-8 w-8 place-items-center rounded-lg bg-brand-700 text-sm font-bold text-white"
+          class="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-sm font-bold text-stone-950"
         >
           C
         </span>
-        <span class="text-sm font-semibold text-stone-900">Cofibuy Admin</span>
+        <span class="text-sm font-semibold text-stone-100">Cofibuy Admin</span>
       </div>
       <button
         type="button"
@@ -75,14 +75,14 @@
       </button>
     </header>
 
-    <nav v-if="navOpen" class="border-b border-stone-200 bg-white p-3 lg:hidden">
+    <nav v-if="navOpen" class="border-b border-white/10 bg-stone-950/95 p-3 lg:hidden">
       <router-link
         v-for="item in visibleItems"
         :key="item.to"
         :to="item.to"
         class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
         :class="
-          isActive(item.to) ? 'bg-brand-50 text-brand-800' : 'text-stone-600 hover:bg-stone-100'
+          isActive(item.to) ? 'bg-brand-500/10 text-brand-300' : 'text-stone-400 hover:bg-white/5'
         "
         @click="navOpen = false"
       >

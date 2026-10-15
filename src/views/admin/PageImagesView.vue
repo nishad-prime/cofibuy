@@ -84,9 +84,9 @@
 
             <div
               v-if="entry.uploading"
-              class="absolute inset-0 flex items-center justify-center bg-white/70"
+              class="absolute inset-0 flex items-center justify-center bg-stone-950/70"
             >
-              <span class="text-sm font-medium text-stone-600">
+              <span class="text-sm font-medium text-stone-200">
                 {{ t('admin.images.uploading') }}
               </span>
             </div>

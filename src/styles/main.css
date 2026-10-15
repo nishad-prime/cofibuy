@@ -420,6 +420,15 @@
   @apply border-white/10 bg-white/5;
 }
 
+/*
+ * `.table-wrap` composes `.card` via @apply, so its element never carries the
+ * literal `card` class and the selector above cannot match it. The admin
+ * tables (pages, queue, team) need their own flip.
+ */
+.admin-dark .table-wrap {
+  @apply border-white/10 bg-white/5;
+}
+
 .admin-dark .field {
   @apply border-white/15 bg-white/5 text-stone-100 focus:border-brand-400 focus:ring-white/10 placeholder:text-stone-500;
 }
@@ -601,6 +610,60 @@
 
 .admin-dark .hover\:text-brand-700:hover {
   color: var(--color-brand-300);
+}
+
+/* The gray palette leaks into a few admin views (page form, settings, the
+ * sales template's own form). Flipped here so no view can stay light. */
+.admin-dark .text-gray-900,
+.admin-dark .text-gray-800 {
+  color: var(--color-stone-100);
+}
+
+.admin-dark .text-gray-700,
+.admin-dark .text-gray-600 {
+  color: var(--color-stone-300);
+}
+
+.admin-dark .text-gray-500,
+.admin-dark .text-gray-400 {
+  color: var(--color-stone-400);
+}
+
+.admin-dark .border-gray-300,
+.admin-dark .border-gray-200 {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.admin-dark .bg-gray-50 {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.admin-dark .hover\:bg-gray-50:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Blue links and secondary buttons (back links, manage-images, AI fill). */
+.admin-dark .text-blue-700,
+.admin-dark .text-blue-600 {
+  color: var(--color-sky-300);
+}
+
+.admin-dark .bg-blue-50,
+.admin-dark .hover\:bg-blue-50:hover {
+  background-color: rgba(14, 165, 233, 0.12);
+}
+
+.admin-dark .border-blue-600 {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.admin-dark .hover\:border-stone-300:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Native widgets (select dropdowns, date pickers) follow the color scheme. */
+.admin-dark {
+  color-scheme: dark;
 }
 
 /* ---------------------------------------------------------------------------

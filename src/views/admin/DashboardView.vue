@@ -147,12 +147,29 @@
       </section>
 
       <div class="mt-6 grid gap-6 lg:grid-cols-2">
-        <!-- Devices: where the shop is opened. -->
+        <!-- Devices: where the shop is opened. Bars, not a canvas: the split
+             must stay readable even if a chart fails to draw. -->
         <section class="card card-pad">
           <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.dashboard.devices') }}</h2>
-          <div v-if="deviceRows.length > 0" class="mx-auto mt-4 h-56">
-            <Chart type="doughnut" :data="deviceChartData" :options="doughnutOptions" />
-          </div>
+          <ul v-if="deviceRows.length > 0" class="mt-4 space-y-2.5">
+            <li v-for="row in deviceRows" :key="row.device_type" class="flex items-center gap-3">
+              <span class="w-20 shrink-0 text-xs font-medium text-stone-400">
+                {{ t(`admin.dashboard.device.${row.device_type}`) }}
+              </span>
+              <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-stone-100">
+                <div
+                  class="h-full rounded-full bg-brand-500"
+                  :style="{ width: `${(row.views / maxDeviceViews) * 100}%` }"
+                />
+              </div>
+              <span class="w-12 shrink-0 text-right text-xs text-stone-500 ltr-value">
+                {{ row.views }}
+              </span>
+              <span class="w-14 shrink-0 text-right text-xs text-stone-500 ltr-value">
+                {{ Math.round((row.views / totalDeviceViews) * 100) }}%
+              </span>
+            </li>
+          </ul>
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noTraffic') }}</p>
         </section>
 
@@ -489,26 +506,13 @@ const funnelStages = computed(() => {
 })
 
 const deviceRows = computed(() => traffic.value?.devices ?? [])
-const deviceColors = ['#0d9488', '#14b8a6', '#5eead4', '#94a3b8']
-
-const deviceChartData = computed<ChartData<'doughnut'>>(() => ({
-  // The RPC clamps device_type to three buckets, so the keys always exist.
-  labels: deviceRows.value.map((row) => t(`admin.dashboard.device.${row.device_type}`)),
-  datasets: [
-    {
-      data: deviceRows.value.map((row) => row.views),
-      backgroundColor: deviceColors,
-      borderWidth: 0,
-    },
-  ],
-}))
-
-const doughnutOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  cutout: '65%',
-  plugins: { legend: { position: 'right' as const, labels: { color: '#d6d3d1' } } },
-}
+const maxDeviceViews = computed(() => Math.max(...deviceRows.value.map((r) => r.views), 1))
+const totalDeviceViews = computed(() =>
+  Math.max(
+    deviceRows.value.reduce((sum, r) => sum + r.views, 0),
+    1,
+  ),
+)
 
 const countryRows = computed(() => traffic.value?.countries ?? [])
 const maxCountryViews = computed(() => Math.max(...countryRows.value.map((r) => r.views), 1))

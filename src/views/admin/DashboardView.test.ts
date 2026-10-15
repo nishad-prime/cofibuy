@@ -142,6 +142,10 @@ describe('the dashboard', () => {
     // Traffic breakdowns render from the stats payload.
     expect(wrapper.text()).toContain('BD')
     expect(wrapper.text()).toContain('unclear proof')
+    // Devices render as bars with counts, not as a canvas.
+    expect(wrapper.text()).toContain('admin.dashboard.devices')
+    expect(wrapper.text()).toContain('admin.dashboard.device.mobile')
+    expect(wrapper.text()).toContain('20')
   })
 
   it('switching the range refetches the windowed reads with the new days', async () => {

@@ -194,6 +194,7 @@ export type Database = {
       approve_order: {
         Args: {
           p_order_id: string
+          p_amount_received?: number
         }
         Returns: Json
       }
@@ -290,6 +291,7 @@ export type Database = {
           p_slug: string
           p_kind: string
           p_amount: number
+          p_context?: Json
         }
         Returns: Json
       }
@@ -298,6 +300,7 @@ export type Database = {
           p_slug: string
           p_kind: string
           p_amount: number
+          p_context?: Json
         }
         Returns: Json
       }
@@ -306,6 +309,7 @@ export type Database = {
           p_slug: string
           p_gateway_id: string
           p_amount: number
+          p_context?: Json
         }
         Returns: Json
       }
@@ -438,6 +442,7 @@ export type Database = {
         Args: {
           p_slug: string
           p_country: string
+          p_city: string
           p_device_type: string
           p_os: string
           p_browser: string
@@ -725,6 +730,13 @@ export type Database = {
           reject_code: string | null
           reject_reason_en: string | null
           reject_reason_bn: string | null
+          amount_received: number | null
+          country: string | null
+          city: string | null
+          device_type: string | null
+          os: string | null
+          browser: string | null
+          referrer: string | null
         }
         Insert: {
           link_id: string
@@ -756,6 +768,13 @@ export type Database = {
           reject_code?: string | null
           reject_reason_en?: string | null
           reject_reason_bn?: string | null
+          amount_received?: number | null
+          country?: string | null
+          city?: string | null
+          device_type?: string | null
+          os?: string | null
+          browser?: string | null
+          referrer?: string | null
         }
         Update: {
           id?: string
@@ -787,6 +806,13 @@ export type Database = {
           reject_code?: string | null
           reject_reason_en?: string | null
           reject_reason_bn?: string | null
+          amount_received?: number | null
+          country?: string | null
+          city?: string | null
+          device_type?: string | null
+          os?: string | null
+          browser?: string | null
+          referrer?: string | null
         }
         Relationships: [
           {
@@ -866,6 +892,7 @@ export type Database = {
           browser: string | null
           referrer: string | null
           created_at: string
+          city: string | null
         }
         Insert: {
           id: number
@@ -876,6 +903,7 @@ export type Database = {
           browser?: string | null
           referrer?: string | null
           created_at?: string
+          city?: string | null
         }
         Update: {
           id?: number
@@ -886,6 +914,7 @@ export type Database = {
           browser?: string | null
           referrer?: string | null
           created_at?: string
+          city?: string | null
         }
         Relationships: [
           {

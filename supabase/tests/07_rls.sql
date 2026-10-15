@@ -185,13 +185,13 @@ select is(
 );
 
 select is(
-  test_data.can_execute('authenticated', 'api.create_order(text,text,numeric)'),
+  test_data.can_execute('authenticated', 'api.create_order(text,text,numeric,jsonb)'),
   true,
   'and ordering is callable by a customer'
 );
 
 select is(
-  test_data.can_execute('anon', 'api.create_order(text,text,numeric)'),
+  test_data.can_execute('anon', 'api.create_order(text,text,numeric,jsonb)'),
   false,
   'but not by the public, who cannot pay for anything'
 );

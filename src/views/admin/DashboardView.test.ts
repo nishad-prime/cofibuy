@@ -57,6 +57,10 @@ const TRAFFIC = {
     conversion_rate: 3.33,
   },
   countries: [{ country: 'BD', views: 25 }],
+  locations: [
+    { country: 'BD', city: 'Dhaka', views: 18 },
+    { country: 'BD', city: null, views: 7 },
+  ],
   devices: [
     { device_type: 'mobile', views: 20 },
     { device_type: 'desktop', views: 10 },
@@ -140,6 +144,8 @@ describe('the dashboard', () => {
     expect(wrapper.text()).toContain('admin.dashboard.stageViews')
     expect(wrapper.text()).toContain('admin.dashboard.stageApproved')
     // Traffic breakdowns render from the stats payload.
+    expect(wrapper.text()).toContain('admin.dashboard.locations')
+    expect(wrapper.text()).toContain('Dhaka')
     expect(wrapper.text()).toContain('BD')
     expect(wrapper.text()).toContain('unclear proof')
     // Devices render as bars with counts, not as a canvas.

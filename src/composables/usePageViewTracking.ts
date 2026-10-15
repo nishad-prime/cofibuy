@@ -17,26 +17,32 @@ import { parseUserAgent } from '@/lib/userAgent'
 const sessionKey = (slug: string): string => `pv:${slug}`
 
 /** The same country chain the checkout uses, minus the edge-function hop. */
-const resolveCountry = async (): Promise<string> => {
+const resolveGeo = async (): Promise<{ country: string; city: string }> => {
   const fromParam = new URLSearchParams(window.location.search).get('country')
   if (fromParam && /^[A-Za-z]{2}$/.test(fromParam)) {
-    return fromParam.toUpperCase()
+    return { country: fromParam.toUpperCase(), city: '' }
   }
 
   try {
     const response = await fetch('/api/geo', { cache: 'no-store' })
     if (response.ok) {
-      const data = (await response.json()) as { country?: unknown }
-      if (typeof data.country === 'string' && /^[A-Z]{2}$/.test(data.country)) {
-        return data.country
-      }
+      const data = (await response.json()) as { country?: unknown; city?: unknown }
+      const country =
+        typeof data.country === 'string' && /^[A-Z]{2}$/.test(data.country) ? data.country : ''
+      const city = typeof data.city === 'string' ? data.city : ''
+      if (country) return { country, city }
     }
   } catch {
     // Same-origin endpoint missing (plain static host) - fall through.
   }
 
-  const injected = (window as unknown as { __COFIBUY_GEO__?: unknown }).__COFIBUY_GEO__
-  return typeof injected === 'string' && /^[A-Z]{2}$/.test(injected) ? injected : ''
+  const w = window as unknown as { __COFIBUY_GEO__?: unknown; __COFIBUY_GEO_CITY__?: unknown }
+  const country =
+    typeof w.__COFIBUY_GEO__ === 'string' && /^[A-Z]{2}$/.test(w.__COFIBUY_GEO__)
+      ? w.__COFIBUY_GEO__
+      : ''
+  const city = typeof w.__COFIBUY_GEO_CITY__ === 'string' ? w.__COFIBUY_GEO_CITY__ : ''
+  return { country, city }
 }
 
 const referrerHostname = (): string => {
@@ -62,11 +68,12 @@ export function trackPageView(slug: string): void {
 
   void (async () => {
     try {
-      const [country] = await Promise.all([resolveCountry()])
+      const [{ country, city }] = await Promise.all([resolveGeo()])
       const device = parseUserAgent(navigator.userAgent)
       await getSupabase().rpc('track_page_view', {
         p_slug: slug,
         p_country: country,
+        p_city: city,
         p_device_type: device.deviceType,
         p_os: device.os,
         p_browser: device.browser,

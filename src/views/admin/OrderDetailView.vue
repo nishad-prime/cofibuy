@@ -40,8 +40,26 @@
           <dl class="mt-4 space-y-3 text-sm">
             <div class="flex justify-between gap-4">
               <dt class="text-stone-500">{{ t('admin.queue.amount') }}</dt>
-              <dd class="ltr-value font-medium text-stone-900">
-                {{ formatMoney(order.amount ?? 0, 'en', currency) }}
+              <dd class="text-right">
+                <span class="ltr-value font-medium text-stone-900">
+                  {{ formatMoney(order.amount ?? 0, 'en', currency) }}
+                </span>
+                <span
+                  v-if="order.amount_received !== null && order.amount_received !== order.amount"
+                  class="mt-0.5 block text-xs"
+                >
+                  <span class="text-stone-500">{{ t('admin.order.received') }}:</span>
+                  <span
+                    class="ltr-value font-medium"
+                    :class="
+                      (order.amount_received ?? 0) < (order.amount ?? 0)
+                        ? 'text-red-400'
+                        : 'text-emerald-400'
+                    "
+                  >
+                    {{ formatMoney(order.amount_received, 'en', currency) }}
+                  </span>
+                </span>
               </dd>
             </div>
             <div class="flex justify-between gap-4">
@@ -169,14 +187,46 @@
                 {{ formatMoney(order.customer.revenue_approved, 'en', currency) }}
               </dd>
             </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('admin.order.location') }}</dt>
+              <dd class="text-right font-medium text-stone-900">
+                <template v-if="order.country || order.city">
+                  <span v-if="order.city">{{ order.city }}, </span>
+                  <span class="ltr-value">{{ order.country }}</span>
+                </template>
+                <span v-else class="text-stone-400">{{ t('admin.order.none') }}</span>
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('admin.order.device') }}</dt>
+              <dd class="text-right font-medium text-stone-900">
+                <template v-if="order.device_type || order.os || order.browser">
+                  <span>{{ t(`admin.dashboard.device.${order.device_type || 'desktop'}`) }}</span>
+                  <span v-if="order.os" class="text-stone-500"> · {{ order.os }}</span>
+                  <span v-if="order.browser" class="text-stone-500"> · {{ order.browser }}</span>
+                </template>
+                <span v-else class="text-stone-400">{{ t('admin.order.none') }}</span>
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">{{ t('admin.order.referrer') }}</dt>
+              <dd class="text-right font-medium text-stone-900">
+                {{ order.referrer || t('admin.order.none') }}
+              </dd>
+            </div>
           </dl>
         </section>
       </div>
 
       <div v-if="canReview" class="mt-6 flex flex-wrap gap-3">
-        <button type="button" class="btn-primary" :disabled="actionLoading" @click="approve">
+        <button
+          type="button"
+          class="btn-primary"
+          :disabled="actionLoading"
+          @click="openApproveModal"
+        >
           <AppIcon name="check" :size="18" />
-          {{ actionLoading ? t('admin.queue.approving') : t('admin.queue.approve') }}
+          {{ t('admin.queue.approve') }}
         </button>
         <button
           type="button"
@@ -232,6 +282,52 @@
           </div>
         </div>
       </div>
+
+      <!--
+        Approve: the operator records what actually arrived, because a
+        customer who under-pays is still a customer - just at a different
+        figure. Prefilled with the requested amount.
+      -->
+      <div
+        v-if="showApproveModal"
+        class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+      >
+        <div class="w-full max-w-md rounded-xl border border-white/15 bg-stone-950 p-5 shadow-2xl">
+          <h2 class="text-lg font-semibold text-stone-100">
+            {{ t('admin.order.approveHeading') }}
+          </h2>
+          <div class="mt-4">
+            <label class="label" for="received">{{ t('admin.order.received') }} (৳)</label>
+            <input
+              id="received"
+              v-model="receivedInput"
+              type="number"
+              min="0"
+              step="0.01"
+              class="field ltr-value"
+            />
+            <p class="hint">{{ t('admin.order.approveHint') }}</p>
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              class="btn-secondary"
+              :disabled="actionLoading"
+              @click="showApproveModal = false"
+            >
+              {{ t('admin.common.cancel') }}
+            </button>
+            <button
+              type="button"
+              class="btn-primary"
+              :disabled="actionLoading || !receivedInput"
+              @click="approve"
+            >
+              {{ actionLoading ? t('admin.order.approving') : t('admin.queue.approve') }}
+            </button>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -276,6 +372,13 @@ interface AdminOrderRow {
     orders_approved: number
     revenue_approved: number
   } | null
+  country: string | null
+  city: string | null
+  device_type: string | null
+  os: string | null
+  browser: string | null
+  referrer: string | null
+  amount_received: number | null
   // `link` is the jsonb field name `admin_order_detail` returns (the orders
   // table still calls its FK link_id); renaming it means SQL churn for zero
   // visible effect, so the view maps it as-is.
@@ -290,6 +393,8 @@ const error = ref<string | null>(null)
 const actionLoading = ref(false)
 const actionError = ref<string | null>(null)
 const showRejectModal = ref(false)
+const showApproveModal = ref(false)
+const receivedInput = ref('')
 const rejectReason = ref('')
 
 /**
@@ -434,6 +539,11 @@ const loadOrder = async (): Promise<void> => {
   }
 }
 
+const openApproveModal = (): void => {
+  receivedInput.value = order.value?.amount != null ? String(order.value.amount) : ''
+  showApproveModal.value = true
+}
+
 const approve = async (): Promise<void> => {
   actionError.value = null
   actionLoading.value = true
@@ -442,14 +552,17 @@ const approve = async (): Promise<void> => {
     actionLoading.value = false
     return
   }
+  const received = Number(receivedInput.value)
   try {
     const { error: rpcError } = await rpc<Record<string, unknown>>('approve_order', {
       p_order_id: orderId.value,
+      p_amount_received: Number.isFinite(received) && received > 0 ? received : null,
     })
     if (rpcError) {
       actionError.value = rpcError.message
       return
     }
+    showApproveModal.value = false
     // Fire-and-forget: the telegram bot's cron is the safety net if this
     // fails, but the customer sees the invite faster when it lands.
     void getSupabase()

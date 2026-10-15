@@ -14,13 +14,13 @@ select test_data.reset();
 select test_data.link('guide', 500, false);
 
 select is(
-  (api.track_page_view('guide', 'BD', 'mobile', 'Android', 'Chrome', 'google.com')) ->> 'tracked',
+  (api.track_page_view('guide', 'BD', null, 'mobile', 'Android', 'Chrome', 'google.com')) ->> 'tracked',
   'true',
   'a view of a live page is recorded'
 );
 
 select is(
-  (api.track_page_view('no-such-page', 'BD', 'mobile', 'Android', 'Chrome', null)) ->> 'tracked',
+  (api.track_page_view('no-such-page', 'BD', null, 'mobile', 'Android', 'Chrome', null)) ->> 'tracked',
   'false',
   'an unknown slug is answered but not recorded'
 );
@@ -41,7 +41,7 @@ select is(
 -- Normalisation: the client's word is not trusted
 -- ---------------------------------------------------------------------------
 
-select api.track_page_view('guide', 'bd', 'fridge', 'A very long operating system name indeed, far past forty characters', 'SomeBrowser/9000 and then some more text', 'https://ref.example.com/path?query=1');
+select api.track_page_view('guide', 'bd', null, 'fridge', 'A very long operating system name indeed, far past forty characters', 'SomeBrowser/9000 and then some more text', 'https://ref.example.com/path?query=1');
 
 select is(
   (select country from public.page_views order by id desc limit 1),

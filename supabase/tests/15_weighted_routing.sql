@@ -241,19 +241,19 @@ select throws_ok(
 -- shop, which is the whole thing this change moved away from.
 
 select is(
-  test_data.can_execute('authenticated', 'api.create_order(text,text,numeric)'),
+  test_data.can_execute('authenticated', 'api.create_order(text,text,numeric,jsonb)'),
   true,
   'the customer-facing entry point is callable'
 );
 
 select is(
-  test_data.can_execute('authenticated', 'api.create_order_resolved(text,text,numeric)'),
+  test_data.can_execute('authenticated', 'api.create_order_resolved(text,text,numeric,jsonb)'),
   false,
   'the resolver underneath it is not'
 );
 
 select is(
-  test_data.can_execute('anon', 'api.create_order_resolved(text,text,numeric)'),
+  test_data.can_execute('anon', 'api.create_order_resolved(text,text,numeric,jsonb)'),
   false,
   'nor is it callable by an anonymous visitor'
 );

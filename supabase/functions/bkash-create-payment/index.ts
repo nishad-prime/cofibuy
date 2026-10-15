@@ -26,6 +26,9 @@ interface CreatePaymentBody {
   slug?: unknown
   kind?: unknown
   amount?: unknown
+  /** The visit snapshot the checkout client captured (country, city, device,
+   * referrer). Passed through to the order row; clamped server-side. */
+  context?: unknown
   /** The storefront's origin, so bKash's callback lands on this site's own
    * `/payment/return`. The merchant portal whitelists it; a value that is not
    * whitelisted is refused by bKash, so a spoofed origin fails there and not
@@ -85,6 +88,7 @@ Deno.serve(async (request) => {
         p_slug: body.slug,
         p_kind: body.kind,
         p_amount: amount,
+        p_context: body.context ?? null,
       })
       if (startError) {
         // `kind_mismatch` is a stable prefix by contract (see the routing

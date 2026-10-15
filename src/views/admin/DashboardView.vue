@@ -173,18 +173,25 @@
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noTraffic') }}</p>
         </section>
 
-        <!-- Countries: where the visitors are. -->
+        <!-- Top locations: city and country, the IP-derived view. -->
         <section class="card card-pad">
-          <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.dashboard.countries') }}</h2>
-          <ul v-if="countryRows.length > 0" class="mt-4 space-y-2.5">
-            <li v-for="row in countryRows" :key="row.country" class="flex items-center gap-3">
-              <span class="w-10 shrink-0 text-xs font-bold text-stone-700 ltr-value">
-                {{ row.country }}
+          <h2 class="text-sm font-semibold text-stone-900">
+            {{ t('admin.dashboard.locations') }}
+          </h2>
+          <ul v-if="locationRows.length > 0" class="mt-4 space-y-2.5">
+            <li
+              v-for="row in locationRows"
+              :key="`${row.country}-${row.city}`"
+              class="flex items-center gap-3"
+            >
+              <span class="w-32 shrink-0 truncate text-xs font-bold text-stone-700">
+                <span v-if="row.city">{{ row.city }}, </span>
+                <span class="ltr-value">{{ row.country }}</span>
               </span>
               <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-stone-100">
                 <div
                   class="h-full rounded-full bg-brand-500"
-                  :style="{ width: `${(row.views / maxCountryViews) * 100}%` }"
+                  :style="{ width: `${(row.views / maxLocationViews) * 100}%` }"
                 />
               </div>
               <span class="w-12 shrink-0 text-right text-xs text-stone-500 ltr-value">
@@ -373,6 +380,7 @@ interface TrafficStats {
     conversion_rate: number | null
   }
   countries: Array<{ country: string; views: number }>
+  locations: Array<{ country: string; city: string | null; views: number }>
   devices: Array<{ device_type: string; views: number }>
   referrers: Array<{ referrer: string; views: number }>
   gateways: Array<{ kind: string; orders: number; revenue: number }>
@@ -514,8 +522,8 @@ const totalDeviceViews = computed(() =>
   ),
 )
 
-const countryRows = computed(() => traffic.value?.countries ?? [])
-const maxCountryViews = computed(() => Math.max(...countryRows.value.map((r) => r.views), 1))
+const locationRows = computed(() => traffic.value?.locations ?? [])
+const maxLocationViews = computed(() => Math.max(...locationRows.value.map((r) => r.views), 1))
 const gatewayRows = computed(() => traffic.value?.gateways ?? [])
 const rejectionRows = computed(() => traffic.value?.rejections ?? [])
 const pageRows = computed(() => traffic.value?.pages ?? [])

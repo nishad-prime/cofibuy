@@ -9,6 +9,7 @@ import { describeEdgeFailure, invokeWithRetry } from '@/lib/edgeError'
 import { isTransportFailure, rpc, rpcList } from '@/lib/rpc'
 import type { MyOrder, MyOrderStatus, OrderResult } from '@/lib/rpc'
 import { useFileUpload } from '@/composables/useFileUpload'
+import { buildVisitContext, resolveCity } from '@/composables/visitContext'
 import { buildEvidencePayload } from '@/lib/evidencePayload'
 import { useOrderPolling } from '@/composables/useOrderPolling'
 import { useSiteSettings } from '@/composables/useSiteSettings'
@@ -728,6 +729,7 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
           kind: selectedKind.value,
           amount: amount.value,
           origin: window.location.origin,
+          context: buildVisitContext(customerCountry.value, await resolveCity()),
         },
       })
 
@@ -789,6 +791,7 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
         p_slug: slug.value,
         p_kind: selectedKind.value,
         p_amount: amount.value,
+        p_context: buildVisitContext(customerCountry.value, await resolveCity()),
       })
 
       if (createError) {

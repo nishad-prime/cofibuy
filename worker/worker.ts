@@ -26,9 +26,10 @@ export default {
     // injected HTML value alone: it survives a cached document, works on any
     // route, and cannot be stale - it answers from the request itself.
     if (url.pathname === '/api/geo') {
-      const cf = (request as unknown as { cf?: { country?: string } }).cf
+      const cf = (request as unknown as { cf?: { country?: string; city?: string } }).cf
       const country = typeof cf?.country === 'string' ? cf.country : null
-      return new Response(JSON.stringify({ country }), {
+      const city = typeof cf?.city === 'string' && cf.city ? cf.city : null
+      return new Response(JSON.stringify({ country, city }), {
         headers: {
           'content-type': 'application/json',
           'cache-control': 'no-store',
@@ -43,13 +44,17 @@ export default {
       return response
     }
 
-    const cf = (request as unknown as { cf?: { country?: string } }).cf
+    const cf = (request as unknown as { cf?: { country?: string; city?: string } }).cf
     const country = typeof cf?.country === 'string' ? cf.country : null
+    const city = typeof cf?.city === 'string' && cf.city ? cf.city : null
 
     return new HTMLRewriter()
       .on('head', {
         element(element) {
           element.append(`<script>window.__COFIBUY_GEO__=${JSON.stringify(country)};</script>`, {
+            html: true,
+          })
+          element.append(`<script>window.__COFIBUY_GEO_CITY__=${JSON.stringify(city)};</script>`, {
             html: true,
           })
         },

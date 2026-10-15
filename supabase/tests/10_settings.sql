@@ -270,7 +270,7 @@ select is(
 );
 
 select is(
-  test_data.can_execute('authenticated', 'api.create_order_unchecked(text,uuid,numeric)'),
+  test_data.can_execute('authenticated', 'api.create_order_unchecked(text,uuid,numeric,jsonb)'),
   false,
   'a signed-in customer cannot bypass the maintenance gate'
 );

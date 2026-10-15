@@ -114,13 +114,19 @@
     "required": "required",
     "optional": "optional",
     "chooseImage": "Choose image",
+    "tapToAttach": "Tap to attach a screenshot",
+    "pasteOrDrag": "or paste (Ctrl+V) / drag an image here",
+    "attached": "Attached",
+    "replace": "Replace",
+    "remove": "Remove screenshot",
     "maxSize": "Max {size}MB. JPG, PNG or WebP.",
     "errRequired": "This field is required",
     "errPhone": "Enter a valid Bangladeshi mobile number",
     "errTrxid": "Enter a valid transaction ID",
     "errNumeric": "Numbers only",
     "errMaxLen": "Must be {max} characters or fewer",
-    "errFileSize": "That file is too large"
+    "errFileSize": "That file is too large",
+    "errFileType": "That file is not a JPG, PNG or WebP image"
   },
   "recovery": {
     "title": "Recover access",

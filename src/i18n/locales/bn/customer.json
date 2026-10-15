@@ -114,13 +114,19 @@
     "required": "আবশ্যক",
     "optional": "ঐচ্ছিক",
     "chooseImage": "ছবি বাছুন",
+    "tapToAttach": "স্ক্রিনশট সংযুক্ত করতে ট্যাপ করুন",
+    "pasteOrDrag": "অথবা পেস্ট (Ctrl+V) করুন / ছবি টেনে আনুন",
+    "attached": "সংযুক্ত",
+    "replace": "পরিবর্তন",
+    "remove": "স্ক্রিনশট সরান",
     "maxSize": "সর্বোচ্চ {size}MB। JPG, PNG বা WebP।",
     "errRequired": "এই ঘরটি পূরণ করা আবশ্যক",
     "errPhone": "সঠিক বাংলাদেশি মোবাইল নম্বর দিন",
     "errTrxid": "সঠিক ট্রানজেকশন আইডি দিন",
     "errNumeric": "শুধু সংখ্যা দিন",
     "errMaxLen": "সর্বোচ্চ {max} অক্ষর",
-    "errFileSize": "ফাইলটি খুব বড়"
+    "errFileSize": "ফাইলটি খুব বড়",
+    "errFileType": "ফাইলটি JPG, PNG বা WebP ছবি নয়"
   },
   "recovery": {
     "title": "অ্যাক্সেস ফিরিয়ে আনুন",

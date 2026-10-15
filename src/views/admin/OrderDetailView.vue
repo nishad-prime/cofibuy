@@ -148,8 +148,8 @@
         v-if="showRejectModal"
         class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
       >
-        <div class="card w-full max-w-md card-pad">
-          <h2 class="text-lg font-semibold text-stone-900">{{ t('admin.queue.reject') }}</h2>
+        <div class="w-full max-w-md rounded-xl border border-white/15 bg-stone-950 p-5 shadow-2xl">
+          <h2 class="text-lg font-semibold text-stone-100">{{ t('admin.queue.reject') }}</h2>
           <div class="mt-4">
             <label class="label" for="reason">{{ t('admin.queue.rejectReason') }}</label>
             <textarea
@@ -163,7 +163,7 @@
           </div>
           <div class="mt-6 flex justify-end gap-3">
             <button type="button" class="btn-secondary" @click="showRejectModal = false">
-              {{ t('common.close') }}
+              {{ t('admin.common.close') }}
             </button>
             <button
               type="button"

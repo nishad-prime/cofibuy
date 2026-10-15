@@ -176,7 +176,13 @@ const setStatusFilter = (status: string | null): void => {
  */
 const statusLabel = (status: string): string => t(`admin.status.${status}`)
 
-const gatewayLabel = (kind: string): string => (kind ? t(`admin.gateways.${kind}`) || kind : '—')
+/**
+ * The gateway kinds are operator-authored free text these days ("bKash
+ * Personal"), so the label is the kind itself. The old translation table
+ * (`admin.gateways.<kind>`) only ever covered the enum era, and a lookup miss
+ * rendered the raw key into the cell.
+ */
+const gatewayLabel = (kind: string): string => (kind ? kind : '—')
 
 const formatDate = (date: string): string => {
   return new Date(date).toLocaleString()

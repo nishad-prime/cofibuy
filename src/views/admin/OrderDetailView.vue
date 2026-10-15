@@ -78,19 +78,40 @@
             {{ t('admin.queue.noScreenshot') }}
           </p>
 
-          <ul v-else class="mt-4 space-y-3 text-sm">
-            <li
-              v-for="ev in evidenceRows"
-              :key="`${ev.field_key}-${ev.attempt}`"
-              class="flex justify-between gap-4"
-            >
-              <span class="text-stone-500">{{ ev.field_key }}</span>
-              <span class="text-right font-medium text-stone-900">
-                <span v-if="ev.file_path" class="badge-ok">
-                  {{ t('admin.queue.screenshot') }}
+          <ul v-else class="mt-4 space-y-4 text-sm">
+            <li v-for="ev in evidenceRows" :key="`${ev.field_key}-${ev.attempt}`" class="space-y-2">
+              <div class="flex justify-between gap-4">
+                <span class="text-stone-500">
+                  {{ ev.field_key }}
+                  <span
+                    v-if="evidenceRows.filter((r) => r.field_key === ev.field_key).length > 1"
+                    class="ml-1 rounded-full bg-stone-100 px-1.5 py-0.5 text-xs text-stone-500"
+                  >
+                    #{{ ev.attempt }}
+                  </span>
                 </span>
-                <span v-else>{{ ev.value_text_raw ?? '—' }}</span>
-              </span>
+                <span class="text-right font-medium text-stone-900">
+                  <span v-if="ev.file_path && !evidenceUrl(ev)" class="badge-ok">
+                    {{ t('admin.queue.screenshot') }}
+                  </span>
+                  <span v-else>{{ ev.value_text_raw ?? '—' }}</span>
+                </span>
+              </div>
+              <!-- The actual screenshot, one click from full size. -->
+              <a
+                v-if="ev.file_path && evidenceUrl(ev)"
+                :href="evidenceUrl(ev)!"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="block"
+              >
+                <img
+                  :src="evidenceUrl(ev)!"
+                  :alt="ev.field_key"
+                  class="max-h-80 rounded-lg border border-stone-200 object-contain transition hover:border-brand-400"
+                  loading="lazy"
+                />
+              </a>
             </li>
           </ul>
         </section>
@@ -269,6 +290,33 @@ interface DuplicateRow {
 const evidenceRows = computed<EvidenceRow[]>(
   () => (order.value?.evidence ?? []) as unknown as EvidenceRow[],
 )
+
+/**
+ * The proofs bucket is private, so the screenshots cannot be linked directly.
+ * Each file path is exchanged for a one-hour signed URL after the order
+ * loads, and the evidence list renders the actual image. A row whose URL
+ * cannot be minted falls back to the file badge.
+ */
+const evidenceUrls = ref<Record<string, string>>({})
+
+const loadEvidenceUrls = async (): Promise<void> => {
+  evidenceUrls.value = {}
+  const paths = evidenceRows.value
+    .map((row) => row.file_path)
+    .filter((path): path is string => !!path)
+
+  await Promise.all(
+    paths.map(async (path) => {
+      const { data, error } = await getSupabase().storage.from('proofs').createSignedUrl(path, 3600)
+      if (!error && data?.signedUrl) {
+        evidenceUrls.value[path] = data.signedUrl
+      }
+    }),
+  )
+}
+
+const evidenceUrl = (row: EvidenceRow): string | null =>
+  row.file_path ? (evidenceUrls.value[row.file_path] ?? null) : null
 const duplicates = computed<DuplicateRow[]>(
   () => (order.value?.duplicates ?? []) as unknown as DuplicateRow[],
 )
@@ -304,6 +352,7 @@ const loadOrder = async (): Promise<void> => {
     }
 
     order.value = data as unknown as AdminOrderRow
+    void loadEvidenceUrls()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load order'
   } finally {

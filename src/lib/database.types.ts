@@ -20,6 +20,7 @@ export type Database = {
         Args: {
           p_days?: number
           day?: string
+          views?: number
           orders_created?: number
           orders_approved?: number
           revenue_approved?: number
@@ -151,6 +152,12 @@ export type Database = {
       admin_settings: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_stats: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_team: { Args: Record<PropertyKey, never>; Returns: Json[] }
+      admin_traffic_stats: {
+        Args: {
+          p_days?: number
+        }
+        Returns: Json
+      }
       admin_upsert_ai_settings: {
         Args: {
           p_settings: Json
@@ -427,6 +434,17 @@ export type Database = {
         }
         Returns: Json
       }
+      track_page_view: {
+        Args: {
+          p_slug: string
+          p_country: string
+          p_device_type: string
+          p_os: string
+          p_browser: string
+          p_referrer: string
+        }
+        Returns: Json
+      }
     }
     Enums: Record<never, never>
   }
@@ -500,6 +518,7 @@ export type Database = {
         Returns: string[][]
       }
       prune_anonymous_users: { Args: Record<PropertyKey, never>; Returns: number }
+      prune_page_views: { Args: Record<PropertyKey, never>; Returns: Json }
       reap_stale_claims: { Args: Record<PropertyKey, never>; Returns: number }
       store_credential_bundle: {
         Args: {
@@ -833,6 +852,47 @@ export type Database = {
             columns: ['recovery_request_id']
             isOneToOne: true
             referencedRelation: 'recovery_requests'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      page_views: {
+        Row: {
+          id: number
+          page_id: string
+          country: string | null
+          device_type: string
+          os: string | null
+          browser: string | null
+          referrer: string | null
+          created_at: string
+        }
+        Insert: {
+          id: number
+          page_id: string
+          country?: string | null
+          device_type?: string
+          os?: string | null
+          browser?: string | null
+          referrer?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          page_id?: string
+          country?: string | null
+          device_type?: string
+          os?: string | null
+          browser?: string | null
+          referrer?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'page_views_page_id_fkey'
+            columns: ['page_id']
+            isOneToOne: true
+            referencedRelation: 'pages'
             referencedColumns: ['id']
           },
         ]

@@ -89,6 +89,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import PageCheckoutSection from '@/components/customer/PageCheckoutSection.vue'
 import { usePageStandalone } from '@/composables/usePageStandalone'
 import { usePageShell } from '@/composables/usePageShell'
+import { trackPageView } from '@/composables/usePageViewTracking'
 import { normalizeConfig, templateFor } from '@/pages/templates/registry'
 import type { CheckoutPage } from '@/composables/usePageCheckout'
 
@@ -192,6 +193,9 @@ onMounted(async () => {
     }
 
     page.value = pageData as unknown as Page
+
+    // The visit itself, once per session per page: analytics only.
+    trackPageView(page.value.slug)
 
     // Remember the template and the chrome state, so the next load of this
     // slug knows both before the fetch answers.

@@ -6,7 +6,11 @@
     "gateways": "Payment methods",
     "team": "Team",
     "settings": "Settings",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "dashboard": "Dashboard",
+    "ai": "AI provider",
+    "admin": "Admin",
+    "toggleNav": "Toggle navigation"
   },
   "status": {
     "draft": "Draft",
@@ -45,7 +49,8 @@
     "hintAwaitingProof": "Waiting for the customer to pay and submit proof.",
     "hintApproved": "This order is settled. The customer can access the page.",
     "hintExpired": "This order expired before payment. The customer can start a new one.",
-    "hintLocked": "Locked after repeated invalid amounts. Use the reset above to unlock it."
+    "hintLocked": "Locked after repeated invalid amounts. Use the reset above to unlock it.",
+    "loading": "Loading..."
   },
   "login": {
     "heading": "Admin sign in",
@@ -54,7 +59,11 @@
     "submit": "Sign in",
     "signingIn": "Signing inâ€¦",
     "failed": "Sign in failed. Check your credentials.",
-    "notStaff": "This account does not have admin access."
+    "notStaff": "This account does not have admin access.",
+    "tagline": "Run your storefront from one place.",
+    "note": "Staff accounts are managed by the owner.",
+    "useStaff": "Use your staff account to continue.",
+    "brand": "Cofibuy"
   },
   "gateways": {
     "heading": "Payment methods",
@@ -87,7 +96,29 @@
     "fieldValidator": "Validation",
     "noValidator": "None",
     "active": "Enabled",
-    "sortOrder": "Sort order"
+    "sortOrder": "Sort order",
+    "empty": "No payment methods yet",
+    "traffic": "Traffic",
+    "manual": "Manual",
+    "automatic": "Automatic",
+    "international": "International",
+    "none": "None",
+    "primary": "Primary",
+    "proofFields": "Proof fields",
+    "collectedByProvider": "Collected by provider",
+    "sendTo": "Send money to",
+    "markdownHint": "Markdown is supported in the instruction boxes.",
+    "cancel": "Cancel",
+    "whereToSend": "Where to send the money",
+    "whatCustomerReads": "What the customer reads.",
+    "quickAdd": "Quick add:",
+    "primaryForCountry": "Primary for this country",
+    "labelEn": "Label (EN)",
+    "labelBn": "Label (BN)",
+    "rowKey": "Row key",
+    "value": "Value",
+    "validation": "Validation",
+    "noFormatCheck": "No format check"
   },
   "team": {
     "heading": "Team",
@@ -100,7 +131,14 @@
     "ownerHint": "Owners can also manage pages, methods, team and settings.",
     "added": "Added",
     "remove": "Remove",
-    "inviteHint": "They must sign up with this exact email first, then you can grant the role."
+    "inviteHint": "They must sign up with this exact email first, then you can grant the role.",
+    "subtitle": "Who can sign in to this admin panel.",
+    "addHeading": "Add team member",
+    "adding": "Adding...",
+    "add": "Add",
+    "empty": "No team members",
+    "noAccount": "No signed-up account",
+    "signingInNote": ""
   },
   "settings": {
     "heading": "Settings",
@@ -136,13 +174,24 @@
   },
   "common": {
     "close": "Close",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "active": "Active",
+    "cancel": "Cancel",
+    "status": "Status",
+    "actions": "Actions",
+    "weight": "Weight",
+    "provider": "Provider",
+    "email": "Email",
+    "sortHint": "Lower numbers appear first.",
+    "nameBn": "Name (BN)",
+    "nameEn": "Name (EN)"
   },
   "errors": {
     "generic": "Something went wrong. Try again.",
     "forbidden": "You do not have permission to do that.",
     "notFound": "Not found.",
-    "unconfigured": "Supabase is not configured. Set the environment variables and reload."
+    "unconfigured": "Supabase is not configured. Set the environment variables and reload.",
+    "noAccess": "No access"
   },
   "pages": {
     "heading": "Pages",
@@ -168,7 +217,19 @@
     "saved": "Saved",
     "delete": "Delete",
     "publishBlocked": "A page needs a title and an unlocked body in at least one language before it can go live.",
-    "preview": "Preview"
+    "preview": "Preview",
+    "price": "Price",
+    "page": "Page",
+    "actions": "Actions",
+    "empty": "No pages yet",
+    "subtitle": "Each page sells one thing, unlocked by paying.",
+    "statusLive": "Live",
+    "statusDraft": "Draft",
+    "statusHidden": "Hidden",
+    "statusUnlisted": "Unlisted",
+    "siteDefault": "Site default",
+    "showInIndex": "Show in index",
+    "productCopy": "Product copy"
   },
   "dashboard": {
     "heading": "Dashboard",
@@ -215,7 +276,8 @@
     "rejections": "Rejection reasons",
     "noRejections": "Nothing was rejected in this window.",
     "noTraffic": "No tracked traffic in this window yet.",
-    "viewsPerDay": "Views"
+    "viewsPerDay": "Views",
+    "locations": "Top locations"
   },
   "images": {
     "assignedOf": "image slots assigned",
@@ -241,5 +303,43 @@
     "removeConfirm": "Remove this image?",
     "legacyHero": "Assigned from the page form's hero image field",
     "perItemCaveat": "Images for list items attach by position. If you add, remove or reorder items on the page form, check these assignments afterwards."
+  },
+  "auto": {
+    "provider": "Provider",
+    "weight": "Weight",
+    "environment": "Environment",
+    "live": "Live (production)",
+    "sandbox": "Sandbox (testing)",
+    "sandboxWarn": "A sandbox method will never hand out the content.",
+    "liveWarn": "Live credentials charge real money and grant real access.",
+    "chooseProvider": "Choose a provider above first.",
+    "kind": "Kind",
+    "kindHint": "How this method appears to customers, e.g. bKash. This also selects it at checkout."
+  },
+  "ai": {
+    "heading": "AI provider",
+    "back": "Back",
+    "provider": "Provider",
+    "disable": "Turn AI copy off",
+    "apiCredentials": "API credentials"
+  },
+  "order": {
+    "report": "Report",
+    "customer": "Customer",
+    "email": "Email",
+    "customerSince": "Customer since",
+    "ordersApproved": "Orders (approved)",
+    "approvedRevenue": "Approved revenue",
+    "received": "Received",
+    "location": "Location",
+    "device": "Device",
+    "os": "OS",
+    "browser": "Browser",
+    "referrer": "Referrer",
+    "none": "None",
+    "approveHeading": "Approve order",
+    "approveHint": "Record what actually arrived; leave as-is when it matches.",
+    "approving": "Approving...",
+    "details": "Order details"
   }
 }

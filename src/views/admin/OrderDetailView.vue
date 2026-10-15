@@ -53,7 +53,7 @@
               <dd class="ltr-value font-medium text-stone-900">{{ order.phone_e164 || '—' }}</dd>
             </div>
             <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">Customer</dt>
+              <dt class="text-stone-500">{{ t('admin.order.customer') }}</dt>
               <dd class="text-right font-medium text-stone-900">
                 <a
                   v-if="order.customer?.email"
@@ -67,7 +67,7 @@
               </dd>
             </div>
             <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">Report</dt>
+              <dt class="text-stone-500">{{ t('admin.order.report') }}</dt>
               <dd class="text-right font-medium text-stone-900">
                 {{ order.link?.title_en || order.link?.slug || '—' }}
               </dd>
@@ -136,10 +136,10 @@
           this one attempt.
         -->
         <section v-if="order.customer" class="card card-pad">
-          <h2 class="text-sm font-semibold text-stone-900">Customer</h2>
+          <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.order.customer') }}</h2>
           <dl class="mt-4 space-y-3 text-sm">
             <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">Email</dt>
+              <dt class="text-stone-500">{{ t('admin.order.email') }}</dt>
               <dd class="text-right">
                 <a
                   v-if="order.customer.email"
@@ -152,19 +152,19 @@
               </dd>
             </div>
             <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">Customer since</dt>
+              <dt class="text-stone-500">{{ t('admin.order.customerSince') }}</dt>
               <dd class="text-stone-900">
                 {{ order.customer.created_at ? formatDate(order.customer.created_at) : '—' }}
               </dd>
             </div>
             <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">Orders (approved)</dt>
+              <dt class="text-stone-500">{{ t('admin.order.ordersApproved') }}</dt>
               <dd class="ltr-value text-stone-900">
                 {{ order.customer.orders_total }} ({{ order.customer.orders_approved }})
               </dd>
             </div>
             <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">Approved revenue</dt>
+              <dt class="text-stone-500">{{ t('admin.order.approvedRevenue') }}</dt>
               <dd class="ltr-value font-medium text-stone-900">
                 {{ formatMoney(order.customer.revenue_approved, 'en', currency) }}
               </dd>

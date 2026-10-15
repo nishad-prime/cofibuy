@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAdminI18n } from '@/i18n/admin'
+
+const { t } = useAdminI18n()
 
 /**
  * Editor for a gateway's destination: the details a customer reads in order to send the
@@ -154,7 +157,7 @@ defineExpose({ payload, problems })
   <div class="space-y-4">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 class="text-sm font-semibold text-stone-900">Where to send the money</h2>
+        <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.gateways.whereToSend') }}</h2>
         <p class="mt-0.5 text-xs text-stone-500">
           The details a customer copies from. Up to {{ MAX_FIELDS }} rows, shown to them in this
           order. A bank transfer usually needs more than one; a wallet usually needs one.
@@ -171,7 +174,7 @@ defineExpose({ payload, problems })
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
-      <span class="text-xs text-stone-500">Quick add:</span>
+      <span class="text-xs text-stone-500">{{ t('admin.gateways.quickAdd') }}</span>
       <button
         v-for="preset in PRESETS"
         :key="preset.field.key"
@@ -241,18 +244,26 @@ defineExpose({ payload, problems })
 
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="block">
-            <span class="mb-1 block text-xs font-medium text-stone-600">Label (EN) *</span>
+            <span class="mb-1 block text-xs font-medium text-stone-600"
+              >{{ t('admin.gateways.labelEn') }} *</span
+            >
             <input v-model="field.label_en" class="field" @blur="syncKey(field)" />
-            <span class="mt-1 block text-xs text-stone-500">What the customer reads.</span>
+            <span class="mt-1 block text-xs text-stone-500">{{
+              t('admin.gateways.whatCustomerReads')
+            }}</span>
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-xs font-medium text-stone-600">Value *</span>
+            <span class="mb-1 block text-xs font-medium text-stone-600"
+              >{{ t('admin.gateways.value') }} *</span
+            >
             <input v-model="field.value" class="field ltr-value" />
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-xs font-medium text-stone-600">Label (BN)</span>
+            <span class="mb-1 block text-xs font-medium text-stone-600">{{
+              t('admin.gateways.labelBn')
+            }}</span>
             <input v-model="field.label_bn" class="field" lang="bn" />
             <span class="mt-1 block text-xs text-stone-500">
               Optional. Falls back to the English label.
@@ -260,7 +271,9 @@ defineExpose({ payload, problems })
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-xs font-medium text-stone-600">Row key *</span>
+            <span class="mb-1 block text-xs font-medium text-stone-600"
+              >{{ t('admin.gateways.rowKey') }} *</span
+            >
             <input
               v-model="field.key"
               class="field font-mono text-xs"

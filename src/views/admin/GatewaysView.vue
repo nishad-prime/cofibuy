@@ -2,7 +2,7 @@
   <div>
     <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="page-title">Payment methods</h1>
+        <h1 class="page-title">{{ t('admin.gateways.heading') }}</h1>
         <p class="page-subtitle">
           Any method you like — the account customers pay to, or an automatic one.
         </p>
@@ -13,13 +13,13 @@
       </router-link>
     </header>
 
-    <div v-if="loading" class="empty-state">Loading...</div>
+    <div v-if="loading" class="empty-state">{{ t('admin.common.loading') }}</div>
 
     <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
 
     <div v-else-if="gateways.length === 0" class="card empty-state">
       <AppIcon name="card" :size="28" class="mx-auto mb-3 text-stone-400" />
-      <p class="font-medium text-stone-700">No payment methods yet</p>
+      <p class="font-medium text-stone-700">{{ t('admin.gateways.empty') }}</p>
       <p class="mt-1">Add bKash, Nagad, a bank account, or anything else you accept.</p>
     </div>
 
@@ -43,11 +43,13 @@
         </div>
 
         <div class="mt-3 flex flex-wrap items-center gap-2">
-          <span v-if="gw.provider" class="badge-ok">Automatic</span>
-          <span v-else class="badge-muted">Manual</span>
+          <span v-if="gw.provider" class="badge-ok">{{ t('admin.gateways.automatic') }}</span>
+          <span v-else class="badge-muted">{{ t('admin.gateways.manual') }}</span>
           <span v-if="gw.country" class="badge-info ltr-value">{{ gw.country }}</span>
-          <span v-else class="badge-muted">International</span>
-          <span v-if="gw.is_primary_for_country" class="badge-warn">Primary</span>
+          <span v-else class="badge-muted">{{ t('admin.gateways.international') }}</span>
+          <span v-if="gw.is_primary_for_country" class="badge-warn">{{
+            t('admin.gateways.primary')
+          }}</span>
           <!-- Which bKash this row's credentials belong to. Shown because a sandbox
                method silently never settles, and "it is active but nothing happens" is
                the symptom an operator would otherwise have to guess at. -->
@@ -68,25 +70,27 @@
 
         <dl class="mt-4 space-y-2 text-sm">
           <div v-if="trafficShare(gw)" class="flex items-baseline justify-between gap-3">
-            <dt class="text-stone-500">Traffic</dt>
+            <dt class="text-stone-500">{{ t('admin.gateways.traffic') }}</dt>
             <dd class="text-right">
               {{ trafficShare(gw) }}
               <span class="text-xs text-stone-500"> of {{ gw.kind }}</span>
             </dd>
           </div>
           <div class="flex items-baseline justify-between gap-3">
-            <dt class="text-stone-500">Send money to</dt>
+            <dt class="text-stone-500">{{ t('admin.gateways.sendTo') }}</dt>
             <dd class="text-right">
               <span v-if="detailCount(gw) > 0" :title="detailSummary(gw)">
                 {{ detailCount(gw) }} ·
                 <span class="text-xs text-stone-500">{{ detailSummary(gw) }}</span>
               </span>
-              <span v-else-if="gw.provider" class="text-stone-400">Collected by provider</span>
+              <span v-else-if="gw.provider" class="text-stone-400">{{
+                t('admin.gateways.collectedByProvider')
+              }}</span>
               <span v-else class="text-stone-400">—</span>
             </dd>
           </div>
           <div class="flex items-baseline justify-between gap-3">
-            <dt class="text-stone-500">Proof fields</dt>
+            <dt class="text-stone-500">{{ t('admin.gateways.proofFields') }}</dt>
             <dd class="text-right">
               <span
                 v-if="fieldCount(gw) > 0"
@@ -95,7 +99,7 @@
               >
                 {{ fieldCount(gw) }} · {{ fieldKeys(gw).join(', ') }}
               </span>
-              <span v-else class="text-stone-400">None</span>
+              <span v-else class="text-stone-400">{{ t('admin.gateways.none') }}</span>
             </dd>
           </div>
         </dl>
@@ -125,6 +129,9 @@
 import { ref, onMounted } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import { rpc } from '@/lib/rpc'
+import { useAdminI18n } from '@/i18n/admin'
+
+const { t } = useAdminI18n()
 
 /**
  * The row `admin_gateways` returns. Typed because this view now reasons about two
@@ -200,12 +207,16 @@ const details = (gw: GatewayRow): { key: string; label_en: string; value: string
   if (gw.account_number?.trim()) {
     fallback.push({
       key: 'account_number',
-      label_en: 'Account number',
+      label_en: t('admin.gateways.accountNumber'),
       value: gw.account_number,
     })
   }
   if (gw.account_name?.trim()) {
-    fallback.push({ key: 'account_name', label_en: 'Account name', value: gw.account_name })
+    fallback.push({
+      key: 'account_name',
+      label_en: t('admin.gateways.accountName'),
+      value: gw.account_name,
+    })
   }
   return fallback
 }

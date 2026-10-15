@@ -127,7 +127,7 @@ export function useFileUpload() {
             upsert: false,
           })
         if (retryError) {
-          throw new Error(retryError.message || 'File upload failed')
+          throw new Error(retryError.message || 'File upload failed', { cause: err })
         }
         return { storage_path: storagePath }
       }

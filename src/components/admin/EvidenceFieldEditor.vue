@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAdminI18n } from '@/i18n/admin'
+
+const { t } = useAdminI18n()
 
 /**
  * Editor for a gateway's evidence schema: the fields a customer must fill in
@@ -232,7 +235,7 @@ defineExpose({ payload, problems })
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
-      <span class="text-xs text-stone-500">Quick add:</span>
+      <span class="text-xs text-stone-500">{{ t('admin.gateways.quickAdd') }}</span>
       <button
         v-for="preset in PRESETS"
         :key="preset.field.key"
@@ -299,12 +302,16 @@ defineExpose({ payload, problems })
 
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="block">
-            <span class="mb-1 block text-xs font-medium text-stone-600">Label (EN) *</span>
+            <span class="mb-1 block text-xs font-medium text-stone-600"
+              >{{ t('admin.gateways.labelEn') }} *</span
+            >
             <input v-model="field.label_en" class="field" @blur="syncKey(field)" />
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-xs font-medium text-stone-600">Label (BN)</span>
+            <span class="mb-1 block text-xs font-medium text-stone-600">{{
+              t('admin.gateways.labelBn')
+            }}</span>
             <input v-model="field.label_bn" class="field" lang="bn" />
           </label>
 
@@ -328,9 +335,11 @@ defineExpose({ payload, problems })
           </label>
 
           <label v-if="field.type !== 'image'" class="block">
-            <span class="mb-1 block text-xs font-medium text-stone-600">Validation</span>
+            <span class="mb-1 block text-xs font-medium text-stone-600">{{
+              t('admin.gateways.validation')
+            }}</span>
             <select v-model="field.validate" class="field">
-              <option value="">No format check</option>
+              <option value="">{{ t('admin.gateways.noFormatCheck') }}</option>
               <option v-for="(label, value) in VALIDATOR_LABELS" :key="value" :value="value">
                 {{ label }}
               </option>

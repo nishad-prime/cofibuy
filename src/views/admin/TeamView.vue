@@ -1,17 +1,17 @@
 <template>
   <div>
     <header class="mb-6">
-      <h1 class="page-title">Team</h1>
-      <p class="page-subtitle">Who can sign in to this admin panel.</p>
+      <h1 class="page-title">{{ t('team.heading') }}</h1>
+      <p class="page-subtitle">{{ t('team.subtitle') }}</p>
     </header>
 
-    <div v-if="loading" class="empty-state">Loading...</div>
+    <div v-if="loading" class="empty-state">{{ t('common.loading') }}</div>
 
     <p v-else-if="error" class="alert-error mb-6" role="alert">{{ error }}</p>
 
     <div class="space-y-6">
       <section class="card card-pad">
-        <h2 class="text-sm font-semibold text-stone-900">Add team member</h2>
+        <h2 class="text-sm font-semibold text-stone-900">{{ t('team.addHeading') }}</h2>
         <p class="hint mb-4">
           The address must belong to an account that has already signed up. Granting a role does not
           create the login.
@@ -39,7 +39,7 @@
 
       <div v-if="team.length === 0" class="card empty-state">
         <AppIcon name="team" :size="28" class="mx-auto mb-3 text-stone-400" />
-        <p class="font-medium text-stone-700">No team members</p>
+        <p class="font-medium text-stone-700">{{ t('team.empty') }}</p>
       </div>
 
       <div v-else class="table-wrap">
@@ -47,22 +47,24 @@
           <table class="min-w-full divide-y divide-stone-200">
             <thead class="bg-stone-50">
               <tr>
-                <th class="th">Email</th>
-                <th class="th">Role</th>
-                <th class="th">Added</th>
-                <th class="th"><span class="sr-only">Actions</span></th>
+                <th class="th">{{ t('common.email') }}</th>
+                <th class="th">{{ t('team.role') }}</th>
+                <th class="th">{{ t('team.added') }}</th>
+                <th class="th">
+                  <span class="sr-only">{{ t('common.actions') }}</span>
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-stone-200">
               <tr v-for="member in team" :key="member.user_id" class="row-link">
                 <td class="td">
                   <span class="ltr-value text-stone-900">
-                    {{ member.email || 'No signed-up account' }}
+                    {{ member.email || t('team.noAccount') }}
                   </span>
                 </td>
                 <td class="td">
                   <span :class="member.role === 'owner' ? 'badge-warn' : 'badge-muted'">
-                    {{ member.role }}
+                    {{ t(`team.${member.role}`) }}
                   </span>
                 </td>
                 <td class="td whitespace-nowrap text-stone-500">
@@ -93,7 +95,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
+import { useAdminI18n } from '@/i18n/admin'
 import { rpc } from '@/lib/rpc'
+
+const { t } = useAdminI18n()
 
 interface TeamMember {
   user_id: string

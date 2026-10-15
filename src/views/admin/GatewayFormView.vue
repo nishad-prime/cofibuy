@@ -23,7 +23,9 @@
       >
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Kind *</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700"
+              >{{ t('admin.auto.kind') }} *</span
+            >
             <input
               v-model="form.kind"
               required
@@ -45,7 +47,9 @@
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Weight</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700">{{
+              t('admin.common.weight')
+            }}</span>
             <input v-model.number="form.weight" type="number" min="1" step="1" class="field" />
             <span class="mt-1 block text-xs text-stone-500">
               How much of this kind's traffic this account takes, in proportion. 1 is an even share.
@@ -55,9 +59,11 @@
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Sort order</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700">{{
+              t('admin.gateways.sortOrder')
+            }}</span>
             <input v-model.number="form.sort_order" type="number" class="field" />
-            <span class="mt-1 block text-xs text-stone-500">Lower numbers appear first.</span>
+            <span class="mt-1 block text-xs text-stone-500">{{ t('admin.common.sortHint') }}</span>
           </label>
 
           <label class="block">
@@ -66,7 +72,9 @@
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Name (BN)</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700">{{
+              t('admin.common.nameBn')
+            }}</span>
             <input v-model="form.name_bn" class="field" lang="bn" />
           </label>
         </div>
@@ -74,7 +82,9 @@
         <label class="mt-4 flex items-start gap-2">
           <input v-model="form.is_active" type="checkbox" class="mt-0.5 rounded border-stone-300" />
           <span>
-            <span class="block text-sm font-medium text-stone-800">Active</span>
+            <span class="block text-sm font-medium text-stone-800">{{
+              t('admin.common.active')
+            }}</span>
             <span class="block text-xs text-stone-500">
               Inactive methods stay saved but disappear from every customer checkout.
             </span>
@@ -116,16 +126,20 @@
       >
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Instructions (EN)</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700">{{
+              t('admin.gateways.instructionsEn')
+            }}</span>
             <textarea v-model="form.instructions_en" rows="3" class="field" />
           </label>
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Instructions (BN)</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700">{{
+              t('admin.gateways.instructionsBn')
+            }}</span>
             <textarea v-model="form.instructions_bn" rows="3" class="field" lang="bn" />
           </label>
         </div>
 
-        <p class="mt-3 text-xs text-stone-500">Markdown is supported in the instruction boxes.</p>
+        <p class="mt-3 text-xs text-stone-500">{{ t('admin.gateways.markdownHint') }}</p>
       </CollapsibleSection>
 
       <CollapsibleSection
@@ -147,7 +161,9 @@
         <button type="submit" class="btn-primary" :disabled="saving">
           {{ saving ? 'Saving…' : 'Save payment method' }}
         </button>
-        <router-link to="/admin/gateways" class="btn-secondary">Cancel</router-link>
+        <router-link to="/admin/gateways" class="btn-secondary">{{
+          t('admin.common.cancel')
+        }}</router-link>
       </div>
     </form>
   </div>
@@ -161,6 +177,9 @@ import AccountFieldEditor, { type AccountDraft } from '@/components/admin/Accoun
 import GatewayRegionBanners from '@/components/admin/GatewayRegionBanners.vue'
 import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
 import { rpc, rpcList } from '@/lib/rpc'
+import { useAdminI18n } from '@/i18n/admin'
+
+const { t } = useAdminI18n()
 
 /**
  * The row `admin_gateways` returns. Named `Gateway` rather than shared with the automatic

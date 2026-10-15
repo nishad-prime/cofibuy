@@ -27,7 +27,7 @@
         @update:open="toggleSection('provider')"
       >
         <fieldset class="space-y-3">
-          <legend class="sr-only">Provider</legend>
+          <legend class="sr-only">{{ t('admin.auto.provider') }}</legend>
 
           <label
             v-for="option in providers"
@@ -66,7 +66,7 @@
         @update:open="toggleSection('environment')"
       >
         <fieldset class="space-y-3">
-          <legend class="sr-only">Environment</legend>
+          <legend class="sr-only">{{ t('admin.auto.environment') }}</legend>
 
           <label
             class="flex cursor-pointer items-start gap-3 rounded-lg border p-4"
@@ -78,7 +78,9 @@
           >
             <input v-model="form.environment" type="radio" value="sandbox" class="mt-1" />
             <span>
-              <span class="block text-sm font-medium text-stone-800">Sandbox (testing)</span>
+              <span class="block text-sm font-medium text-stone-800">{{
+                t('admin.auto.sandbox')
+              }}</span>
               <span class="block text-xs text-stone-500">
                 Test money. No real customer is ever charged.
               </span>
@@ -93,7 +95,9 @@
           >
             <input v-model="form.environment" type="radio" value="live" class="mt-1" />
             <span>
-              <span class="block text-sm font-medium text-stone-800">Live (production)</span>
+              <span class="block text-sm font-medium text-stone-800">{{
+                t('admin.auto.live')
+              }}</span>
               <span class="block text-xs text-stone-500">
                 Real money, from the merchant account these credentials belong to.
               </span>
@@ -105,7 +109,7 @@
           v-if="form.environment === 'sandbox'"
           class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
         >
-          <p class="font-medium">A sandbox method will never hand out the content.</p>
+          <p class="font-medium">{{ t('admin.auto.sandboxWarn') }}</p>
           <p class="mt-1 text-xs">
             Sandbox payments run all the way through bKash and can be watched, but settlement is
             refused for a sandbox gateway — so no order is ever approved and no download access is
@@ -119,7 +123,7 @@
           v-else
           class="mt-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-900"
         >
-          <p class="font-medium">Live credentials charge real money and grant real access.</p>
+          <p class="font-medium">{{ t('admin.auto.liveWarn') }}</p>
           <p class="mt-1 text-xs">
             Save live merchant credentials here and the confirmation step runs against the live
             provider. If these credentials are the public bKash sandbox set, nothing will ever
@@ -142,7 +146,7 @@
           :fields="provider.fields"
           :has-stored="hasStoredCredentials"
         />
-        <p v-else class="text-sm text-stone-500">Choose a provider above first.</p>
+        <p v-else class="text-sm text-stone-500">{{ t('admin.auto.chooseProvider') }}</p>
       </CollapsibleSection>
 
       <CollapsibleSection
@@ -153,15 +157,19 @@
       >
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Kind *</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700"
+              >{{ t('admin.auto.kind') }} *</span
+            >
             <input v-model="form.kind" required maxlength="48" class="field" lang="en" />
             <span class="mt-1 block text-xs text-stone-500">
-              How this method appears to customers, e.g. bKash. This also selects it at checkout.
+              {{ t('admin.auto.kindHint') }}
             </span>
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Weight</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700">{{
+              t('admin.common.weight')
+            }}</span>
             <input v-model.number="form.weight" type="number" min="1" step="1" class="field" />
             <span class="mt-1 block text-xs text-stone-500">
               How much of this kind's traffic this account takes, in proportion. 1 is an even share.
@@ -171,9 +179,11 @@
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Sort order</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700">{{
+              t('admin.gateways.sortOrder')
+            }}</span>
             <input v-model.number="form.sort_order" type="number" class="field" />
-            <span class="mt-1 block text-xs text-stone-500">Lower numbers appear first.</span>
+            <span class="mt-1 block text-xs text-stone-500">{{ t('admin.common.sortHint') }}</span>
           </label>
 
           <label class="block">
@@ -182,7 +192,9 @@
           </label>
 
           <label class="block">
-            <span class="mb-1 block text-sm font-medium text-stone-700">Name (BN)</span>
+            <span class="mb-1 block text-sm font-medium text-stone-700">{{
+              t('admin.common.nameBn')
+            }}</span>
             <input v-model="form.name_bn" class="field" lang="bn" />
           </label>
         </div>
@@ -190,7 +202,9 @@
         <label class="mt-4 flex items-start gap-2">
           <input v-model="form.is_active" type="checkbox" class="mt-0.5 rounded border-stone-300" />
           <span>
-            <span class="block text-sm font-medium text-stone-800">Active</span>
+            <span class="block text-sm font-medium text-stone-800">{{
+              t('admin.common.active')
+            }}</span>
             <span class="block text-xs text-stone-500">
               Inactive methods stay saved but disappear from every customer checkout.
             </span>
@@ -221,7 +235,9 @@
         <button type="submit" class="btn-primary" :disabled="saving">
           {{ saving ? 'Saving…' : 'Save automatic method' }}
         </button>
-        <router-link to="/admin/gateways" class="btn-secondary">Cancel</router-link>
+        <router-link to="/admin/gateways" class="btn-secondary">{{
+          t('admin.common.cancel')
+        }}</router-link>
       </div>
     </form>
   </div>
@@ -236,6 +252,9 @@ import CredentialFieldEditor, {
   type ProviderField,
 } from '@/components/admin/CredentialFieldEditor.vue'
 import GatewayRegionBanners from '@/components/admin/GatewayRegionBanners.vue'
+import { useAdminI18n } from '@/i18n/admin'
+
+const { t } = useAdminI18n()
 
 /** A row of `api.admin_auto_providers()`. */
 interface AutoProvider {

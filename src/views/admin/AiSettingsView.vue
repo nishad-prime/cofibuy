@@ -1,7 +1,7 @@
 <template>
   <div class="mx-auto max-w-3xl">
     <header class="mb-6">
-      <h1 class="page-title">AI provider</h1>
+      <h1 class="page-title">{{ t('admin.ai.heading') }}</h1>
       <p class="page-subtitle">
         Point the shop at a model provider and store its credential once. Everything that drafts
         copy — briefs, field rewrites, the blurbs staff paste into the shopfront — reads this one
@@ -52,7 +52,7 @@
         @update:open="toggleSection('provider')"
       >
         <fieldset class="space-y-3">
-          <legend class="sr-only">Provider</legend>
+          <legend class="sr-only">{{ t('admin.ai.provider') }}</legend>
 
           <label
             v-for="option in providers"
@@ -96,7 +96,9 @@
             @change="onToggleOff"
           />
           <span>
-            <span class="block text-sm font-medium text-stone-800">Turn AI copy off</span>
+            <span class="block text-sm font-medium text-stone-800">{{
+              t('admin.ai.disable')
+            }}</span>
             <span class="block text-xs text-stone-500">
               Clears the provider and retires the stored credential. Drafting stops; nothing already
               generated changes.
@@ -107,7 +109,7 @@
 
       <CollapsibleSection
         panel-id="credentials"
-        title="API credentials"
+        :title="t('admin.ai.apiCredentials')"
         :open="openSection === 'credentials'"
         :has-error="!!error && !credentialsComplete"
         :note="credentialDraftCount ? `${credentialDraftCount} to update` : undefined"
@@ -138,7 +140,7 @@
         <button type="submit" class="btn-primary" :disabled="saving">
           {{ buttonLabel }}
         </button>
-        <router-link to="/admin" class="btn-secondary">Back</router-link>
+        <router-link to="/admin" class="btn-secondary">{{ t('admin.ai.back') }}</router-link>
       </div>
     </form>
 
@@ -156,6 +158,9 @@ import CollapsibleSection from '@/components/admin/CollapsibleSection.vue'
 import CredentialFieldEditor, {
   type ProviderField,
 } from '@/components/admin/CredentialFieldEditor.vue'
+import { useAdminI18n } from '@/i18n/admin'
+
+const { t } = useAdminI18n()
 
 /** A row of `api.admin_ai_providers()`. */
 interface AiProvider {

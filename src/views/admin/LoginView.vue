@@ -6,18 +6,18 @@
         <span class="grid h-10 w-10 place-items-center rounded-lg bg-white/15 text-base font-bold">
           C
         </span>
-        <span class="text-lg font-semibold">Cofibuy</span>
+        <span class="text-lg font-semibold">{{ t('admin.login.brand') }}</span>
       </div>
 
       <div class="max-w-sm">
-        <h1 class="text-3xl font-bold tracking-tight">Run your storefront from one place.</h1>
+        <h1 class="text-3xl font-bold tracking-tight">{{ t('admin.login.tagline') }}</h1>
         <p class="mt-4 text-brand-100">
           Review incoming orders, publish paid reports, and configure the payment methods your
           customers use.
         </p>
       </div>
 
-      <p class="text-sm text-brand-200">Staff accounts are managed by the owner.</p>
+      <p class="text-sm text-brand-200">{{ t('admin.login.note') }}</p>
     </div>
 
     <div class="flex items-center justify-center bg-stone-950 p-6 sm:p-12">
@@ -31,11 +31,11 @@
         </div>
 
         <h2 class="page-title">Sign in</h2>
-        <p class="page-subtitle">Use your staff account to continue.</p>
+        <p class="page-subtitle">{{ t('admin.login.useStaff') }}</p>
 
         <form class="mt-8 space-y-5" @submit.prevent="signIn">
           <div>
-            <label class="label" for="email">Email</label>
+            <label class="label" for="email">{{ t('admin.common.email') }}</label>
             <input
               id="email"
               v-model="email"
@@ -48,7 +48,7 @@
           </div>
 
           <div>
-            <label class="label" for="password">Password</label>
+            <label class="label" for="password">{{ t('admin.login.password') }}</label>
             <input
               id="password"
               v-model="password"
@@ -63,7 +63,7 @@
           <p v-if="error" class="alert-error" role="alert">{{ error }}</p>
 
           <button type="submit" class="btn-primary w-full" :disabled="loading">
-            {{ loading ? 'Signing in...' : 'Sign in' }}
+            {{ loading ? 'Signing in...' : t('admin.login.submit') }}
           </button>
         </form>
       </div>
@@ -76,6 +76,9 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSupabase } from '@/lib/supabase'
 import { useStaffRole } from '@/composables/useStaffRole'
+import { useAdminI18n } from '@/i18n/admin'
+
+const { t } = useAdminI18n()
 
 const route = useRoute()
 const router = useRouter()

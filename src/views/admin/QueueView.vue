@@ -1,7 +1,7 @@
 <template>
   <div>
     <header class="mb-6">
-      <h1 class="page-title">Order queue</h1>
+      <h1 class="page-title">{{ t('admin.queue.heading') }}</h1>
       <p class="page-subtitle">Every order in the shop, filtered by where it stands.</p>
     </header>
 
@@ -43,7 +43,7 @@
 
     <p v-if="error" class="alert-error" role="alert">{{ error }}</p>
 
-    <div v-else-if="loading" class="empty-state">Loading...</div>
+    <div v-else-if="loading" class="empty-state">{{ t('admin.common.loading') }}</div>
 
     <div v-else-if="orders.length === 0" class="card empty-state">
       <AppIcon name="check" :size="28" class="mx-auto mb-3 text-emerald-600" />
@@ -58,11 +58,11 @@
         <table class="min-w-full divide-y divide-stone-200">
           <thead class="bg-stone-50">
             <tr>
-              <th class="th">Reference</th>
-              <th class="th">Status</th>
-              <th class="th">Amount</th>
-              <th class="th">Gateway</th>
-              <th class="th">Submitted</th>
+              <th class="th">{{ t('admin.queue.reference') }}</th>
+              <th class="th">{{ t('admin.common.status') }}</th>
+              <th class="th">{{ t('admin.queue.amount') }}</th>
+              <th class="th">{{ t('admin.queue.gateway') }}</th>
+              <th class="th">{{ t('admin.queue.submitted') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-200">

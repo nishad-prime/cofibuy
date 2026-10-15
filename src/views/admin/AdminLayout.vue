@@ -12,7 +12,7 @@
         </span>
         <div class="leading-tight">
           <p class="text-sm font-semibold text-stone-100">Cofibuy</p>
-          <p class="text-xs text-stone-500">Admin</p>
+          <p class="text-xs text-stone-500">{{ t('admin.nav.admin') }}</p>
         </div>
       </div>
 
@@ -29,7 +29,7 @@
           "
         >
           <AppIcon :name="item.icon" />
-          {{ item.label }}
+          {{ t(item.label) }}
         </router-link>
       </nav>
 
@@ -62,13 +62,13 @@
         >
           C
         </span>
-        <span class="text-sm font-semibold text-stone-100">Cofibuy Admin</span>
+        <span class="text-sm font-semibold text-stone-100">{{ t('admin.title') }}</span>
       </div>
       <button
         type="button"
         class="btn-secondary !px-2.5 !py-2"
         :aria-expanded="navOpen"
-        aria-label="Toggle navigation"
+        :aria-label="t('admin.nav.toggleNav')"
         @click="navOpen = !navOpen"
       >
         <AppIcon :name="navOpen ? 'close' : 'menu'" />
@@ -87,7 +87,7 @@
         @click="navOpen = false"
       >
         <AppIcon :name="item.icon" />
-        {{ item.label }}
+        {{ t(item.label) }}
       </router-link>
       <button class="btn-secondary mt-2 w-full" type="button" @click="handleSignOut">
         <AppIcon name="logout" :size="18" />
@@ -109,6 +109,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import { useAuthSession } from '@/composables/useAuthSession'
 import { useStaffRole } from '@/composables/useStaffRole'
+import { useAdminI18n } from '@/i18n/admin'
 
 interface NavItem {
   to: string
@@ -118,15 +119,16 @@ interface NavItem {
 }
 
 const ITEMS: NavItem[] = [
-  { to: '/admin', label: 'Dashboard', icon: 'wallet' },
-  { to: '/admin/queue', label: 'Order queue', icon: 'queue' },
-  { to: '/admin/pages', label: 'Pages', icon: 'link' },
-  { to: '/admin/gateways', label: 'Gateways', icon: 'card' },
-  { to: '/admin/team', label: 'Team', icon: 'team', ownerOnly: true },
-  { to: '/admin/settings', label: 'Settings', icon: 'settings', ownerOnly: true },
-  { to: '/admin/ai', label: 'AI provider', icon: 'lock', ownerOnly: true },
+  { to: '/admin', label: 'admin.nav.dashboard', icon: 'wallet' },
+  { to: '/admin/queue', label: 'admin.nav.queue', icon: 'queue' },
+  { to: '/admin/pages', label: 'admin.nav.pages', icon: 'link' },
+  { to: '/admin/gateways', label: 'admin.nav.gateways', icon: 'card' },
+  { to: '/admin/team', label: 'admin.nav.team', icon: 'team', ownerOnly: true },
+  { to: '/admin/settings', label: 'admin.nav.settings', icon: 'settings', ownerOnly: true },
+  { to: '/admin/ai', label: 'admin.nav.ai', icon: 'lock', ownerOnly: true },
 ]
 
+const { t } = useAdminI18n()
 const route = useRoute()
 const router = useRouter()
 const { user, signOut } = useAuthSession()
@@ -148,8 +150,8 @@ function isActive(to: string): boolean {
 const initials = computed(() => (user.value?.email ?? '?').slice(0, 2))
 
 const roleLabel = computed(() => {
-  if (role.value === 'none') return 'No access'
-  return role.value === 'owner' ? 'Owner' : 'Staff'
+  if (role.value === 'none') return t('admin.errors.noAccess')
+  return role.value === 'owner' ? t('admin.team.owner') : t('admin.team.staff')
 })
 
 watch(

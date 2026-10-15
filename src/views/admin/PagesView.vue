@@ -2,23 +2,23 @@
   <div>
     <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="page-title">Pages</h1>
-        <p class="page-subtitle">Each page sells one thing, unlocked by paying.</p>
+        <h1 class="page-title">{{ t('admin.pages.heading') }}</h1>
+        <p class="page-subtitle">{{ t('admin.pages.subtitle') }}</p>
       </div>
       <router-link to="/admin/pages/new" class="btn-primary">
         <AppIcon name="plus" :size="18" />
-        New page
+        {{ t('admin.pages.new') }}
       </router-link>
     </header>
 
-    <div v-if="loading" class="empty-state">Loading...</div>
+    <div v-if="loading" class="empty-state">{{ t('admin.common.loading') }}</div>
 
     <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
 
     <div v-else-if="pages.length === 0" class="card empty-state">
       <AppIcon name="link" :size="28" class="mx-auto mb-3 text-stone-400" />
-      <p class="font-medium text-stone-700">No pages yet</p>
-      <p class="mt-1">Create a page to publish a report customers can unlock by paying.</p>
+      <p class="font-medium text-stone-700">{{ t('admin.pages.empty') }}</p>
+      <p class="mt-1">{{ t('admin.pages.subtitle') }}</p>
     </div>
 
     <div v-else class="table-wrap">
@@ -26,11 +26,13 @@
         <table class="min-w-full divide-y divide-stone-200">
           <thead class="bg-stone-50">
             <tr>
-              <th class="th">Page</th>
-              <th class="th">Slug</th>
-              <th class="th">Price</th>
-              <th class="th">Status</th>
-              <th class="th"><span class="sr-only">Actions</span></th>
+              <th class="th">{{ t('admin.pages.page') }}</th>
+              <th class="th">{{ t('admin.pages.slug') }}</th>
+              <th class="th">{{ t('admin.pages.price') }}</th>
+              <th class="th">{{ t('admin.common.status') }}</th>
+              <th class="th">
+                <span class="sr-only">{{ t('admin.common.actions') }}</span>
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-200">
@@ -52,24 +54,29 @@
                 <span v-if="Number(page.min_amount_override) > 0" class="ltr-value">
                   {{ formatMoney(Number(page.min_amount_override), 'en', currency) }}
                 </span>
-                <span v-else class="text-xs text-stone-500">Site default</span>
+                <span v-else class="text-xs text-stone-500">{{
+                  t('admin.pages.siteDefault')
+                }}</span>
               </td>
               <td class="td">
                 <!-- Three states, not two. "Hidden" used to mean `is_active =
                      false`, and reusing it for "not in the index" would make an
                      unlisted page indistinguishable from a draft - when one is
                      fully buyable and the other cannot be opened at all. -->
-                <span v-if="!page.is_active" class="badge-muted">Draft</span>
-                <span v-else-if="!page.is_listed" class="badge-warn">Unlisted</span>
-                <span v-else class="badge-ok">Live</span>
+                <span v-if="!page.is_active" class="badge-muted">{{
+                  t('admin.pages.statusDraft')
+                }}</span>
+                <span v-else-if="!page.is_listed" class="badge-warn">{{
+                  t('admin.pages.statusUnlisted')
+                }}</span>
+                <span v-else class="badge-ok">{{ t('admin.pages.statusLive') }}</span>
               </td>
               <td class="td">
                 <div class="flex items-center justify-end gap-1">
                   <router-link
                     :to="`/admin/pages/${page.id}/edit`"
                     class="btn-secondary !px-3 !py-1.5 !text-xs"
-                  >
-                    Edit
+                    >{{ t('admin.pages.edit') }}
                   </router-link>
                   <button
                     type="button"
@@ -95,7 +102,9 @@ import { formatMoney } from '@/lib/money'
 import { useAdminCurrency } from '@/composables/useAdminCurrency'
 import AppIcon from '@/components/AppIcon.vue'
 import { rpc } from '@/lib/rpc'
+import { useAdminI18n } from '@/i18n/admin'
 
+const { t } = useAdminI18n()
 const { currency, load: loadCurrency } = useAdminCurrency()
 
 interface AdminPageRow {

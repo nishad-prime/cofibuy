@@ -282,7 +282,17 @@ const formatDate = (date: string): string => {
   return date ? new Date(date).toLocaleString() : '—'
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const loadOrder = async (): Promise<void> => {
+  // The route param is whatever the URL carried; the RPC takes a uuid. A
+  // malformed id is refused here with a plain sentence instead of letting
+  // Postgres answer with an operator error.
+  if (!UUID_RE.test(orderId.value)) {
+    error.value = 'Order not found.'
+    loading.value = false
+    return
+  }
   try {
     const { data, error: rpcError } = await rpc<Record<string, unknown>>('admin_order_detail', {
       p_order_id: orderId.value,
@@ -304,6 +314,11 @@ const loadOrder = async (): Promise<void> => {
 const approve = async (): Promise<void> => {
   actionError.value = null
   actionLoading.value = true
+  if (!UUID_RE.test(orderId.value)) {
+    actionError.value = 'Order not found.'
+    actionLoading.value = false
+    return
+  }
   try {
     const { error: rpcError } = await rpc<Record<string, unknown>>('approve_order', {
       p_order_id: orderId.value,

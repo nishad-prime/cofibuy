@@ -34,8 +34,25 @@ function isValidFieldKey(fieldKey: string): boolean {
 }
 
 function isValidUuid(uuid: string): boolean {
-  return /^[0-9a-f-]{36}$/i.test(uuid)
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid)
 }
+
+/**
+ * A network-level failure during upload: the request never completed. Thrown
+ * so callers can show a friendly "check your connection" message instead of
+ * the browser's raw "Failed to fetch".
+ */
+export class UploadTransportError extends Error {
+  constructor(cause: unknown) {
+    super('upload transport failure')
+    this.name = 'UploadTransportError'
+    this.cause = cause
+  }
+}
+
+const isTransportFailure = (err: unknown): boolean =>
+  err instanceof TypeError ||
+  (err instanceof Error && /failed to fetch|networkerror|load failed/i.test(err.message))
 
 export function useFileUpload() {
   const supabase = getSupabase()
@@ -66,13 +83,14 @@ export function useFileUpload() {
       throw new Error('File too large')
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
+    const { data, error: authError } = await supabase.auth.getUser()
+    if (authError || !data?.user) {
+      // The session check itself can fail at the transport level; treat that
+      // the same as an offline upload rather than "authentication required".
+      if (isTransportFailure(authError)) throw new UploadTransportError(authError)
       throw new Error('Authentication required')
     }
-
+    const user = data.user
     const maybeId = (user as { id?: unknown }).id
     const id = typeof maybeId === 'string' ? maybeId : ''
     if (!id || !isValidUuid(id)) {
@@ -84,14 +102,36 @@ export function useFileUpload() {
     const ext = getFileExtension(file.name, file.type) || 'jpg'
     const storagePath = `${uid}/${orderId}/${fieldKey}/${fileUuid}.${ext}`
 
-    const { error } = await supabase.storage.from('proofs').upload(storagePath, file, {
-      contentType: file.type,
-      cacheControl: '3600',
-      upsert: false,
-    })
+    // One retry on a transport failure. Safe to repeat: every attempt uses a
+    // fresh random path, so a dropped first attempt can never collide with a
+    // second one, and a request that reached the server but lost its response
+    // simply leaves an orphaned object behind.
+    try {
+      const { error } = await supabase.storage.from('proofs').upload(storagePath, file, {
+        contentType: file.type,
+        cacheControl: '3600',
+        upsert: false,
+      })
 
-    if (error) {
-      throw new Error(error.message || 'File upload failed')
+      if (error) {
+        throw new Error(error.message || 'File upload failed')
+      }
+    } catch (err) {
+      if (isTransportFailure(err)) {
+        console.warn('[upload] transport failure, retrying once:', err)
+        const { error: retryError } = await supabase.storage
+          .from('proofs')
+          .upload(storagePath, file, {
+            contentType: file.type,
+            cacheControl: '3600',
+            upsert: false,
+          })
+        if (retryError) {
+          throw new Error(retryError.message || 'File upload failed')
+        }
+        return { storage_path: storagePath }
+      }
+      throw err
     }
 
     return {

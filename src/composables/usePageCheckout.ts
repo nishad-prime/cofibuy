@@ -6,7 +6,7 @@ import { formatMoney } from '@/lib/money'
 import { useContent } from '@/composables/useContent'
 import type { LocalizedPair } from '@/lib/content'
 import { describeEdgeFailure, invokeWithRetry } from '@/lib/edgeError'
-import { rpc, rpcList } from '@/lib/rpc'
+import { isTransportFailure, rpc, rpcList } from '@/lib/rpc'
 import type { MyOrder, MyOrderStatus, OrderResult } from '@/lib/rpc'
 import { useFileUpload } from '@/composables/useFileUpload'
 import { buildEvidencePayload } from '@/lib/evidencePayload'
@@ -90,6 +90,19 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
   const supabase = getSupabase()
   const { pick } = useContent()
   const { t } = useI18n()
+
+  /**
+   * A caught error becomes the panel's message. Network failures - a dropped
+   * packet between the customer and Supabase - get a friendly line in both
+   * languages instead of the browser's raw "Failed to fetch".
+   */
+  const describeCaught = (err: unknown, fallback: string): string => {
+    if (isTransportFailure(err) || (err instanceof Error && err.name === 'UploadTransportError')) {
+      console.warn('[checkout] transport failure:', err)
+      return t('customer.errors.network')
+    }
+    return err instanceof Error ? err.message : fallback
+  }
   const { settings } = useSiteSettings()
 
   // Decides what is rendered. `create_order()` refuses independently, so if
@@ -408,7 +421,7 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
 
       if (polling) await polling.refresh()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to submit evidence'
+      error.value = describeCaught(err, 'Failed to submit evidence')
     } finally {
       submittingEvidence.value = false
     }
@@ -792,7 +805,10 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
           return
         }
 
-        error.value = createError.message
+        error.value =
+          'transport' in createError && createError.transport
+            ? t('customer.errors.network')
+            : createError.message
         return
       }
 
@@ -823,7 +839,7 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
 
       await adoptOrder(data.order_id)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to create order'
+      error.value = describeCaught(err, 'Failed to create order')
     } finally {
       creating.value = false
     }
@@ -859,6 +875,8 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
       orderDetails.value = null
       selectedKind.value = null
       preselectKind()
+    } catch (err) {
+      error.value = describeCaught(err, 'Failed to start a new order')
     } finally {
       detaching.value = false
     }

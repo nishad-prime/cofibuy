@@ -18,14 +18,31 @@ import { getSupabase } from '@/lib/supabase'
 /** What a call returns: the payload, or the error PostgREST reported. */
 export interface RpcResult<T> {
   data: T | null
-  error: { message: string } | null
+  error: { message: string; transport?: true } | null
 }
+
+/**
+ * Network-level failures (the request never completed) come back through the
+ * same shape with `transport: true`, so callers can show a friendly "check
+ * your connection" message instead of the browser's "Failed to fetch".
+ */
+export const isTransportFailure = (err: unknown): boolean =>
+  err instanceof TypeError ||
+  (err instanceof Error && /failed to fetch|networkerror|load failed/i.test(err.message))
 
 /** Calls an `api` RPC and types the payload. */
 export async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<RpcResult<T>> {
-  // `as never` buys the generic name; the generated signature would otherwise
-  // demand its own literal union here and defeat the point of this module.
-  return (await getSupabase().rpc(name as never, args as never)) as RpcResult<T>
+  try {
+    // `as never` buys the generic name; the generated signature would otherwise
+    // demand its own literal union here and defeat the point of this module.
+    return (await getSupabase().rpc(name as never, args as never)) as RpcResult<T>
+  } catch (err) {
+    if (isTransportFailure(err)) {
+      console.warn(`[rpc] transport failure calling ${name}:`, err)
+      return { data: null, error: { message: String(err), transport: true } }
+    }
+    throw err
+  }
 }
 
 /** Calls an `api` RPC that returns a set, typed as the row shape. */

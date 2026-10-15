@@ -159,6 +159,7 @@
   "errors": {
     "transport": "Could not reach the payment service. Check your connection, then try again. If you are on a VPN or a strict network, that can block the request.",
     "httpStatus": "The payment service responded with an error (HTTP {status}).",
-    "httpGeneric": "The payment service responded with an error."
+    "httpGeneric": "The payment service responded with an error.",
+    "network": "The connection dropped while sending. Check your network and try again."
   }
 }

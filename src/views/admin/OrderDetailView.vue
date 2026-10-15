@@ -53,6 +53,20 @@
               <dd class="ltr-value font-medium text-stone-900">{{ order.phone_e164 || '—' }}</dd>
             </div>
             <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">Customer</dt>
+              <dd class="text-right font-medium text-stone-900">
+                <a
+                  v-if="order.customer?.email"
+                  :href="`mailto:${order.customer.email}`"
+                  class="text-brand-700 hover:underline"
+                >
+                  {{ order.customer.email }}
+                </a>
+                <span v-else-if="customerLabel">{{ customerLabel }}</span>
+                <span v-else>—</span>
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
               <dt class="text-stone-500">Report</dt>
               <dd class="text-right font-medium text-stone-900">
                 {{ order.link?.title_en || order.link?.slug || '—' }}
@@ -114,6 +128,48 @@
               </a>
             </li>
           </ul>
+        </section>
+
+        <!--
+          The customer behind the order: their identity and their shop-wide
+          footprint, so approve and reject decisions see the pattern, not just
+          this one attempt.
+        -->
+        <section v-if="order.customer" class="card card-pad">
+          <h2 class="text-sm font-semibold text-stone-900">Customer</h2>
+          <dl class="mt-4 space-y-3 text-sm">
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">Email</dt>
+              <dd class="text-right">
+                <a
+                  v-if="order.customer.email"
+                  :href="`mailto:${order.customer.email}`"
+                  class="font-medium text-brand-700 hover:underline"
+                >
+                  {{ order.customer.email }}
+                </a>
+                <span v-else class="text-stone-400">Anonymous</span>
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">Customer since</dt>
+              <dd class="text-stone-900">
+                {{ order.customer.created_at ? formatDate(order.customer.created_at) : '—' }}
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">Orders (approved)</dt>
+              <dd class="ltr-value text-stone-900">
+                {{ order.customer.orders_total }} ({{ order.customer.orders_approved }})
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-stone-500">Approved revenue</dt>
+              <dd class="ltr-value font-medium text-stone-900">
+                {{ formatMoney(order.customer.revenue_approved, 'en', currency) }}
+              </dd>
+            </div>
+          </dl>
         </section>
       </div>
 
@@ -212,6 +268,14 @@ interface AdminOrderRow {
   reject_reason_en: string | null
   reject_reason_bn: string | null
   gateway: { name_en: string | null; name_bn: string | null } | null
+  customer: {
+    id: string
+    email: string | null
+    created_at: string | null
+    orders_total: number
+    orders_approved: number
+    revenue_approved: number
+  } | null
   // `link` is the jsonb field name `admin_order_detail` returns (the orders
   // table still calls its FK link_id); renaming it means SQL churn for zero
   // visible effect, so the view maps it as-is.
@@ -329,6 +393,16 @@ const displayedRejectReason = computed(
 const formatDate = (date: string): string => {
   return date ? new Date(date).toLocaleString() : '—'
 }
+
+/**
+ * Anonymous signups have no email; the short id is the only handle they
+ * offer, and it is what the auth admin would search by anyway.
+ */
+const customerLabel = computed(() => {
+  const customer = order.value?.customer
+  if (!customer) return null
+  return customer.email || `Anonymous · ${customer.id.slice(0, 8)}`
+})
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

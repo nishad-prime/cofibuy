@@ -161,7 +161,7 @@
         </div>
       </ChartCard>
 
-      <div v-if="traffic" class="mt-6 grid gap-6 lg:grid-cols-2">
+      <div v-if="traffic" class="mt-6 grid gap-6 lg:grid-cols-3">
         <!-- Devices: where the shop is opened. Bars, not a canvas: the split
              must stay readable even if a chart fails to draw. -->
         <ChartCard :title="t('admin.dashboard.devices')">
@@ -232,7 +232,7 @@
             <div class="h-52 min-w-0">
               <Chart type="doughnut" :data="sourceChartData" :options="doughnutOptions" />
             </div>
-            <ul class="max-h-52 space-y-2 overflow-y-auto">
+            <ul class="space-y-2">
               <li
                 v-for="row in sourceRows"
                 :key="row.referrer"
@@ -274,7 +274,7 @@
         </ChartCard>
 
         <!-- Rejections: what the operator says no to, most often. -->
-        <ChartCard :title="t('admin.dashboard.rejections')">
+        <ChartCard class="lg:col-span-2" :title="t('admin.dashboard.rejections')">
           <ul v-if="rejectionRows.length > 0" class="space-y-3">
             <li v-for="row in rejectionRows" :key="row.reason" class="space-y-1.5">
               <div class="flex justify-between gap-3 text-xs">
@@ -365,6 +365,8 @@ import { Chart } from 'vue-chartjs'
 import type { ChartData } from 'chart.js'
 import {
   Chart as ChartJS,
+  BarController,
+  DoughnutController,
   CategoryScale,
   Legend,
   LinearScale,
@@ -386,6 +388,8 @@ import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 import { useAdminI18n } from '@/i18n/admin'
 
 ChartJS.register(
+  BarController,
+  DoughnutController,
   CategoryScale,
   LinearScale,
   BarElement,

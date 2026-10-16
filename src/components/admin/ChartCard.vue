@@ -1,5 +1,5 @@
 <template>
-  <section class="card card-pad">
+  <section class="card card-pad flex h-full flex-col">
     <div class="flex items-start justify-between gap-3">
       <div>
         <h2 class="text-sm font-semibold text-stone-900">{{ title }}</h2>
@@ -7,7 +7,7 @@
       </div>
       <slot name="action" />
     </div>
-    <div class="mt-4">
+    <div class="mt-4 flex-1">
       <slot />
     </div>
   </section>

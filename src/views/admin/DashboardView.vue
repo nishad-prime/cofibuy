@@ -161,7 +161,7 @@
         </div>
       </ChartCard>
 
-      <div v-if="traffic" class="mt-6 grid gap-6 lg:grid-cols-3">
+      <div v-if="traffic" class="mt-6 grid gap-4 lg:grid-cols-3">
         <!-- Devices: where the shop is opened. Bars, not a canvas: the split
              must stay readable even if a chart fails to draw. -->
         <ChartCard :title="t('admin.dashboard.devices')">
@@ -255,7 +255,7 @@
         </ChartCard>
       </div>
 
-      <div v-if="traffic" class="grid gap-6 lg:grid-cols-2">
+      <div v-if="traffic" class="mt-6 grid auto-rows-fr gap-4 lg:grid-cols-2">
         <!-- Rejections: what the operator says no to, most often. -->
         <ChartCard :title="t('admin.dashboard.rejections')">
           <ul v-if="rejectionRows.length > 0" class="space-y-3">
@@ -312,9 +312,9 @@
         </ChartCard>
       </div>
 
-      <div class="mt-6 grid gap-6 lg:grid-cols-2">
+      <div class="mt-6 grid gap-4 lg:grid-cols-2">
         <!-- Top locations: city and country, the IP-derived view. -->
-        <section class="card card-pad">
+        <section class="card card-pad h-full">
           <h2 class="text-sm font-semibold text-stone-900">
             {{ t('admin.dashboard.locations') }}
           </h2>

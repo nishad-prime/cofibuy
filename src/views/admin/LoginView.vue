@@ -121,7 +121,7 @@ const signIn = async (): Promise<void> => {
       return
     }
 
-    await router.push('/admin/queue')
+    await router.push('/admin')
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Sign in failed'
   } finally {

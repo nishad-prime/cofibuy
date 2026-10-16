@@ -123,67 +123,76 @@
       <!-- The trend: orders as bars, revenue and views as lines. Two axes
            because the units differ, and the bar shape keeps quiet days visibly
            zero rather than implying a line through nothing. -->
-      <section v-if="!analyticsLoading && traffic" class="card card-pad mt-6">
-        <h2 class="text-sm font-semibold text-stone-900">
-          {{ t('admin.dashboard.trend').replace('{days}', String(traffic.days)) }}
-        </h2>
-        <div class="mt-4 h-64">
+      <ChartCard
+        v-if="!analyticsLoading && traffic"
+        class="mt-6"
+        :title="t('admin.dashboard.trend').replace('{days}', String(traffic.days))"
+      >
+        <div class="h-64">
           <Chart :type="chartType" :data="chartData" :options="chartOptions" />
         </div>
-      </section>
+      </ChartCard>
       <div v-else class="dash-skeleton mt-6 h-80 w-full" aria-hidden="true" />
 
       <!-- Funnel: views to money, one horizontal bar per stage. -->
-      <section v-if="traffic" class="card card-pad mt-6">
-        <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.dashboard.funnel') }}</h2>
-        <div class="mt-4 space-y-3">
-          <div v-for="stage in funnelStages" :key="stage.label" class="flex items-center gap-3">
-            <span class="w-28 shrink-0 text-xs font-medium text-stone-500">
-              {{ stage.label }}
-            </span>
-            <div class="h-6 flex-1 overflow-hidden rounded-md bg-stone-100">
-              <div
-                class="flex h-full items-center justify-end rounded-md bg-brand-500/80 pr-2 transition-all"
-                :style="{ width: `${stage.pct}%` }"
-              >
-                <span v-if="stage.pct > 12" class="text-xs font-bold text-white ltr-value">
-                  {{ stage.value }}
-                </span>
-              </div>
-            </div>
-            <span class="w-12 shrink-0 text-right text-xs text-stone-500 ltr-value">
-              {{ stage.pct }}%
-            </span>
+      <ChartCard v-if="traffic" class="mt-6" :title="t('admin.dashboard.funnel')">
+        <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_13rem] md:items-center">
+          <div class="h-64">
+            <Chart type="bar" :data="funnelChartData" :options="funnelChartOptions" />
           </div>
+          <ol class="space-y-3">
+            <li v-for="(stage, index) in funnelStages" :key="stage.label" class="flex gap-3">
+              <span
+                class="grid size-6 shrink-0 place-items-center rounded-full bg-brand-500/10 text-xs font-semibold text-brand-300"
+              >
+                {{ index + 1 }}
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex justify-between gap-2 text-xs">
+                  <span class="text-stone-400">{{ stage.label }}</span>
+                  <span class="font-semibold text-stone-100 ltr-value">{{ stage.value }}</span>
+                </div>
+                <p v-if="index > 0" class="mt-0.5 text-[11px] text-stone-500">
+                  {{ t('admin.dashboard.dropoff') }}: {{ stage.dropoff }}%
+                </p>
+              </div>
+            </li>
+          </ol>
         </div>
-      </section>
+      </ChartCard>
 
       <div v-if="traffic" class="mt-6 grid gap-6 lg:grid-cols-2">
         <!-- Devices: where the shop is opened. Bars, not a canvas: the split
              must stay readable even if a chart fails to draw. -->
-        <section class="card card-pad">
-          <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.dashboard.devices') }}</h2>
-          <ul v-if="deviceRows.length > 0" class="mt-4 space-y-2.5">
-            <li v-for="row in deviceRows" :key="row.device_type" class="flex items-center gap-3">
-              <span class="w-20 shrink-0 text-xs font-medium text-stone-400">
-                {{ t(`admin.dashboard.device.${row.device_type}`) }}
-              </span>
-              <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-stone-100">
-                <div
-                  class="h-full rounded-full bg-brand-500"
-                  :style="{ width: `${(row.views / maxDeviceViews) * 100}%` }"
-                />
-              </div>
-              <span class="w-12 shrink-0 text-right text-xs text-stone-500 ltr-value">
-                {{ row.views }}
-              </span>
-              <span class="w-14 shrink-0 text-right text-xs text-stone-500 ltr-value">
-                {{ Math.round((row.views / totalDeviceViews) * 100) }}%
-              </span>
-            </li>
-          </ul>
+        <ChartCard :title="t('admin.dashboard.devices')">
+          <div
+            v-if="deviceRows.length > 0"
+            class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center"
+          >
+            <div class="h-52 min-w-0">
+              <Chart type="doughnut" :data="deviceChartData" :options="doughnutOptions" />
+            </div>
+            <ul class="space-y-2">
+              <li
+                v-for="row in deviceRows"
+                :key="row.device_type"
+                class="flex items-center justify-between gap-3 text-xs"
+              >
+                <span class="flex min-w-0 items-center gap-2 text-stone-300">
+                  <span
+                    class="size-2 shrink-0 rounded-full"
+                    :style="{ backgroundColor: deviceColor(row.device_type) }"
+                  />
+                  <span class="truncate">{{ t(`admin.dashboard.device.${row.device_type}`) }}</span>
+                </span>
+                <span class="shrink-0 font-semibold text-stone-100 ltr-value"
+                  >{{ row.views }} · {{ Math.round((row.views / totalDeviceViews) * 100) }}%</span
+                >
+              </li>
+            </ul>
+          </div>
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noTraffic') }}</p>
-        </section>
+        </ChartCard>
 
         <!-- Top locations: city and country, the IP-derived view. -->
         <section class="card card-pad">
@@ -215,68 +224,75 @@
         </section>
 
         <!-- Traffic sources: where the visitors came from. -->
-        <section class="card card-pad">
-          <h2 class="text-sm font-semibold text-stone-900">
-            {{ t('admin.dashboard.trafficSources') }}
-          </h2>
-          <ul v-if="sourceRows.length > 0" class="mt-4 space-y-2.5">
-            <li v-for="row in sourceRows" :key="row.referrer" class="flex items-center gap-3">
-              <span class="w-32 shrink-0 truncate text-xs font-bold text-stone-700 ltr-value">
-                {{ row.referrer }}
-              </span>
-              <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-stone-100">
-                <div
-                  class="h-full rounded-full bg-brand-500"
-                  :style="{ width: `${(row.views / maxSourceViews) * 100}%` }"
-                />
-              </div>
-              <span class="w-12 shrink-0 text-right text-xs text-stone-500 ltr-value">
-                {{ row.views }}
-              </span>
-            </li>
-          </ul>
+        <ChartCard :title="t('admin.dashboard.trafficSources')">
+          <div
+            v-if="sourceRows.length > 0"
+            class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center"
+          >
+            <div class="h-52 min-w-0">
+              <Chart type="doughnut" :data="sourceChartData" :options="doughnutOptions" />
+            </div>
+            <ul class="max-h-52 space-y-2 overflow-y-auto">
+              <li
+                v-for="row in sourceRows"
+                :key="row.referrer"
+                class="flex items-center justify-between gap-3 text-xs"
+              >
+                <span class="flex min-w-0 items-center gap-2 text-stone-300">
+                  <span
+                    class="size-2 shrink-0 rounded-full"
+                    :style="{ backgroundColor: sourceColor(row.referrer) }"
+                  />
+                  <span class="truncate ltr-value">{{ row.referrer }}</span>
+                </span>
+                <span class="shrink-0 font-semibold text-stone-100 ltr-value">{{ row.views }}</span>
+              </li>
+            </ul>
+          </div>
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noSources') }}</p>
-        </section>
+        </ChartCard>
 
         <!-- Gateways: which rails the approved money used. -->
-        <section class="card card-pad">
-          <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.dashboard.gateways') }}</h2>
-          <table v-if="gatewayRows.length > 0" class="mt-4 w-full text-sm">
-            <thead>
-              <tr>
-                <th class="th text-left">{{ t('admin.dashboard.gateway') }}</th>
-                <th class="th text-right">{{ t('admin.dashboard.orders') }}</th>
-                <th class="th text-right">{{ t('admin.dashboard.revenue') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in gatewayRows" :key="row.kind">
-                <td class="td">{{ row.kind }}</td>
-                <td class="td text-right ltr-value">{{ row.orders }}</td>
-                <td class="td text-right ltr-value">
-                  {{ formatMoney(row.revenue, 'en', currency) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <ChartCard :title="t('admin.dashboard.gateways')">
+          <ul v-if="gatewayRows.length > 0" class="space-y-3">
+            <li v-for="row in gatewayRows" :key="row.kind" class="space-y-1.5">
+              <div class="flex justify-between gap-3 text-xs">
+                <span class="truncate font-medium text-stone-300">{{ row.kind }}</span>
+                <span class="shrink-0 text-stone-400 ltr-value"
+                  >{{ row.orders }} · {{ formatMoney(row.revenue, 'en', currency) }}</span
+                >
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-white/5">
+                <div
+                  class="h-full rounded-full bg-brand-500"
+                  :style="{ width: `${(row.revenue / maxGatewayRevenue) * 100}%` }"
+                />
+              </div>
+            </li>
+          </ul>
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noSales') }}</p>
-        </section>
+        </ChartCard>
 
         <!-- Rejections: what the operator says no to, most often. -->
-        <section class="card card-pad">
-          <h2 class="text-sm font-semibold text-stone-900">
-            {{ t('admin.dashboard.rejections') }}
-          </h2>
-          <ul v-if="rejectionRows.length > 0" class="mt-4 space-y-2.5">
-            <li v-for="row in rejectionRows" :key="row.reason" class="flex items-center gap-3">
-              <span class="min-w-0 flex-1 truncate text-sm text-stone-700">
-                {{ row.reason }}
-              </span>
-              <span class="ltr-value text-sm font-bold text-stone-900">{{ row.orders }}</span>
+        <ChartCard :title="t('admin.dashboard.rejections')">
+          <ul v-if="rejectionRows.length > 0" class="space-y-3">
+            <li v-for="row in rejectionRows" :key="row.reason" class="space-y-1.5">
+              <div class="flex justify-between gap-3 text-xs">
+                <span class="min-w-0 truncate text-stone-300">{{ row.reason }}</span>
+                <span class="shrink-0 font-semibold text-stone-100 ltr-value">{{
+                  row.orders
+                }}</span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-white/5">
+                <div
+                  class="h-full rounded-full bg-rose-500"
+                  :style="{ width: `${(row.orders / maxRejections) * 100}%` }"
+                />
+              </div>
             </li>
           </ul>
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noRejections') }}</p>
-        </section>
+        </ChartCard>
       </div>
 
       <div class="mt-6 grid gap-6 lg:grid-cols-2">
@@ -363,6 +379,8 @@ import { useAdminCurrency } from '@/composables/useAdminCurrency'
 import { useLiveStats } from '@/composables/useLiveStats'
 import { rpc, rpcList } from '@/lib/rpc'
 import type { MyOrder } from '@/lib/rpc'
+import { CHART_COLORS, makeChartOptions } from '@/lib/chartTheme'
+import ChartCard from '@/components/admin/ChartCard.vue'
 import AnimatedNumber from '@/components/admin/AnimatedNumber.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 import { useAdminI18n } from '@/i18n/admin'
@@ -493,15 +511,15 @@ const chartData = computed<ChartData<'bar' | 'line'>>(() => ({
       type: 'bar' as const,
       label: t('admin.dashboard.ordersCreated'),
       data: analytics.value.map((row) => row.orders_created),
-      backgroundColor: 'rgba(13, 148, 136, 0.35)',
+      backgroundColor: CHART_COLORS.brandSoft,
       yAxisID: 'yOrders',
     },
     {
       type: 'line' as const,
       label: t('admin.dashboard.revenuePerDay'),
       data: analytics.value.map((row) => row.revenue_approved),
-      borderColor: '#0f766e',
-      backgroundColor: '#0f766e',
+      borderColor: CHART_COLORS.brand,
+      backgroundColor: CHART_COLORS.brand,
       tension: 0.3,
       pointRadius: 2,
       yAxisID: 'yRevenue',
@@ -510,8 +528,8 @@ const chartData = computed<ChartData<'bar' | 'line'>>(() => ({
       type: 'line' as const,
       label: t('admin.dashboard.viewsPerDay'),
       data: analytics.value.map((row) => row.views),
-      borderColor: '#94a3b8',
-      backgroundColor: '#94a3b8',
+      borderColor: CHART_COLORS.slate,
+      backgroundColor: CHART_COLORS.slate,
       tension: 0.3,
       pointRadius: 2,
       borderDash: [4, 4],
@@ -520,45 +538,42 @@ const chartData = computed<ChartData<'bar' | 'line'>>(() => ({
   ],
 }))
 
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
+const chartOptions = makeChartOptions<'bar' | 'line'>({
   scales: {
     yOrders: {
       position: 'left' as const,
       beginAtZero: true,
-      ticks: { precision: 0, color: '#a8a29e' },
-      grid: { color: 'rgba(255, 255, 255, 0.06)' },
+      ticks: { precision: 0 },
+      grid: { color: CHART_COLORS.grid },
     },
-    yRevenue: {
-      position: 'right' as const,
-      beginAtZero: true,
-      ticks: { color: '#a8a29e' },
-      grid: { drawOnChartArea: false },
-    },
-    x: { ticks: { color: '#a8a29e' }, grid: { display: false } },
+    yRevenue: { position: 'right' as const, beginAtZero: true, grid: { drawOnChartArea: false } },
+    x: { grid: { display: false } },
   },
-}
+})
 
 const funnelStages = computed(() => {
   const funnel = traffic.value?.funnel
   if (!funnel) return []
   const top = Math.max(funnel.views, 1)
-  const stage = (label: string, value: number): { label: string; value: number; pct: number } => ({
+  const stage = (
+    label: string,
+    value: number,
+    previous: number,
+  ): { label: string; value: number; pct: number; dropoff: number } => ({
     label,
     value,
     pct: Math.round((value / top) * 100),
+    dropoff: previous > 0 ? Math.round((1 - value / previous) * 100) : 0,
   })
   return [
-    stage(t('admin.dashboard.stageViews'), funnel.views),
-    stage(t('admin.dashboard.stageCreated'), funnel.orders_created),
-    stage(t('admin.dashboard.stageSubmitted'), funnel.orders_submitted),
-    stage(t('admin.dashboard.stageApproved'), funnel.orders_approved),
+    stage(t('admin.dashboard.stageViews'), funnel.views, funnel.views),
+    stage(t('admin.dashboard.stageCreated'), funnel.orders_created, funnel.views),
+    stage(t('admin.dashboard.stageSubmitted'), funnel.orders_submitted, funnel.orders_created),
+    stage(t('admin.dashboard.stageApproved'), funnel.orders_approved, funnel.orders_submitted),
   ]
 })
 
 const deviceRows = computed(() => traffic.value?.devices ?? [])
-const maxDeviceViews = computed(() => Math.max(...deviceRows.value.map((r) => r.views), 1))
 const totalDeviceViews = computed(() =>
   Math.max(
     deviceRows.value.reduce((sum, r) => sum + r.views, 0),
@@ -567,13 +582,72 @@ const totalDeviceViews = computed(() =>
 )
 
 const sourceRows = computed(() => traffic.value?.referrers ?? [])
-const maxSourceViews = computed(() => Math.max(...sourceRows.value.map((r) => r.views), 1))
 
 const locationRows = computed(() => traffic.value?.locations ?? [])
 const maxLocationViews = computed(() => Math.max(...locationRows.value.map((r) => r.views), 1))
 const gatewayRows = computed(() => traffic.value?.gateways ?? [])
 const rejectionRows = computed(() => traffic.value?.rejections ?? [])
 const pageRows = computed(() => traffic.value?.pages ?? [])
+const maxGatewayRevenue = computed(() => Math.max(...gatewayRows.value.map((r) => r.revenue), 1))
+const maxRejections = computed(() => Math.max(...rejectionRows.value.map((r) => r.orders), 1))
+
+const DEVICE_COLORS = ['#0f766e', '#14b8a6', '#5eead4', '#94a3b8']
+const SOURCE_COLORS = ['#0f766e', '#14b8a6', '#38bdf8', '#f59e0b', '#f43f5e', '#a78bfa']
+const deviceColor = (type: string): string =>
+  DEVICE_COLORS[
+    Math.max(
+      0,
+      deviceRows.value.findIndex((row) => row.device_type === type),
+    ) % DEVICE_COLORS.length
+  ]!
+const sourceColor = (source: string): string =>
+  SOURCE_COLORS[
+    Math.max(
+      0,
+      sourceRows.value.findIndex((row) => row.referrer === source),
+    ) % SOURCE_COLORS.length
+  ]!
+
+const deviceChartData = computed<ChartData<'doughnut'>>(() => ({
+  labels: deviceRows.value.map((row) => t(`admin.dashboard.device.${row.device_type}`)),
+  datasets: [
+    {
+      data: deviceRows.value.map((row) => row.views),
+      backgroundColor: deviceRows.value.map((row) => deviceColor(row.device_type)),
+      borderWidth: 0,
+    },
+  ],
+}))
+const sourceChartData = computed<ChartData<'doughnut'>>(() => ({
+  labels: sourceRows.value.map((row) => row.referrer),
+  datasets: [
+    {
+      data: sourceRows.value.map((row) => row.views),
+      backgroundColor: sourceRows.value.map((row) => sourceColor(row.referrer)),
+      borderWidth: 0,
+    },
+  ],
+}))
+const doughnutOptions = makeChartOptions<'doughnut'>({
+  cutout: '68%',
+  plugins: { legend: { display: false } },
+})
+const funnelChartData = computed<ChartData<'bar'>>(() => ({
+  labels: funnelStages.value.map((stage) => stage.label),
+  datasets: [
+    {
+      data: funnelStages.value.map((stage) => stage.value),
+      backgroundColor: CHART_COLORS.brandSoft,
+      borderRadius: 6,
+      barPercentage: 0.62,
+    },
+  ],
+}))
+const funnelChartOptions = makeChartOptions<'bar'>({
+  indexAxis: 'y',
+  plugins: { legend: { display: false } },
+  scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } },
+})
 
 onMounted(async () => {
   void loadCurrency()

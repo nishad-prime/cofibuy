@@ -279,7 +279,8 @@
     "viewsPerDay": "Views",
     "locations": "Top locations",
     "trafficSources": "Traffic sources",
-    "noSources": "No source data yet."
+    "noSources": "No source data yet.",
+    "live": "Live"
   },
   "images": {
     "assignedOf": "image slots assigned",

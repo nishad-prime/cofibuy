@@ -7,21 +7,28 @@
       </div>
 
       <!-- The range: every chart and windowed number below follows it. -->
-      <div class="flex rounded-lg border border-white/15 bg-white/5 p-0.5">
-        <button
-          v-for="range in RANGES"
-          :key="range"
-          type="button"
-          class="rounded-md px-3 py-1.5 text-sm font-medium transition"
-          :class="
-            range === selectedRange
-              ? 'bg-stone-100 text-stone-900'
-              : 'text-stone-400 hover:text-stone-100'
-          "
-          @click="selectRange(range)"
-        >
-          {{ range }}d
-        </button>
+      <div class="flex items-center gap-4">
+        <span v-if="connected" class="flex items-center gap-1.5 text-xs font-medium text-stone-400">
+          <span class="live-dot size-2 rounded-full bg-emerald-500" aria-hidden="true" />
+          {{ t('admin.dashboard.live') }}
+        </span>
+
+        <div class="flex rounded-lg border border-white/15 bg-white/5 p-0.5">
+          <button
+            v-for="range in RANGES"
+            :key="range"
+            type="button"
+            class="rounded-md px-3 py-1.5 text-sm font-medium transition"
+            :class="
+              range === selectedRange
+                ? 'bg-stone-100 text-stone-900'
+                : 'text-stone-400 hover:text-stone-100'
+            "
+            @click="selectRange(range)"
+          >
+            {{ range }}d
+          </button>
+        </div>
       </div>
     </header>
 
@@ -29,13 +36,13 @@
 
     <p v-else-if="error" class="alert-error" role="alert">{{ error }}</p>
 
-    <template v-else-if="stats && traffic">
+    <template v-else-if="stats">
       <!-- Cards: the numbers that decide what the operator does next. -->
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="card card-pad">
           <p class="hint">{{ t('admin.dashboard.revenue30') }}</p>
-          <p class="mt-1 text-2xl font-bold text-stone-900 ltr-value">
-            {{ formatMoney(stats.revenue_30d, 'en', currency) }}
+          <p class="mt-1 text-2xl font-bold text-stone-900">
+            <AnimatedNumber :value="live?.revenue_30d ?? stats.revenue_30d" money />
           </p>
           <p class="hint mt-1">
             {{ t('admin.dashboard.allTime') }}:
@@ -44,14 +51,16 @@
         </div>
         <router-link to="/admin/queue" class="card card-pad hover:border-brand-400">
           <p class="hint">{{ t('admin.dashboard.awaitingReview') }}</p>
-          <p class="mt-1 text-2xl font-bold text-stone-900 ltr-value">
-            {{ stats.awaiting_review }}
+          <p class="mt-1 text-2xl font-bold text-stone-900">
+            <AnimatedNumber :value="live?.awaiting_review ?? stats.awaiting_review" />
           </p>
           <p class="hint mt-1">{{ t('admin.dashboard.awaitingReviewHint') }}</p>
         </router-link>
         <div class="card card-pad">
           <p class="hint">{{ t('admin.dashboard.orders30') }}</p>
-          <p class="mt-1 text-2xl font-bold text-stone-900 ltr-value">{{ stats.orders_30d }}</p>
+          <p class="mt-1 text-2xl font-bold text-stone-900">
+            <AnimatedNumber :value="live?.orders_created_30d ?? stats.orders_30d" />
+          </p>
           <p class="hint mt-1">
             {{ t('admin.dashboard.allTime') }}:
             <span class="ltr-value">{{ stats.total_orders }}</span>
@@ -62,17 +71,18 @@
           <p class="mt-1 text-2xl font-bold text-stone-900 ltr-value">{{ stats.active_pages }}</p>
           <p class="hint mt-1">
             {{ t('admin.dashboard.customers') }}:
-            <span class="ltr-value">{{ stats.customers }}</span>
+            <AnimatedNumber :value="live?.customers ?? stats.customers" />
           </p>
         </div>
       </div>
 
-      <!-- Traffic row: the window's visits and what they became. -->
-      <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <!-- Traffic row: the window's visits and what they became. Deferred with
+           the charts, so it shimmers until tier 2 lands. -->
+      <div v-if="traffic" class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="card card-pad">
           <p class="hint">{{ t('admin.dashboard.views') }}</p>
-          <p class="mt-1 text-2xl font-bold text-stone-900 ltr-value">
-            {{ traffic.funnel.views }}
+          <p class="mt-1 text-2xl font-bold text-stone-900">
+            <AnimatedNumber :value="live?.views_total ?? traffic.funnel.views" />
           </p>
           <p class="hint mt-1">
             {{ t('admin.dashboard.windowNote').replace('{days}', String(traffic.days)) }}
@@ -108,11 +118,12 @@
           </p>
         </div>
       </div>
+      <div v-else class="dash-skeleton mt-4 h-28 w-full" aria-hidden="true" />
 
       <!-- The trend: orders as bars, revenue and views as lines. Two axes
            because the units differ, and the bar shape keeps quiet days visibly
            zero rather than implying a line through nothing. -->
-      <section class="card card-pad mt-6">
+      <section v-if="!analyticsLoading && traffic" class="card card-pad mt-6">
         <h2 class="text-sm font-semibold text-stone-900">
           {{ t('admin.dashboard.trend').replace('{days}', String(traffic.days)) }}
         </h2>
@@ -120,9 +131,10 @@
           <Chart :type="chartType" :data="chartData" :options="chartOptions" />
         </div>
       </section>
+      <div v-else class="dash-skeleton mt-6 h-80 w-full" aria-hidden="true" />
 
       <!-- Funnel: views to money, one horizontal bar per stage. -->
-      <section class="card card-pad mt-6">
+      <section v-if="traffic" class="card card-pad mt-6">
         <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.dashboard.funnel') }}</h2>
         <div class="mt-4 space-y-3">
           <div v-for="stage in funnelStages" :key="stage.label" class="flex items-center gap-3">
@@ -146,7 +158,7 @@
         </div>
       </section>
 
-      <div class="mt-6 grid gap-6 lg:grid-cols-2">
+      <div v-if="traffic" class="mt-6 grid gap-6 lg:grid-cols-2">
         <!-- Devices: where the shop is opened. Bars, not a canvas: the split
              must stay readable even if a chart fails to draw. -->
         <section class="card card-pad">
@@ -348,8 +360,10 @@ import {
 } from 'chart.js'
 import { formatMoney } from '@/lib/money'
 import { useAdminCurrency } from '@/composables/useAdminCurrency'
+import { useLiveStats } from '@/composables/useLiveStats'
 import { rpc, rpcList } from '@/lib/rpc'
 import type { MyOrder } from '@/lib/rpc'
+import AnimatedNumber from '@/components/admin/AnimatedNumber.vue'
 import OrderStatusBadge from '@/components/customer/OrderStatusBadge.vue'
 import { useAdminI18n } from '@/i18n/admin'
 
@@ -427,34 +441,40 @@ const analytics = ref<AnalyticsRow[]>([])
 const traffic = ref<TrafficStats | null>(null)
 const recentOrders = ref<MyOrder[]>([])
 const loading = ref(true)
+const analyticsLoading = ref(false)
 const error = ref<string | null>(null)
 const selectedRange = ref<Range>(30)
+
+const { snapshot: live, connected } = useLiveStats()
 
 const statusLabel = (status: string): string => t(`admin.status.${status}`)
 
 const loadAnalytics = async (): Promise<void> => {
-  const [analyticsRes, trafficRes] = await Promise.all([
-    rpc<AnalyticsRow[]>('admin_analytics', { p_days: selectedRange.value }),
-    rpc<TrafficStats>('admin_traffic_stats', { p_days: selectedRange.value }),
-  ])
+  analyticsLoading.value = true
+  try {
+    const [analyticsRes, trafficRes] = await Promise.all([
+      rpc<AnalyticsRow[]>('admin_analytics', { p_days: selectedRange.value }),
+      rpc<TrafficStats>('admin_traffic_stats', { p_days: selectedRange.value }),
+    ])
 
-  for (const res of [analyticsRes, trafficRes]) {
-    if (res.error) {
-      error.value = res.error.message
-      return
+    for (const res of [analyticsRes, trafficRes]) {
+      if (res.error) {
+        error.value = res.error.message
+        return
+      }
     }
-  }
 
-  analytics.value = (analyticsRes.data ?? []) as unknown as AnalyticsRow[]
-  traffic.value = trafficRes.data
+    analytics.value = (analyticsRes.data ?? []) as unknown as AnalyticsRow[]
+    traffic.value = trafficRes.data
+  } finally {
+    analyticsLoading.value = false
+  }
 }
 
 const selectRange = async (range: Range): Promise<void> => {
   if (range === selectedRange.value) return
   selectedRange.value = range
-  loading.value = true
   await loadAnalytics()
-  loading.value = false
 }
 
 const formatTurnaround = (minutes: number | null): string => {
@@ -573,12 +593,16 @@ onMounted(async () => {
 
     stats.value = statsRes.data
     recentOrders.value = (recentRes.data ?? []) as unknown as MyOrder[]
-
-    await loadAnalytics()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load dashboard'
+    loading.value = false
+    return
   } finally {
     loading.value = false
   }
+
+  // Tier 2: the heavy aggregates land behind their skeletons; KPIs are already
+  // on screen and the live poller is running by now.
+  await loadAnalytics()
 })
 </script>

@@ -13,6 +13,7 @@
  */
 import { getSupabase } from '@/lib/supabase'
 import { parseUserAgent } from '@/lib/userAgent'
+import { resolveTrafficSource } from '@/lib/trafficSource'
 
 const sessionKey = (slug: string): string => `pv:${slug}`
 
@@ -45,19 +46,11 @@ const resolveGeo = async (): Promise<{ country: string; city: string }> => {
   return { country, city }
 }
 
-const referrerHostname = (): string => {
-  if (!document.referrer) return ''
-  try {
-    const url = new URL(document.referrer)
-    // Internal navigation says nothing about where the customer came from.
-    return url.origin === window.location.origin ? '' : url.hostname
-  } catch {
-    return ''
-  }
-}
-
 export function trackPageView(slug: string): void {
   if (!slug) return
+
+  // Resolve and cache traffic source on every landing/visit
+  const source = resolveTrafficSource()
 
   try {
     if (sessionStorage.getItem(sessionKey(slug))) return
@@ -77,7 +70,7 @@ export function trackPageView(slug: string): void {
         p_device_type: device.deviceType,
         p_os: device.os,
         p_browser: device.browser,
-        p_referrer: referrerHostname(),
+        p_referrer: source,
       })
     } catch (err) {
       console.warn('[tracking] page view not recorded:', err)

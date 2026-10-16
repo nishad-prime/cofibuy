@@ -277,7 +277,9 @@
     "noRejections": "Nothing was rejected in this window.",
     "noTraffic": "No tracked traffic in this window yet.",
     "viewsPerDay": "Views",
-    "locations": "Top locations"
+    "locations": "Top locations",
+    "trafficSources": "Traffic sources",
+    "noSources": "No source data yet."
   },
   "images": {
     "assignedOf": "image slots assigned",

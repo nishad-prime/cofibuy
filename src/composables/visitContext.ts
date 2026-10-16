@@ -7,6 +7,7 @@
  * database clamps and nulls whatever looks wrong.
  */
 import { parseUserAgent } from '@/lib/userAgent'
+import { resolveTrafficSource } from '@/lib/trafficSource'
 
 export interface VisitContext {
   country: string
@@ -41,15 +42,7 @@ export async function resolveCity(): Promise<string> {
 /** Builds the context from whatever the page already knows. */
 export function buildVisitContext(country: string | null, city: string): VisitContext {
   const device = parseUserAgent(navigator.userAgent)
-  let referrer = ''
-  if (document.referrer) {
-    try {
-      const url = new URL(document.referrer)
-      if (url.origin !== window.location.origin) referrer = url.hostname
-    } catch {
-      // Unparseable referrer - skip it.
-    }
-  }
+  const referrer = resolveTrafficSource()
   return {
     country: country ?? '',
     city,

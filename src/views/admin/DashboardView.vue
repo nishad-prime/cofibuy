@@ -202,6 +202,30 @@
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noTraffic') }}</p>
         </section>
 
+        <!-- Traffic sources: where the visitors came from. -->
+        <section class="card card-pad">
+          <h2 class="text-sm font-semibold text-stone-900">
+            {{ t('admin.dashboard.trafficSources') }}
+          </h2>
+          <ul v-if="sourceRows.length > 0" class="mt-4 space-y-2.5">
+            <li v-for="row in sourceRows" :key="row.referrer" class="flex items-center gap-3">
+              <span class="w-32 shrink-0 truncate text-xs font-bold text-stone-700 ltr-value">
+                {{ row.referrer }}
+              </span>
+              <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-stone-100">
+                <div
+                  class="h-full rounded-full bg-brand-500"
+                  :style="{ width: `${(row.views / maxSourceViews) * 100}%` }"
+                />
+              </div>
+              <span class="w-12 shrink-0 text-right text-xs text-stone-500 ltr-value">
+                {{ row.views }}
+              </span>
+            </li>
+          </ul>
+          <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noSources') }}</p>
+        </section>
+
         <!-- Gateways: which rails the approved money used. -->
         <section class="card card-pad">
           <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.dashboard.gateways') }}</h2>
@@ -521,6 +545,9 @@ const totalDeviceViews = computed(() =>
     1,
   ),
 )
+
+const sourceRows = computed(() => traffic.value?.referrers ?? [])
+const maxSourceViews = computed(() => Math.max(...sourceRows.value.map((r) => r.views), 1))
 
 const locationRows = computed(() => traffic.value?.locations ?? [])
 const maxLocationViews = computed(() => Math.max(...locationRows.value.map((r) => r.views), 1))

@@ -69,7 +69,8 @@
     "stepSend": "Send the money",
     "stepConfirm": "Confirm with proof",
     "sendExact": "Send the exact amount shown above, then confirm below.",
-    "sendExactReference": "Send exactly {amount} to the account below, then confirm with your transaction id."
+    "sendExactReference": "Send exactly {amount} to the account below, then confirm with your transaction id.",
+    "alreadyOwned": "You already have access to this page — it has been unlocked below."
   },
   "order": {
     "title": "Order status",

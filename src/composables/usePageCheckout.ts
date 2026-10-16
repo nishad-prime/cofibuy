@@ -296,9 +296,20 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
           : t('customer.paywall.refused')
       case 'locked':
         return t('customer.paywall.refusedLocked')
+      case 'already_owned':
+        return t('customer.paywall.alreadyOwned')
       default:
         return t('customer.paywall.refused')
     }
+  }
+
+  /**
+   * The customer already owns the page: stop treating them as a buyer. The
+   * unlocked content steps in front of the paywall, exactly as an approved
+   * order would show it.
+   */
+  const handleAlreadyOwned = async (): Promise<void> => {
+    await fetchUnlocked()
   }
 
   const fetchUnlocked = async (): Promise<void> => {
@@ -750,6 +761,10 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
         { ok: true; redirectUrl: string } | { ok: false; refusal: { code?: string } } | null
 
       if (payload && payload.ok === false) {
+        if (payload.refusal?.code === 'already_owned') {
+          await handleAlreadyOwned()
+          return
+        }
         error.value = describeRefusal(payload.refusal?.code)
         return
       }
@@ -817,6 +832,10 @@ function buildCheckout(page: Ref<CheckoutPage | null>, slug: Ref<string>) {
 
       // The function reports refusals in the payload rather than as an error.
       if (!data?.ok || !data.order_id) {
+        if (data?.code === 'already_owned') {
+          await handleAlreadyOwned()
+          return
+        }
         error.value = describeRefusal(data?.code)
         return
       }

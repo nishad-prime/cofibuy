@@ -71,20 +71,6 @@
               <dd class="ltr-value font-medium text-stone-900">{{ order.phone_e164 || '—' }}</dd>
             </div>
             <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">{{ t('admin.order.customer') }}</dt>
-              <dd class="text-right font-medium text-stone-900">
-                <a
-                  v-if="order.customer?.email"
-                  :href="`mailto:${order.customer.email}`"
-                  class="text-brand-700 hover:underline"
-                >
-                  {{ order.customer.email }}
-                </a>
-                <span v-else-if="customerLabel">{{ customerLabel }}</span>
-                <span v-else>—</span>
-              </dd>
-            </div>
-            <div class="flex justify-between gap-4">
               <dt class="text-stone-500">{{ t('admin.order.report') }}</dt>
               <dd class="text-right font-medium text-stone-900">
                 {{ order.link?.title_en || order.link?.slug || '—' }}
@@ -157,16 +143,9 @@
           <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.order.customer') }}</h2>
           <dl class="mt-4 space-y-3 text-sm">
             <div class="flex justify-between gap-4">
-              <dt class="text-stone-500">{{ t('admin.order.email') }}</dt>
-              <dd class="text-right">
-                <a
-                  v-if="order.customer.email"
-                  :href="`mailto:${order.customer.email}`"
-                  class="font-medium text-brand-700 hover:underline"
-                >
-                  {{ order.customer.email }}
-                </a>
-                <span v-else class="text-stone-400">Anonymous</span>
+              <dt class="text-stone-500">{{ t('admin.order.customer') }}</dt>
+              <dd class="text-right font-medium text-stone-900">
+                {{ customerLabel || t('admin.order.none') }}
               </dd>
             </div>
             <div class="flex justify-between gap-4">
@@ -506,6 +485,8 @@ const formatDate = (date: string): string => {
 const customerLabel = computed(() => {
   const customer = order.value?.customer
   if (!customer) return null
+  // Anonymous signups carry no email; the short id is the handle the auth
+  // admin would search by.
   return customer.email || `Anonymous · ${customer.id.slice(0, 8)}`
 })
 

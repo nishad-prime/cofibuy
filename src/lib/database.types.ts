@@ -365,6 +365,7 @@ export type Database = {
           p_slug: string
           p_kind: string
           p_amount: number
+          p_context?: Json
         }
         Returns: Json
       }

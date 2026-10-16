@@ -107,6 +107,9 @@ import { useAdminI18n } from '@/i18n/admin'
 const { t } = useAdminI18n()
 const { currency, load: loadCurrency } = useAdminCurrency()
 
+/** The site's default minimum, shown as the real number behind "site default". */
+const defaultMin = ref(0)
+
 interface AdminPageRow {
   id: string
   slug: string
@@ -157,8 +160,12 @@ const deleteLink = async (id: string): Promise<void> => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   void loadCurrency()
   void loadPages()
+  // The site's default minimum: the number behind every "site default" price.
+  const { data } = await rpc<{ default_min?: unknown }>('admin_stats')
+  const min = Number(data?.default_min)
+  if (Number.isFinite(min) && min > 0) defaultMin.value = min
 })
 </script>

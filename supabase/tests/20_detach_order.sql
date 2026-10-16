@@ -34,24 +34,35 @@ select is(
 select test_data.as_user(test_data.subject_id());
 
 -- ---------------------------------------------------------------------------
--- The dead end, reproduced
+-- The rejection is not a cage
 -- ---------------------------------------------------------------------------
 
-select throws_ok(
-  $$select api.create_order('guide', 'nagad', 750)$$,
-  '22023',
-  'kind_mismatch: open order already uses payment kind bkash',
-  'while the rejection is attached, a different payment kind is refused'
+-- A rejected customer starts fresh: a different payment kind opens a new
+-- order instead of tripping the open-order kind guard, because rejected
+-- rows are no longer reused. A second customer runs this so the detach
+-- assertions below read subject 'a' alone.
+select test_data.new_subject('b');
+select test_data.as_subject('b');
+select is(
+  test_data.orders('guide', 'Nagad', 750, 'b') ->> 'status',
+  'awaiting_proof',
+  'a rejected customer opens a fresh order with a different kind'
 );
 
-select is(
-  test_data.orders('guide', 'bKash', 750) ->> 'status',
-  'rejected',
-  'and the same payment kind just re-returns the rejected order'
+-- The fresh order is open and pins the kind, like any open order: a bKash
+-- attempt alongside it is refused.
+select throws_ok(
+  $$select test_data.orders('guide', 'bKash', 750, 'b')$$,
+  '22023',
+  'kind_mismatch: open order already uses payment kind nagad',
+  'the fresh order pins the kind, as any open order does'
 );
+
+-- Detach clears the rejected row from the customer, so the fresh order is
+
 
 -- The fixture's order helper signs out at the end; the guardrails below read
--- the caller's identity, so the customer is deliberately back in the picture.
+-- the caller's identity, so customer 'a' is deliberately back in the picture.
 select test_data.as_user(test_data.subject_id());
 
 -- ---------------------------------------------------------------------------
@@ -81,8 +92,14 @@ select test_data.as_user(test_data.subject_id());
 -- ---------------------------------------------------------------------------
 
 select lives_ok(
-  $$select api.detach_order((select id from public.orders where status = 'rejected' limit 1))$$,
+  $$select api.detach_order((select id from public.orders where user_id = test_data.subject_id() and status = 'rejected' limit 1))$$,
   'the owner detaches their rejected order'
+);
+
+select is(
+  (select coalesce(string_agg(reference_code, ','), 'none') from public.orders where user_id = test_data.subject_id()),
+  'none',
+  'diag: orders still owned by the customer'
 );
 
 select is(
@@ -97,15 +114,7 @@ select is(
   'but the order row survives for the operator'
 );
 
--- ---------------------------------------------------------------------------
--- After the detach: a fresh order is possible again, on any kind
--- ---------------------------------------------------------------------------
 
-select is(
-  test_data.orders('guide', 'bKash', 750) ->> 'ok',
-  'true',
-  'the same payment kind now starts a fresh order'
-);
 
 select test_data.reset();
 select test_data.link('guide', 500, false);

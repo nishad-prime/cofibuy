@@ -194,35 +194,6 @@
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noTraffic') }}</p>
         </ChartCard>
 
-        <!-- Top locations: city and country, the IP-derived view. -->
-        <section class="card card-pad">
-          <h2 class="text-sm font-semibold text-stone-900">
-            {{ t('admin.dashboard.locations') }}
-          </h2>
-          <ul v-if="locationRows.length > 0" class="mt-4 space-y-2.5">
-            <li
-              v-for="row in locationRows"
-              :key="`${row.country}-${row.city}`"
-              class="flex items-center gap-3"
-            >
-              <span class="w-32 shrink-0 truncate text-xs font-bold text-stone-700">
-                <span v-if="row.city">{{ row.city }}, </span>
-                <span class="ltr-value">{{ row.country }}</span>
-              </span>
-              <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-stone-100">
-                <div
-                  class="h-full rounded-full bg-brand-500"
-                  :style="{ width: `${(row.views / maxLocationViews) * 100}%` }"
-                />
-              </div>
-              <span class="w-12 shrink-0 text-right text-xs text-stone-500 ltr-value">
-                {{ row.views }}
-              </span>
-            </li>
-          </ul>
-          <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noTraffic') }}</p>
-        </section>
-
         <!-- Traffic sources: where the visitors came from. -->
         <ChartCard :title="t('admin.dashboard.trafficSources')">
           <div
@@ -252,29 +223,41 @@
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noSources') }}</p>
         </ChartCard>
 
-        <!-- Gateways: which rails the approved money used. -->
+        <!-- Approved gateway mix: visualized alongside the other breakdowns. -->
         <ChartCard :title="t('admin.dashboard.gateways')">
-          <ul v-if="gatewayRows.length > 0" class="space-y-3">
-            <li v-for="row in gatewayRows" :key="row.kind" class="space-y-1.5">
-              <div class="flex justify-between gap-3 text-xs">
-                <span class="truncate font-medium text-stone-300">{{ row.kind }}</span>
-                <span class="shrink-0 text-stone-400 ltr-value"
-                  >{{ row.orders }} · {{ formatMoney(row.revenue, 'en', currency) }}</span
-                >
-              </div>
-              <div class="h-2 overflow-hidden rounded-full bg-white/5">
-                <div
-                  class="h-full rounded-full bg-brand-500"
-                  :style="{ width: `${(row.revenue / maxGatewayRevenue) * 100}%` }"
-                />
-              </div>
-            </li>
-          </ul>
+          <div
+            v-if="gatewayRows.length > 0"
+            class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center"
+          >
+            <div class="h-52 min-w-0">
+              <Chart type="doughnut" :data="gatewayChartData" :options="doughnutOptions" />
+            </div>
+            <ul class="space-y-2">
+              <li
+                v-for="row in gatewayRows"
+                :key="row.kind"
+                class="flex items-center justify-between gap-3 text-xs"
+              >
+                <span class="flex min-w-0 items-center gap-2 text-stone-300">
+                  <span
+                    class="size-2 shrink-0 rounded-full"
+                    :style="{ backgroundColor: gatewayColor(row.kind) }"
+                  />
+                  <span class="truncate">{{ row.kind }}</span>
+                </span>
+                <span class="shrink-0 font-semibold text-stone-100 ltr-value">{{
+                  row.orders
+                }}</span>
+              </li>
+            </ul>
+          </div>
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noSales') }}</p>
         </ChartCard>
+      </div>
 
+      <div v-if="traffic" class="grid gap-6 lg:grid-cols-2">
         <!-- Rejections: what the operator says no to, most often. -->
-        <ChartCard class="lg:col-span-2" :title="t('admin.dashboard.rejections')">
+        <ChartCard :title="t('admin.dashboard.rejections')">
           <ul v-if="rejectionRows.length > 0" class="space-y-3">
             <li v-for="row in rejectionRows" :key="row.reason" class="space-y-1.5">
               <div class="flex justify-between gap-3 text-xs">
@@ -293,37 +276,70 @@
           </ul>
           <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noRejections') }}</p>
         </ChartCard>
+
+        <!-- Top pages: compact performance rows, not a wide table. -->
+        <ChartCard :title="t('admin.dashboard.topPages')">
+          <ul v-if="pageRows.length > 0" class="space-y-3">
+            <li v-for="row in pageRows" :key="row.slug" class="space-y-1.5">
+              <div class="flex items-center justify-between gap-3 text-xs">
+                <span class="min-w-0 truncate font-medium text-stone-200">{{
+                  row.title_en || row.title_bn || row.slug
+                }}</span>
+                <span class="shrink-0 text-stone-400 ltr-value">{{
+                  formatMoney(row.revenue, 'en', currency)
+                }}</span>
+              </div>
+              <div class="flex items-center gap-2 text-[11px] text-stone-500">
+                <span class="ltr-value">{{ row.views }} {{ t('admin.dashboard.views') }}</span>
+                <span aria-hidden="true">·</span>
+                <span class="ltr-value"
+                  >{{ row.orders_approved }} {{ t('admin.dashboard.orders') }}</span
+                >
+                <span aria-hidden="true">·</span>
+                <span class="ltr-value">{{
+                  row.conversion_rate !== null ? `${row.conversion_rate}%` : '—'
+                }}</span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-white/5">
+                <div
+                  class="h-full rounded-full bg-brand-500"
+                  :style="{ width: `${Math.min(row.conversion_rate ?? 0, 100)}%` }"
+                />
+              </div>
+            </li>
+          </ul>
+          <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noSales') }}</p>
+        </ChartCard>
       </div>
 
       <div class="mt-6 grid gap-6 lg:grid-cols-2">
-        <!-- Top pages: what actually sells, and how well it converts. -->
+        <!-- Top locations: city and country, the IP-derived view. -->
         <section class="card card-pad">
-          <h2 class="text-sm font-semibold text-stone-900">{{ t('admin.dashboard.topPages') }}</h2>
-          <table v-if="pageRows.length > 0" class="mt-4 w-full text-sm">
-            <thead>
-              <tr>
-                <th class="th text-left">{{ t('admin.dashboard.page') }}</th>
-                <th class="th text-right">{{ t('admin.dashboard.views') }}</th>
-                <th class="th text-right">{{ t('admin.dashboard.orders') }}</th>
-                <th class="th text-right">{{ t('admin.dashboard.conversionShort') }}</th>
-                <th class="th text-right">{{ t('admin.dashboard.revenue') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in pageRows" :key="row.slug" class="row-link">
-                <td class="td">{{ row.title_en || row.title_bn || row.slug }}</td>
-                <td class="td text-right ltr-value">{{ row.views }}</td>
-                <td class="td text-right ltr-value">{{ row.orders_approved }}</td>
-                <td class="td text-right ltr-value">
-                  {{ row.conversion_rate !== null ? `${row.conversion_rate}%` : '—' }}
-                </td>
-                <td class="td text-right ltr-value">
-                  {{ formatMoney(row.revenue, 'en', currency) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noSales') }}</p>
+          <h2 class="text-sm font-semibold text-stone-900">
+            {{ t('admin.dashboard.locations') }}
+          </h2>
+          <ul v-if="locationRows.length > 0" class="mt-4 space-y-2.5">
+            <li
+              v-for="row in locationRows"
+              :key="`${row.country}-${row.city}`"
+              class="flex items-center gap-3"
+            >
+              <span class="w-32 shrink-0 truncate text-xs font-bold text-stone-700">
+                <span v-if="row.city">{{ row.city }}, </span>
+                <span class="ltr-value">{{ row.country }}</span>
+              </span>
+              <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-stone-100">
+                <div
+                  class="h-full rounded-full bg-brand-500"
+                  :style="{ width: `${(row.views / maxLocationViews) * 100}%` }"
+                />
+              </div>
+              <span class="w-12 shrink-0 text-right text-xs text-stone-500 ltr-value">
+                {{ row.views }}
+              </span>
+            </li>
+          </ul>
+          <p v-else class="empty-state mt-4">{{ t('admin.dashboard.noTraffic') }}</p>
         </section>
 
         <!-- Recent orders: the queue's newest rows, one click from here. -->
@@ -592,11 +608,11 @@ const maxLocationViews = computed(() => Math.max(...locationRows.value.map((r) =
 const gatewayRows = computed(() => traffic.value?.gateways ?? [])
 const rejectionRows = computed(() => traffic.value?.rejections ?? [])
 const pageRows = computed(() => traffic.value?.pages ?? [])
-const maxGatewayRevenue = computed(() => Math.max(...gatewayRows.value.map((r) => r.revenue), 1))
 const maxRejections = computed(() => Math.max(...rejectionRows.value.map((r) => r.orders), 1))
 
 const DEVICE_COLORS = ['#0f766e', '#14b8a6', '#5eead4', '#94a3b8']
 const SOURCE_COLORS = ['#0f766e', '#14b8a6', '#38bdf8', '#f59e0b', '#f43f5e', '#a78bfa']
+const GATEWAY_COLORS = ['#0f766e', '#14b8a6', '#38bdf8', '#f59e0b', '#f43f5e', '#a78bfa']
 const deviceColor = (type: string): string =>
   DEVICE_COLORS[
     Math.max(
@@ -610,6 +626,13 @@ const sourceColor = (source: string): string =>
       0,
       sourceRows.value.findIndex((row) => row.referrer === source),
     ) % SOURCE_COLORS.length
+  ]!
+const gatewayColor = (kind: string): string =>
+  GATEWAY_COLORS[
+    Math.max(
+      0,
+      gatewayRows.value.findIndex((row) => row.kind === kind),
+    ) % GATEWAY_COLORS.length
   ]!
 
 const deviceChartData = computed<ChartData<'doughnut'>>(() => ({
@@ -628,6 +651,16 @@ const sourceChartData = computed<ChartData<'doughnut'>>(() => ({
     {
       data: sourceRows.value.map((row) => row.views),
       backgroundColor: sourceRows.value.map((row) => sourceColor(row.referrer)),
+      borderWidth: 0,
+    },
+  ],
+}))
+const gatewayChartData = computed<ChartData<'doughnut'>>(() => ({
+  labels: gatewayRows.value.map((row) => row.kind),
+  datasets: [
+    {
+      data: gatewayRows.value.map((row) => row.orders),
+      backgroundColor: gatewayRows.value.map((row) => gatewayColor(row.kind)),
       borderWidth: 0,
     },
   ],

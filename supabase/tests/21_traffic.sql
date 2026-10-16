@@ -4,7 +4,7 @@
 -- only live pages are recorded, only sane values survive normalisation, and
 -- the stats answer staff-only with the real shapes the dashboard reads.
 
-select plan(15);
+select plan(18);
 
 -- ---------------------------------------------------------------------------
 -- What gets recorded
@@ -110,6 +110,31 @@ select is(
   jsonb_typeof(api.admin_traffic_stats(7) -> 'pages'),
   'array',
   'the per-page performance arrives as an array'
+);
+
+-- The Telegram family collapses into one row at read time; the rows themselves
+-- keep their verbatim referrers.
+select api.track_page_view('guide', 'BD', null, 'mobile', 'Android', 'Chrome', 't.me');
+select api.track_page_view('guide', 'BD', null, 'mobile', 'Android', 'Chrome', 'org.telegram.messenger');
+
+select is(
+  (select count(*)::text from jsonb_array_elements(api.admin_traffic_stats(7) -> 'referrers') r
+    where r ->> 'referrer' = 'telegram'),
+  '1',
+  'every telegram identifier reads back as one telegram row'
+);
+
+select is(
+  (select (r ->> 'views')::int from jsonb_array_elements(api.admin_traffic_stats(7) -> 'referrers') r
+    where r ->> 'referrer' = 'telegram'),
+  2,
+  'and its view count is the sum of the family'
+);
+
+select is(
+  (select count(*)::text from public.page_views where referrer in ('t.me', 'org.telegram.messenger')),
+  '2',
+  'but the stored rows keep their verbatim referrers'
 );
 
 select is(

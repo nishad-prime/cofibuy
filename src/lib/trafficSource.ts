@@ -5,8 +5,9 @@
  * in sessionStorage so internal page navigation or refreshing preserves the
  * original campaign attribution.
  *
- * If no parameter is present, inspects document.referrer, mapping known
- * Telegram hostnames to 'telegram', and external sites to their hostname.
+ * Falls back to document.referrer's hostname, stored verbatim: the raw value
+ * is what the database keeps, so nothing is lost. Known Telegram identifiers
+ * are folded into one bucket only where they are visualized.
  */
 
 const STORAGE_KEY = 'cofibuy:traffic_source'
@@ -43,20 +44,6 @@ export function resolveTrafficSource(): string {
       const url = new URL(document.referrer)
       if (url.origin !== window.location.origin) {
         const host = url.hostname.toLowerCase()
-        if (
-          host === 't.me' ||
-          host.endsWith('.t.me') ||
-          host === 'telegram.org' ||
-          host.endsWith('.telegram.org') ||
-          host === 'web.telegram.org'
-        ) {
-          try {
-            sessionStorage.setItem(STORAGE_KEY, 'telegram')
-          } catch {
-            // Storage unavailable
-          }
-          return 'telegram'
-        }
         try {
           sessionStorage.setItem(STORAGE_KEY, host)
         } catch {

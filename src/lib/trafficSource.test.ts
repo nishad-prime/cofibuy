@@ -41,9 +41,14 @@ describe('resolveTrafficSource', () => {
     expect(sessionStorage.getItem(STORAGE_KEY)).toBe('facebook')
   })
 
-  it('maps telegram hosts to telegram', () => {
+  it('stores telegram hosts verbatim', () => {
     setReferrer('https://t.me/cofibuy/123')
-    expect(resolveTrafficSource()).toBe('telegram')
+    expect(resolveTrafficSource()).toBe('t.me')
+
+    sessionStorage.clear()
+    setSearch('')
+    setReferrer('https://org.telegram.messenger/')
+    expect(resolveTrafficSource()).toBe('org.telegram.messenger')
   })
 
   it('uses the hostname of other external referrers', () => {

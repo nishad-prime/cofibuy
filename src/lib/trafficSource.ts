@@ -1,7 +1,7 @@
 /**
  * Resolves the traffic source / referrer for visit tracking and orders.
  *
- * Checks query parameters first (utm_source, source, ref), with persistence
+ * Checks query parameters first (utm_source, utm_medium, source, ref), with persistence
  * in sessionStorage so internal page navigation or refreshing preserves the
  * original campaign attribution.
  *
@@ -16,7 +16,11 @@ export function resolveTrafficSource(): string {
   // 1. Check if URL currently has explicit attribution params
   if (typeof window !== 'undefined' && window.location?.search) {
     const params = new URLSearchParams(window.location.search)
-    const utmSource = params.get('utm_source') || params.get('source') || params.get('ref')
+    const utmSource =
+      params.get('utm_source') ||
+      params.get('utm_medium') ||
+      params.get('source') ||
+      params.get('ref')
     if (utmSource && utmSource.trim()) {
       const clean = utmSource.trim().toLowerCase()
       try {

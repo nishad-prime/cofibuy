@@ -29,6 +29,16 @@ describe('resolveTrafficSource', () => {
     expect(resolveTrafficSource()).toBe('tg-channel')
   })
 
+  it('accepts utm_medium when utm_source is absent', () => {
+    setSearch('?utm_medium=facebook')
+    expect(resolveTrafficSource()).toBe('facebook')
+  })
+
+  it('prefers utm_source over utm_medium', () => {
+    setSearch('?utm_source=telegram&utm_medium=social')
+    expect(resolveTrafficSource()).toBe('telegram')
+  })
+
   it('keeps the saved source across navigation without params', () => {
     sessionStorage.setItem(STORAGE_KEY, 'telegram')
     expect(resolveTrafficSource()).toBe('telegram')
